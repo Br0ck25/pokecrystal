@@ -5,7 +5,7 @@ import { getJohtoMetatileCollision } from './johto-collision.js';
 // data/maps/blocks.asm assigns PlayersNeighborsHouse_Blocks to maps/House1.blk.
 // These are the original 4x4 source block IDs, not a substitute map layout.
 export const PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS = Object.freeze([
-  4, 30, 79, 29,
+  4, 30, 5, 29,
   15, 1, 2, 15,
   15, 12, 13, 15,
   6, 11, 15, 7,
