@@ -17,6 +17,8 @@ import { LAB_METATILE_TILES } from './maps/lab-metatiles.js';
 import { PLAYERS_HOUSE_METATILE_TILES } from './maps/players-house-metatiles.js';
 import { PLAYERS_ROOM_METATILE_TILES } from './maps/players-room-metatiles.js';
 import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './maps/tileset-palette-data.js';
+import { isPreviewCollisionWalkable } from './maps/new-bark-town-movement.js';
+import { getTilesetCollision } from './maps/tileset-collision.js';
 
 test('all imported house block grids match their source dimensions', () => {
  assert.equal(PLAYERS_HOUSE_1F_BLOCK_IDS.length, PLAYERS_HOUSE_1F.dimensions.blocksWide * PLAYERS_HOUSE_1F.dimensions.blocksHigh);
@@ -123,4 +125,12 @@ test('each supported map tileset has source metatile graphics and palette assign
  assert.equal(CRYSTAL_PALETTES.day.RED.length, 4);
  assert.equal(CRYSTAL_PALETTES.indoor.BROWN.length, 4);
  assert.ok(HOUSE_METATILE_TILES.length > Math.max(...PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS));
+});
+
+
+test('indoor collision lookups use their own source tables and stairs are traversable', () => {
+ assert.equal(getTilesetCollision('LAB', 1, 0), 'FLOOR');
+ assert.equal(getTilesetCollision('PLAYERS_ROOM', 2, 1), 'STAIRCASE');
+ assert.equal(isPreviewCollisionWalkable('STAIRCASE'), true);
+ assert.equal(getPlayersNeighborsHouseCollisionAtMetatile(4, 2), 'FLOOR');
 });
