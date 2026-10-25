@@ -27,7 +27,7 @@ import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/map
 import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './src/maps/players-neighbors-house-blocks.js';
 import { getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit } from './src/maps/starter-selection.js';
-import { shouldStartElmOpeningScene, canCancelPendingScene } from './src/maps/scene-progression.js';
+import { shouldStartElmOpeningScene, canCancelPendingScene, ELM_OPENING_MOVEMENT } from './src/maps/scene-progression.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
 import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
 import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
@@ -424,6 +424,7 @@ function drawDialogueBox() {
   ctx.restore();
 }
 function interact() {
+  if (scriptedMovement) return;
   if (advanceDialoguePage()) return;
   // NewBarkTownRivalScript performs the shove immediately after the second
   // text is dismissed; it is not a third interaction prompt in the source.
@@ -713,6 +714,7 @@ function interact() {
   showDialogue(label, 'Original script not yet implemented: ' + event.script, true);
 }
 function pressB() {
+  if (scriptedMovement) return;
   if (state.starterReveal) { state.starterReveal = null; draw(); }
   if (state.momIntroActive) { state.momIntroActive = false; state.momIntroStage = 0; setHint('Talk to Mom again if you need to.'); return; }
   if (state.pendingStarter === 'LAB_INTRO') {
@@ -770,7 +772,7 @@ function transition(warp) {
     state.pendingStarter = 'LAB_INTRO';
     state.labIntroStage = 0;
     state.choiceYes = true;
-    startScriptedMovement(Array(7).fill('up'), () => {
+    startScriptedMovement(ELM_OPENING_MOVEMENT, () => {
       state.facing = 'left';
       showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES\n  NO");
     });
