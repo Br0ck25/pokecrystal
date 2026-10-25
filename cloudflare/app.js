@@ -962,6 +962,17 @@ window.addEventListener('keyup', e => keys.delete(normalizeKey(e.key)));
 window.addEventListener('blur', () => keys.clear());
 // Each source image is embedded in this bundle. There is no single global
 // "source" image: every map chooses its own tileset in drawMap().
+// Audit hook: ?map=ELMS_LAB&x=4&y=6&facing=up opens a map at a position so tools/reference can
+// diff it against the real game. Unknown maps or malformed coordinates are ignored.
+{
+  const q = new URLSearchParams(window.location.search);
+  const x = Number(q.get('x')), y = Number(q.get('y'));
+  if (maps[q.get('map')] && Number.isInteger(x) && Number.isInteger(y)) {
+    currentMapId = q.get('map');
+    state.x = x; state.y = y;
+    if (['up', 'down', 'left', 'right'].includes(q.get('facing'))) state.facing = q.get('facing');
+  }
+}
 resizeCanvasForMap();
 new ResizeObserver(() => { resizeCanvasForMap(); draw(); }).observe(document.querySelector('.screen'));
 draw();
