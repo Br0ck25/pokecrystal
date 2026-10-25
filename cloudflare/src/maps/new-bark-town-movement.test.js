@@ -6,9 +6,14 @@ test('only explicitly supported ground collision classes are walkable', () => {
   for (const collision of ['FLOOR', 'TALL_GRASS', 'DOOR', 'WARP_CARPET_LEFT', 'WARP_CARPET_RIGHT', 'WARP_CARPET_DOWN']) {
     assert.equal(isPreviewCollisionWalkable(collision), true, collision);
   }
-  for (const collision of ['WALL', 'WATER', 'BUOY', 'HEADBUTT_TREE', 'CUT_TREE', 'LADDER', 'WHIRLPOOL', 'HOP_DOWN', '01', null, undefined, 'UNKNOWN']) {
+  for (const collision of ['WALL', 'WATER', 'BUOY', 'HEADBUTT_TREE', 'CUT_TREE', 'WHIRLPOOL', 'HOP_DOWN', '01', null, undefined, 'UNKNOWN']) {
     assert.equal(isPreviewCollisionWalkable(collision), false, String(collision));
   }
+});
+
+test('stairs and ladders are walkable in the preview where source maps use them', () => {
+  assert.equal(isPreviewCollisionWalkable('STAIRCASE'), true);
+  assert.equal(isPreviewCollisionWalkable('LADDER'), true);
 });
 
 test('map bounds and malformed coordinates fail closed', () => {
