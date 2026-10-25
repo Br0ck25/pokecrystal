@@ -28,6 +28,13 @@ import { shouldStartElmOpeningScene, canCancelPendingScene } from './maps/scene-
 import { getSourceSpriteForObject } from './maps/npc-sprite-map.js';
 import { CRYSTAL_EXTRA_SPRITES } from './assets/source-sprites.js';
 
+test('interior maps use their source tilesets rather than a similar-looking substitute', () => {
+ assert.equal(PLAYERS_HOUSE_1F.tileset, 'PLAYERS_HOUSE');
+ assert.equal(PLAYERS_HOUSE_2F.tileset, 'PLAYERS_ROOM');
+ assert.equal(ELMS_HOUSE.tileset, 'HOUSE');
+ assert.equal(PLAYERS_NEIGHBORS_HOUSE.tileset, 'HOUSE');
+});
+
 test('all imported house block grids match their source dimensions', () => {
  assert.equal(PLAYERS_HOUSE_1F_BLOCK_IDS.length, PLAYERS_HOUSE_1F.dimensions.blocksWide * PLAYERS_HOUSE_1F.dimensions.blocksHigh);
  assert.equal(PLAYERS_HOUSE_2F_BLOCK_IDS.length, PLAYERS_HOUSE_2F.dimensions.blocksWide * PLAYERS_HOUSE_2F.dimensions.blocksHigh);
