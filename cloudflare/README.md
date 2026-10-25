@@ -1,5 +1,7 @@
 # Cloudflare browser port
 
+**Contributor and AI-agent rules:** Read the repository-root [`AGENTS.md`](../AGENTS.md) before making any change. It defines the project goal, source-of-truth requirements, safe multi-agent workflow, testing gates, and what counts as complete.
+
 This directory is the beginning of a JavaScript browser port of the Pokémon Crystal disassembly. It is not yet a playable game. The runtime currently defines a small state contract, guarded grid-step handling, local save/load, and crisp canvas setup; it intentionally refuses to guess movement rules without a source-derived map adapter.
 
 ## Files
@@ -37,7 +39,7 @@ A GitHub Actions workflow runs these tests when files in this directory change.
 
 ## Hosting choice
 
-Cloudflare Pages connected to GitHub is the simplest development deployment while the game is split into maintainable source files. Use the `crystal-browser-worker` branch and set the Pages project root directory to `cloudflare`. The current deployment is an early interactive map prototype, not the full game.
+Cloudflare Pages connected to GitHub is the simplest development deployment while the game is split into maintainable source files. Use the `crystal-browser-worker` branch and set the Pages project root directory to `cloudflare`. The current deployment is an early interactive map prototype, not the full game. The repository-root `AGENTS.md` is mandatory for contributors and AI agents.
 
 When the browser app exists, Pages can auto-deploy every commit from this branch. If a single-file Worker is still preferred, we can bundle the browser app into `cloudflare/worker.js` as a later packaging step. Pages versus a single Worker does not change the work required to translate the original game's logic.
 
