@@ -119,7 +119,10 @@ test('neighbor house uses the original shared House1 block grid and source dialo
  assert.deepEqual(PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, [4,30,5,29,15,1,2,15,15,12,13,15,6,11,15,7]);
  const daughter = PLAYERS_NEIGHBORS_HOUSE.objects.find(object => object.id === 'DAUGHTER');
  assert.match(daughter.dialogue.join(' '), /PIKACHU is an evolved POKéMON/);
+ assert.match(daughter.dialogue.join(' '), /…sigh…/);
  assert.match(daughter.dialogue.join(' '), /researcher like him/);
+ const neighbor = PLAYERS_NEIGHBORS_HOUSE.objects.find(object => object.id === 'NEIGHBOR');
+ assert.match(neighbor.dialogue.join(' '), /But then, so do I!/);
 });
 
 
