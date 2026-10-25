@@ -1,6 +1,6 @@
 /** Source .blk block IDs from upstream pokecrystal; blob SHA verified against GitHub. */
 import { PLAYERS_HOUSE_2F } from './players-house-2f.js';
-import { getJohtoMetatileCollision } from './johto-collision.js';
+import { getTilesetCollision } from './tileset-collision.js';
 export const PLAYERS_HOUSE_2F_BLOCK_IDS=Object.freeze([4,1,3,2,5,6,5,5,5,5,7,5]);
 export function getPlayersHouse2fBlockAtMetatile(x,y){
  const d=PLAYERS_HOUSE_2F.dimensions;
