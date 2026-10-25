@@ -17,7 +17,7 @@ export const PLAYERS_HOUSE_1F = Object.freeze({
  {x:4,y:1,kind:'tv',text:"There's a movie on TV: Stars dot the sky as two boys ride on a train… I'd better get rolling too!"}
  ]),
  objects:Object.freeze([
- {id:'MOM',x:7,y:4,facing:'left',script:'MomScript',dialogue:['PROF. ELM was looking for you.','Your POKéGEAR is back from the repair shop.']},
+ {id:'MOM',x:7,y:4,facing:'left',script:'MomScript',dialogue:['PROF. ELM is waiting for you.','Hurry up, baby!']},
  {id:'NEIGHBOR',x:4,y:4,sprite:'SPRITE_POKEFAN_F',script:'NeighborScript',dialogue:['Hello, <PLAY_G>! I\'m visiting!','<PLAY_G>, have you heard? My daughter is adamant about becoming PROF. ELM\'s assistant. She really loves POKéMON!']}
  ])
 });
