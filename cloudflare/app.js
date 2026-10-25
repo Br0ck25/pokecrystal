@@ -57,7 +57,7 @@ for (const [name, base64] of Object.entries({ CYNDAQUIL: CRYSTAL_EXTRA_SPRITES.C
   image.onerror = () => console.error('[Pokémon Crystal preview] Could not decode starter art:', name);
   image.src = 'data:image/png;base64,' + base64;
 }
-for (const [name, base64] of Object.entries({ ...CRYSTAL_OVERWORLD_SPRITES, ...Object.fromEntries(Object.entries(CRYSTAL_EXTRA_SPRITES).filter(([name]) => ['ELM','MOM','SCIENTIST','OFFICER','POKE_BALL'].includes(name))) })) {
+for (const [name, base64] of Object.entries({ ...CRYSTAL_OVERWORLD_SPRITES, ...Object.fromEntries(Object.entries(CRYSTAL_EXTRA_SPRITES).filter(([name]) => ['ELM','MOM','SCIENTIST','OFFICER','POKE_BALL','POKEFAN_F','COOLTRAINER_F','BUG_CATCHER'].includes(name))) })) {
   const image = new Image();
   image.onload = () => { overworldSpriteImages[name] = image; draw(); };
   image.onerror = () => console.error('[Pokémon Crystal preview] Could not decode source sprite:', name);
