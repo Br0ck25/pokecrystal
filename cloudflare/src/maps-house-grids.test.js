@@ -464,3 +464,30 @@ test('scene audit: every source doorway lands on walkable floor with a route bac
   }
  }
 });
+
+
+test('all New Bark Town scene objects, background events, and warps stay inside their source map bounds', () => {
+ const maps = [
+  NEW_BARK_TOWN, ELMS_LAB, PLAYERS_HOUSE_1F, PLAYERS_HOUSE_2F, ELMS_HOUSE, PLAYERS_NEIGHBORS_HOUSE,
+ ];
+ for (const map of maps) {
+  const { metatilesWide: width, metatilesHigh: height } = map.dimensions;
+  for (const kind of ['objects', 'backgroundEvents', 'coordinateEvents', 'warps']) {
+   for (const event of map[kind] || []) {
+    assert.ok(Number.isInteger(event.x) && event.x >= 0 && event.x < width, `${map.id} ${kind} x out of bounds: ${JSON.stringify(event)}`);
+    assert.ok(Number.isInteger(event.y) && event.y >= 0 && event.y < height, `${map.id} ${kind} y out of bounds: ${JSON.stringify(event)}`);
+   }
+  }
+ }
+});
+
+test('starter choice maps all three source Poké Balls to distinct level-five species with art', () => {
+ assert.deepEqual(Object.keys(LAB_STARTERS), ['ELMSLAB_POKE_BALL1', 'ELMSLAB_POKE_BALL2', 'ELMSLAB_POKE_BALL3']);
+ assert.deepEqual(Object.values(LAB_STARTERS).map(starter => starter.species), ['CYNDAQUIL', 'TOTODILE', 'CHIKORITA']);
+ for (const [ballId, starter] of Object.entries(LAB_STARTERS)) {
+  assert.equal(starter.level, 5, `${ballId} source level`);
+  assert.equal(getLabStarterBallId(starter.species), ballId);
+  assert.ok(CRYSTAL_EXTRA_SPRITES[starter.species], `${starter.species} starter artwork missing`);
+  assert.ok(getLabStarterPrompt(starter.species), `${starter.species} selection prompt missing`);
+ }
+});
