@@ -313,3 +313,15 @@ test('Elm opening scene starts on first lab entry and cannot be cancelled before
  assert.equal(canCancelPendingScene('LAB_INTRO'), false);
  assert.equal(canCancelPendingScene('CYNDAQUIL'), true);
 });
+
+
+test('New Bark Town teacher stop scene preserves both source trigger rows and teacher start position', () => {
+ assert.deepEqual(NEW_BARK_TOWN.coordinateEvents.map(event => [event.x, event.y, event.script]), [
+  [1, 8, 'NewBarkTown_TeacherStopsYouScene1'],
+  [1, 9, 'NewBarkTown_TeacherStopsYouScene2'],
+ ]);
+ const teacher = NEW_BARK_TOWN.objects.find(object => object.id === 'NEWBARKTOWN_TEACHER');
+ assert.deepEqual([teacher.x, teacher.y], [6, 8]);
+ assert.equal(teacher.movement, 'SPRITEMOVEDATA_SPINRANDOM_SLOW');
+ assert.match(teacher.dialogue.join(' '), /Wow, your POKéGEAR is impressive/);
+});
