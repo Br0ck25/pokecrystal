@@ -10,7 +10,14 @@
     main { max-width: 900px; margin: auto; }
     h1 { font-size: 1.4rem; margin-bottom: .4rem; }
     p { color: #cbd5e1; line-height: 1.5; }
-    .frame { overflow: auto; border: 1px solid #475569; background: #202020; padding: 12px; }\n    .controls { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; justify-content: center; margin: 14px auto; touch-action: none; }\n    .controls button { min-height: 48px; border: 1px solid #64748b; border-radius: 10px; background: #273449; color: white; font-size: 1.25rem; touch-action: none; }\n    .controls button:active { background: #475569; }\n    .controls .up { grid-column: 2; }\n    .controls .left { grid-column: 1; grid-row: 2; }\n    .controls .down { grid-column: 2; grid-row: 2; }\n    .controls .right { grid-column: 3; grid-row: 2; }
+    .frame { overflow: auto; border: 1px solid #475569; background: #202020; padding: 12px; }
+    .controls { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; justify-content: center; margin: 14px auto; touch-action: none; }
+    .controls button { min-height: 48px; border: 1px solid #64748b; border-radius: 10px; background: #273449; color: white; font-size: 1.25rem; touch-action: none; }
+    .controls button:active { background: #475569; }
+    .controls .up { grid-column: 2; }
+    .controls .left { grid-column: 1; grid-row: 2; }
+    .controls .down { grid-column: 2; grid-row: 2; }
+    .controls .right { grid-column: 3; grid-row: 2; }
     canvas { display: block; width: min(100%, 640px); height: auto; image-rendering: pixelated; image-rendering: crisp-edges; outline: none; }
     small { color: #94a3b8; }
   </style>
@@ -20,7 +27,8 @@
     <h1>New Bark Town — source map preview</h1>
     <p>Interactive map preview composed from the source block grid, metatile tile IDs, and tileset image. Use arrow keys or WASD, or the on-screen buttons on a phone, to move the temporary player marker. This is an early movement prototype, not the complete game.</p>
     <div class="frame"><canvas id="map" width="320" height="288" aria-label="New Bark Town map rendered from source data"></canvas></div>
-    <div class="controls" aria-label="Touch movement controls"><button class="up" data-move="ArrowUp" aria-label="Move up">▲</button><button class="left" data-move="ArrowLeft" aria-label="Move left">◀</button><button class="down" data-move="ArrowDown" aria-label="Move down">▼</button><button class="right" data-move="ArrowRight" aria-label="Move right">▶</button></div>\n    <p id="status">Rendering source tiles…</p>
+    <div class="controls" aria-label="Touch movement controls"><button class="up" data-move="ArrowUp" aria-label="Move up">▲</button><button class="left" data-move="ArrowLeft" aria-label="Move left">◀</button><button class="down" data-move="ArrowDown" aria-label="Move down">▼</button><button class="right" data-move="ArrowRight" aria-label="Move right">▶</button></div>
+    <p id="status">Rendering source tiles…</p>
     <p><small>Temporary player marker and grayscale preview. Exact source palettes, official player sprite, complete collision semantics, scripts, and map transitions are still in progress.</small></p>
   </main>
   <script type="module" src="./app.js"></script>
