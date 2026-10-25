@@ -575,7 +575,7 @@ function pressB() {
     // Source ElmsLab.asm loops until the player agrees; B cannot skip the opening scene.
     state.choiceYes = true;
     state.labIntroStage = 0;
-    showDialogue('PROF. ELM', "ELM: <PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
+    showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
     return;
   }
   if (state.pendingStarter) { state.pendingStarter = null; state.choiceNeedsConfirm = false; setHint('Choice cancelled. Face a character or object and press A.'); return; }
@@ -608,7 +608,7 @@ function transition(warp) {
     state.pendingStarter = 'LAB_INTRO';
     state.labIntroStage = 0;
     state.choiceYes = true;
-    showDialogue('PROF. ELM', "ELM: <PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
+    showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
     return;
   }
   setHint('Entered ' + activeMap().title + '. Talk to characters and inspect objects with A.');
