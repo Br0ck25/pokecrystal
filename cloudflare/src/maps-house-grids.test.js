@@ -400,3 +400,43 @@ test('interior NPC coordinates and initial facing match their source object even
  assert.deepEqual([daughter.x, daughter.y, daughter.facing], [2, 3, 'right']);
  assert.deepEqual([neighbor.x, neighbor.y, neighbor.facing], [5, 3, 'left']);
 });
+
+
+/**
+ * Shared scene-audit helper: verify every source warp and interactable can be
+ * reached from the scene entry without walking through collision or NPCs.
+ * Interactions are one tile away, matching the game's face-and-press-A rule.
+ */
+const FIRST_SCENE_MAPS = [
+ { map: NEW_BARK_TOWN, collision: getNewBarkTownCollisionAtMetatile, start: {x:6,y:4} },
+ { map: ELMS_LAB, collision: labCollision, start: {x:4,y:10} },
+ { map: PLAYERS_HOUSE_1F, collision: downstairsCollision, start: {x:6,y:6} },
+ { map: PLAYERS_HOUSE_2F, collision: roomCollision, start: {x:3,y:3} },
+ { map: ELMS_HOUSE, collision: getElmsHouseCollisionAtMetatile, start: {x:3,y:6} },
+ { map: PLAYERS_NEIGHBORS_HOUSE, collision: getPlayersNeighborsHouseCollisionAtMetatile, start: {x:2,y:6} },
+];
+function sceneReachable(map, collisionAt, start) {
+ const width=map.dimensions.metatilesWide, height=map.dimensions.metatilesHigh;
+ const seen=new Set([start.x+','+start.y]), queue=[start];
+ for(let i=0;i<queue.length;i++) {
+  const p=queue[i];
+  for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+   const x=p.x+dx,y=p.y+dy,key=x+','+y;
+   if(seen.has(key)||!canPreviewEnterOrWarp(x,y,width,height,collisionAt,map.warps)) continue;
+   seen.add(key);queue.push({x,y});
+  }
+ }
+ return seen;
+}
+test('scene audit: each first-scene map has reachable exits and face-to-interact access', () => {
+ for(const {map,collision,start} of FIRST_SCENE_MAPS) {
+  const seen=sceneReachable(map,collision,start);
+  for(const warp of map.warps) {
+   assert.ok(seen.has(warp.x+','+warp.y), map.id+' warp '+warp.x+','+warp.y+' is unreachable from scene entry');
+  }
+  for(const object of map.objects||[]) {
+   const adjacent=[[object.x,object.y-1],[object.x+1,object.y],[object.x,object.y+1],[object.x-1,object.y]];
+   assert.ok(adjacent.some(([x,y])=>seen.has(x+','+y)),map.id+' object '+object.id+' has no reachable interaction tile');
+  }
+ }
+});
