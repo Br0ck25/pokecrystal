@@ -498,9 +498,14 @@ function interact() {
     }
     if (state.momIntroStage === 3) {
       state.momIntroStage = 4;
-      showDialogue('MOM', state.momChoiceYes
-        ? "Don't you just turn the POKéGEAR on and select the PHONE icon?\n\nI'll explain it next time."
-        : "Turn the POKéGEAR on and select the PHONE icon.\n\nI'll explain it next time.");
+      showDialogue('MOM', state.momPhoneChoiceYes
+        ? "Don't you just turn the POKéGEAR on and select the PHONE icon?"
+        : "I'll read the instructions. Turn the POKéGEAR on and select the PHONE icon.");
+      return;
+    }
+    if (state.momIntroStage === 4) {
+      state.momIntroStage = 5;
+      showDialogue('MOM', "Phone numbers are stored in memory. Just choose a name you want to call. Gee, isn't that convenient?");
       return;
     }
     state.momIntroActive = false;
