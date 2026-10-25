@@ -1,8 +1,9 @@
-import { NEW_BARK_TOWN_BLOCK_IDS } from './src/maps/new-bark-town-blocks.js';
+import { NEW_BARK_TOWN, eventsAt as newBarkEventsAt } from './src/maps/new-bark-town.js';
+import { NEW_BARK_TOWN_BLOCK_IDS, getNewBarkTownCollisionAtMetatile } from './src/maps/new-bark-town-blocks.js';
+import { ELMS_LAB, elmLabEventsAt } from './src/maps/elms-lab.js';
+import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './src/maps/elms-lab-blocks.js';
 import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
-import { NEW_BARK_TOWN, eventsAt } from './src/maps/new-bark-town.js';
-import { getNewBarkTownCollisionAtMetatile } from './src/maps/new-bark-town-blocks.js';
 import { canPreviewEnter } from './src/maps/new-bark-town-movement.js';
 
 const canvas = document.querySelector('#map');
@@ -12,80 +13,142 @@ const status = document.querySelector('#status');
 const source = new Image();
 source.src = 'data:image/png;base64,' + JOHTO_TILESET_PNG_BASE64;
 const TILE = 16;
-const map = { width: NEW_BARK_TOWN.dimensions.metatilesWide, height: NEW_BARK_TOWN.dimensions.metatilesHigh };
+const maps = {
+  NEW_BARK_TOWN: {
+    metadata: NEW_BARK_TOWN,
+    blocks: NEW_BARK_TOWN_BLOCK_IDS,
+    collisionAt: getNewBarkTownCollisionAtMetatile,
+    eventsAt: newBarkEventsAt,
+    title: 'New Bark Town',
+  },
+  ELMS_LAB: {
+    metadata: ELMS_LAB,
+    blocks: ELMS_LAB_BLOCK_IDS,
+    collisionAt: getElmsLabCollisionAtMetatile,
+    eventsAt: elmLabEventsAt,
+    title: "Professor Elm's Laboratory",
+  },
+};
+let currentMapId = 'NEW_BARK_TOWN';
 const state = { x: 9, y: 8, facing: 'down' };
 const keys = new Set();
 let lastStep = 0;
 
+function activeMap() { return maps[currentMapId]; }
+function resizeCanvasForMap() {
+  const d = activeMap().metadata.dimensions;
+  canvas.width = d.metatilesWide * TILE;
+  canvas.height = d.metatilesHigh * TILE;
+}
+function setHint(text) {
+  status.textContent = text;
+  status.dataset.kind = 'hint';
+}
 function drawMap() {
-  ctx.fillStyle = '#202020'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (let by=0; by<9; by++) for (let bx=0; bx<10; bx++) {
-    const tiles = JOHTO_METATILE_TILES[NEW_BARK_TOWN_BLOCK_IDS[by*10+bx]];
-    if (!tiles) continue;
-    for (let ty=0; ty<4; ty++) for (let tx=0; tx<4; tx++) {
-      const id=tiles[ty*4+tx], sx=(id%16)*8, sy=Math.floor(id/16)*8;
-      ctx.drawImage(source,sx,sy,8,8,bx*32+tx*8,by*32+ty*8,8,8);
+  const current = activeMap();
+  const d = current.metadata.dimensions;
+  ctx.fillStyle = '#202020';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let by = 0; by < d.blocksHigh; by++) {
+    for (let bx = 0; bx < d.blocksWide; bx++) {
+      const blockId = current.blocks[by * d.blocksWide + bx];
+      const tiles = JOHTO_METATILE_TILES[blockId];
+      if (!tiles) continue;
+      for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 4; tx++) {
+        const id = tiles[ty * 4 + tx];
+        const sx = (id % 16) * 8, sy = Math.floor(id / 16) * 8;
+        ctx.drawImage(source, sx, sy, 8, 8, bx * 32 + tx * 8, by * 32 + ty * 8, 8, 8);
+      }
     }
   }
 }
 function drawPlayer() {
-  const x=state.x*TILE, y=state.y*TILE;
-  ctx.fillStyle='#111827'; ctx.fillRect(x+3,y+2,10,13);
-  ctx.fillStyle='#f1c7a5'; ctx.fillRect(x+5,y+3,6,6);
-  ctx.fillStyle='#7b3f21'; ctx.fillRect(x+4,y+1,8,3);
-  ctx.fillStyle='#b72c38'; ctx.fillRect(x+4,y+9,8,4);
-  ctx.fillStyle='#284d9b'; ctx.fillRect(x+4,y+13,3,3); ctx.fillRect(x+9,y+13,3,3);
-  ctx.fillStyle='#202020';
-  if(state.facing==='down'){ctx.fillRect(x+6,y+5,1,1);ctx.fillRect(x+9,y+5,1,1);}
-  else if(state.facing==='left')ctx.fillRect(x+5,y+5,2,1);
-  else if(state.facing==='right')ctx.fillRect(x+9,y+5,2,1);
-  else ctx.fillRect(x+6,y+3,4,1);
+  const x = state.x * TILE, y = state.y * TILE;
+  ctx.fillStyle = '#111827'; ctx.fillRect(x + 3, y + 2, 10, 13);
+  ctx.fillStyle = '#f1c7a5'; ctx.fillRect(x + 5, y + 3, 6, 6);
+  ctx.fillStyle = '#7b3f21'; ctx.fillRect(x + 4, y + 1, 8, 3);
+  ctx.fillStyle = '#b72c38'; ctx.fillRect(x + 4, y + 9, 8, 4);
+  ctx.fillStyle = '#284d9b'; ctx.fillRect(x + 4, y + 13, 3, 3); ctx.fillRect(x + 9, y + 13, 3, 3);
+  ctx.fillStyle = '#202020';
+  if (state.facing === 'down') { ctx.fillRect(x + 6, y + 5, 1, 1); ctx.fillRect(x + 9, y + 5, 1, 1); }
+  else if (state.facing === 'left') ctx.fillRect(x + 5, y + 5, 2, 1);
+  else if (state.facing === 'right') ctx.fillRect(x + 9, y + 5, 2, 1);
+  else ctx.fillRect(x + 6, y + 3, 4, 1);
 }
-function draw() { if(!source.complete||!source.naturalWidth)return; drawMap(); drawPlayer(); }
-function blocked(x,y) {
-  return !canPreviewEnter(x, y, map.width, map.height, getNewBarkTownCollisionAtMetatile);
+function draw() {
+  if (!source.complete || !source.naturalWidth) return;
+  drawMap();
+  drawPlayer();
+}
+function blocked(x, y) {
+  const d = activeMap().metadata.dimensions;
+  return !canPreviewEnter(x, y, d.metatilesWide, d.metatilesHigh, activeMap().collisionAt);
+}
+function eventsAtFacing() {
+  const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[state.facing];
+  if (!delta) return [];
+  return activeMap().eventsAt(state.x + delta[0], state.y + delta[1]);
 }
 function interact() {
-  const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[state.facing];
-  if (!delta) return;
-  const x = state.x + delta[0], y = state.y + delta[1];
-  const event = eventsAt(x, y).find(item => item.type === 'background' || item.type === 'object');
+  const event = eventsAtFacing().find(item => item.type === 'background' || item.type === 'object');
   if (!event) {
-    status.textContent = 'Nothing to interact with here.';
-    status.dataset.kind = 'hint';
+    setHint('Nothing to interact with here.');
     return;
   }
-  if (event.type === 'background') {
-    status.textContent = event.text || 'A sign.';
+  if (currentMapId === 'NEW_BARK_TOWN') {
+    if (event.type === 'background') {
+      status.textContent = event.text || 'A sign.';
+      status.dataset.kind = 'dialogue';
+      return;
+    }
+    status.textContent = (event.dialogue || ['…']).join('\n');
     status.dataset.kind = 'dialogue';
     return;
   }
-  status.textContent = (event.dialogue || ['…']).join('\n');
+  // Keep unported lab scripts explicit instead of inventing their stateful behavior.
+  const label = event.label || event.script || 'Object';
+  status.textContent = label + '\nOriginal script not yet implemented: ' + event.script;
   status.dataset.kind = 'dialogue';
 }
 function pressB() {
-  if (status.dataset.kind === 'dialogue') {
-    status.textContent = 'New Bark Town · Press A to interact with signs and people.';
-    status.dataset.kind = 'hint';
-  } else {
-    status.textContent = 'There is nothing to cancel right now.';
-    status.dataset.kind = 'hint';
-  }
+  if (status.dataset.kind === 'dialogue') setHint(activeMap().title + ' · Press A to interact; B closes this text.');
+  else setHint('There is nothing to cancel right now.');
 }
-function step(dx,dy,face) {
-  state.facing=face;
-  const nx=state.x+dx, ny=state.y+dy;
-  if(blocked(nx,ny)) { draw(); return; }
-  state.x=nx; state.y=ny; draw();
-  const warp=NEW_BARK_TOWN.warps.find(w=>w.x===nx&&w.y===ny);
-  if(warp) { status.textContent='Door found: '+warp.destinationMap+' (interior map is not ported yet).'; status.dataset.kind='hint'; }
-  else { status.textContent='New Bark Town · '+(nx+1)+', '+(ny+1)+' · Press E or Space to interact'; status.dataset.kind='hint'; }
+function transition(warp) {
+  if (warp.destinationMap === 'ELMS_LAB' && currentMapId === 'NEW_BARK_TOWN') {
+    currentMapId = 'ELMS_LAB';
+    // Destination warp 1 is the first of the two lab exit tiles. Spawn one tile inside.
+    state.x = 4; state.y = 10; state.facing = 'up';
+  } else if (warp.destinationMap === 'NEW_BARK_TOWN' && currentMapId === 'ELMS_LAB') {
+    currentMapId = 'NEW_BARK_TOWN';
+    // The exterior landing tile is directly outside the lab entrance warp.
+    state.x = 6; state.y = 4; state.facing = 'down';
+  } else {
+    setHint('This destination has not been ported yet: ' + warp.destinationMap);
+    return;
+  }
+  resizeCanvasForMap();
+  draw();
+  setHint('Entered ' + activeMap().title + '. Map transition is implemented; original story scripts are still in progress.');
+}
+function step(dx, dy, face) {
+  state.facing = face;
+  const nx = state.x + dx, ny = state.y + dy;
+  if (blocked(nx, ny)) { draw(); return; }
+  state.x = nx; state.y = ny;
+  const warp = activeMap().metadata.warps.find(w => w.x === nx && w.y === ny);
+  if (warp) { transition(warp); return; }
+  draw();
+  setHint(activeMap().title + ' · ' + (nx + 1) + ', ' + (ny + 1) + ' · Press A to interact');
 }
 function frame(now) {
-  if(now-lastStep>130) {
-    const dx=(keys.has('ArrowRight')||keys.has('d')?1:0)-(keys.has('ArrowLeft')||keys.has('a')?1:0);
-    const dy=(keys.has('ArrowDown')||keys.has('s')?1:0)-(keys.has('ArrowUp')||keys.has('w')?1:0);
-    if(dx||dy){lastStep=now;step(dx,dy,Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'));}
+  if (now - lastStep > 130) {
+    const dx = (keys.has('ArrowRight') || keys.has('d') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('a') ? 1 : 0);
+    const dy = (keys.has('ArrowDown') || keys.has('s') ? 1 : 0) - (keys.has('ArrowUp') || keys.has('w') ? 1 : 0);
+    if (dx || dy) {
+      lastStep = now;
+      step(dx, dy, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    }
   }
   requestAnimationFrame(frame);
 }
@@ -106,10 +169,16 @@ document.querySelectorAll('[data-move]').forEach(button => {
   const down = event => { event.preventDefault(); keys.add(key); };
   const up = event => { event.preventDefault(); keys.delete(key); };
   button.addEventListener('pointerdown', down);
-  for (const type of ['pointerup','pointercancel','pointerleave']) button.addEventListener(type, up);
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) button.addEventListener(type, up);
 });
-window.addEventListener('keyup',e=>keys.delete(e.key));
-window.addEventListener('blur',()=>keys.clear());
-source.addEventListener('load',()=>{draw();status.textContent='Move with arrows / WASD. Face a sign or person, then press E or Space.';status.dataset.kind='hint';});
-source.addEventListener('error',()=>status.textContent='Could not load the source tileset image.');
-draw(); requestAnimationFrame(frame);
+window.addEventListener('keyup', e => keys.delete(e.key));
+window.addEventListener('blur', () => keys.clear());
+source.addEventListener('load', () => {
+  resizeCanvasForMap();
+  draw();
+  setHint('Move with arrows / WASD. Face a sign or person, then press A.');
+});
+source.addEventListener('error', () => { status.textContent = 'Could not load the source tileset image.'; });
+resizeCanvasForMap();
+draw();
+requestAnimationFrame(frame);
