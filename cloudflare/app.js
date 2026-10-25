@@ -150,7 +150,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -489,6 +489,37 @@ function interact() {
     return;
   }
   if (state.starterReveal) { state.starterReveal = null; draw(); }
+  if (state.starterReceiptStage === 1) {
+    state.starterReceiptStage = 2;
+    showDialogue('POKéMON', '<PLAYER> received ' + state.starter + '!');
+    return;
+  }
+  if (state.starterReceiptStage === 2) {
+    state.starterReceiptStage = 3;
+    showDialogue('PROF. ELM', "MR. POKéMON lives a little bit beyond CHERRYGROVE, the next city over. It's almost a direct route there, so you can't miss it. But just in case, here's my phone number. Call me if anything comes up!");
+    return;
+  }
+  if (state.starterReceiptStage === 3) {
+    state.starterReceiptStage = 4;
+    state.elmPhoneAdded = true;
+    showDialogue('SYSTEM', '<PLAYER> got ELM\'s phone number.');
+    return;
+  }
+  if (state.starterReceiptStage === 4) {
+    state.starterReceiptStage = 5;
+    showDialogue('PROF. ELM', "If your POKéMON is hurt, you should heal it with this machine. Feel free to use it anytime.");
+    return;
+  }
+  if (state.starterReceiptStage === 5) {
+    state.starterReceiptStage = 6;
+    showDialogue('PROF. ELM', "<PLAYER>, I'm counting on you!");
+    return;
+  }
+  if (state.starterReceiptStage === 6) {
+    state.starterReceiptStage = 0;
+    setHint('Your partner is ready. You can now leave the lab.');
+    return;
+  }
   if (state.pendingStarter) {
     if (!canCancelPendingScene(state.pendingStarter) && state.pendingStarter === 'LAB_INTRO') {
       if (state.labIntroStage === 0) {
@@ -530,8 +561,11 @@ function interact() {
       state.starter = state.pendingStarter;
       state.starterReveal = state.starter;
       state.starterBall = getLabStarterBallId(state.starter);
+      state.starterLevel = getLabStarter(state.starterBall)?.level ?? 5;
+      state.starterHeldItem = 'BERRY';
+      state.starterReceiptStage = 1;
       state.pendingStarter = null;
-      showDialogue('PROF. ELM', "I think that's a great POKéMON too!\n\n<PLAYER> received " + state.starter + "!");
+      showDialogue('PROF. ELM', "I think that's a great POKéMON too!");
       draw();
     } else {
       state.pendingStarter = null;
@@ -715,6 +749,7 @@ function step(dx, dy, face) {
     }
     return;
   }
+  if (status.dataset.kind === 'dialogue') return;
   state.facing = face;
   if (state.townTeacherStage !== null || state.labExitWarningStage !== null) return;
   const oldX = state.x, oldY = state.y;
