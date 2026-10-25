@@ -143,8 +143,8 @@ const maps = {
   ELMS_HOUSE: { metadata: ELMS_HOUSE, blocks: ELMS_HOUSE_BLOCK_IDS, collisionAt: getElmsHouseCollisionAtMetatile, eventsAt: elmsHouseEventsAt, title: "Professor Elm's House" },
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
-let currentMapId = 'NEW_BARK_TOWN';
-const state = { x: 9, y: 8, facing: 'down', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true };
+let currentMapId = 'PLAYERS_HOUSE_2F';
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false };
 const keys = new Set();
 let lastStep = 0;
 
@@ -385,6 +385,11 @@ function interact() {
       showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner, <PLAYER>!\n\nGo on. Pick one!");
       return;
     }
+    if (state.choiceNeedsConfirm) {
+      state.choiceNeedsConfirm = false;
+      showDialogue('PROF. ELM', `${state.pendingStarter}?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
+      return;
+    }
     if (state.choiceYes) {
       state.starter = state.pendingStarter;
       state.starterReveal = state.starter;
@@ -426,6 +431,7 @@ function interact() {
     const starter = starterData.species;
     state.pendingStarter = starter;
     state.choiceYes = true;
+    state.choiceNeedsConfirm = true;
     const prompts = { CYNDAQUIL: "ELM: You'll take CYNDAQUIL, the FIRE POKéMON?", TOTODILE: "ELM: Do you want TOTODILE, the WATER POKéMON?", CHIKORITA: "ELM: So, you like CHIKORITA, the GRASS POKéMON?" };
     showDialogue('PROF. ELM', prompts[starter] + '\n\nChoice: YES / NO (left/right, then A)');
     draw();
@@ -470,7 +476,7 @@ function interact() {
 }
 function pressB() {
   if (state.starterReveal) { state.starterReveal = null; draw(); }
-  if (state.pendingStarter) { state.pendingStarter = null; setHint('Choice cancelled. Face a character or object and press A.'); return; }
+  if (state.pendingStarter) { state.pendingStarter = null; state.choiceNeedsConfirm = false; setHint('Choice cancelled. Face a character or object and press A.'); return; }
   if (status.dataset.kind === 'dialogue') setHint(activeMap().title + ' · Press A to interact; B closes this text.');
   else setHint('There is nothing to cancel right now.');
 }
@@ -499,6 +505,7 @@ function step(dx, dy, face) {
   if (state.pendingStarter === 'LAB_INTRO') return;
   if (state.pendingStarter) {
     if (dx !== 0) state.choiceYes = dx < 0;
+    state.choiceNeedsConfirm = false;
     const starter = state.pendingStarter;
     showDialogue('PROF. ELM', `${starter}?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
     return;
@@ -560,5 +567,5 @@ window.addEventListener('blur', () => keys.clear());
 // "source" image: every map chooses its own tileset in drawMap().
 resizeCanvasForMap();
 draw();
-setHint('NEW BARK TOWN');
+setHint('Your Room · 2F — walk to the stairs and go downstairs.');
 requestAnimationFrame(frame);
