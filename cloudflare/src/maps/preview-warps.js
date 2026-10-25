@@ -80,7 +80,7 @@ export const PREVIEW_WARP_LANDINGS = Object.freeze({
   'PLAYERS_HOUSE_1F:NEW_BARK_TOWN': Object.freeze({ mapId: 'NEW_BARK_TOWN', x: 13, y: 6, facing: 'down' }),
   'PLAYERS_HOUSE_1F:PLAYERS_HOUSE_2F': Object.freeze({ mapId: 'PLAYERS_HOUSE_2F', x: 7, y: 1, facing: 'up' }),
   'PLAYERS_HOUSE_2F:PLAYERS_HOUSE_1F': Object.freeze({ mapId: 'PLAYERS_HOUSE_1F', x: 8, y: 3, facing: 'down' }),
-  'NEW_BARK_TOWN:ELMS_HOUSE': Object.freeze({ mapId: 'ELMS_HOUSE', x: 2, y: 6, facing: 'up' }),
+  'NEW_BARK_TOWN:ELMS_HOUSE': Object.freeze({ mapId: 'ELMS_HOUSE', x: 3, y: 6, facing: 'up' }),
   'ELMS_HOUSE:NEW_BARK_TOWN': Object.freeze({ mapId: 'NEW_BARK_TOWN', x: 11, y: 14, facing: 'down' }),
   'NEW_BARK_TOWN:PLAYERS_NEIGHBORS_HOUSE': Object.freeze({ mapId: 'PLAYERS_NEIGHBORS_HOUSE', x: 2, y: 6, facing: 'up' }),
   'PLAYERS_NEIGHBORS_HOUSE:NEW_BARK_TOWN': Object.freeze({ mapId: 'NEW_BARK_TOWN', x: 3, y: 12, facing: 'down' }),
