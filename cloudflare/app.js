@@ -6,6 +6,12 @@ import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
 import { canPreviewEnter } from './src/maps/new-bark-town-movement.js';
 import { resolvePreviewWarp } from './src/maps/preview-warps.js';
+import { PLAYERS_HOUSE_1F, playersHouse1fEventsAt } from './src/maps/players-house-1f.js';
+import { PLAYERS_HOUSE_1F_BLOCK_IDS, getPlayersHouse1FCollisionAtMetatile } from './src/maps/players-house-1f-blocks.js';
+import { PLAYERS_HOUSE_2F, playersHouse2fEventsAt } from './src/maps/players-house-2f.js';
+import { PLAYERS_HOUSE_2F_BLOCK_IDS, getPlayersHouse2FCollisionAtMetatile } from './src/maps/players-house-2f-blocks.js';
+import { ELMS_HOUSE, elmsHouseEventsAt } from './src/maps/elms-house.js';
+import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/maps/elms-house-blocks.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -29,6 +35,9 @@ const maps = {
     eventsAt: elmLabEventsAt,
     title: "Professor Elm's Laboratory",
   },
+  PLAYERS_HOUSE_1F: { metadata: PLAYERS_HOUSE_1F, blocks: PLAYERS_HOUSE_1F_BLOCK_IDS, collisionAt: getPlayersHouse1FCollisionAtMetatile, eventsAt: playersHouse1fEventsAt, title: "Your House · 1F" },
+  PLAYERS_HOUSE_2F: { metadata: PLAYERS_HOUSE_2F, blocks: PLAYERS_HOUSE_2F_BLOCK_IDS, collisionAt: getPlayersHouse2FCollisionAtMetatile, eventsAt: playersHouse2fEventsAt, title: "Your House · 2F" },
+  ELMS_HOUSE: { metadata: ELMS_HOUSE, blocks: ELMS_HOUSE_BLOCK_IDS, collisionAt: getElmsHouseCollisionAtMetatile, eventsAt: elmsHouseEventsAt, title: "Professor Elm's House" },
 };
 let currentMapId = 'NEW_BARK_TOWN';
 const state = { x: 9, y: 8, facing: 'down' };
@@ -103,6 +112,16 @@ function interact() {
       return;
     }
     status.textContent = (event.dialogue || ['…']).join('\n');
+    status.dataset.kind = 'dialogue';
+    return;
+  }
+  if (event.type === 'background') {
+    status.textContent = event.text || 'There is something here.';
+    status.dataset.kind = 'dialogue';
+    return;
+  }
+  if (event.type === 'object') {
+    status.textContent = (event.dialogue || [event.script || event.id || '…']).join('\n');
     status.dataset.kind = 'dialogue';
     return;
   }
