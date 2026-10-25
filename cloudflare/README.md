@@ -9,7 +9,10 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/runtime.js` — renderer sizing and runtime state primitives.
 - `src/runtime.test.js` — tests for state, collision adapter behavior, transitions, and local saves.
 - `src/maps/new-bark-town.js` — source-derived New Bark Town dimensions, warp events, coordinate events, signs, NPC positions, and map callback metadata.
-- `src/maps/elms-lab.js` — source-derived Elm's Lab dimensions, warps, scene-gated coordinate events, background events, and object event coordinates. Stateful original scripts are not yet ported.
+- `src/maps/elms-lab.js` and `src/maps/elms-lab-blocks.js` — source-derived Elm's Lab events, original 30-byte block grid, collision lookup, rendering, and connected town entrance/exit.
+- `src/maps/players-house-1f.js`, `src/maps/players-house-1f-blocks.js`, `src/maps/players-house-2f.js`, and `src/maps/players-house-2f-blocks.js` — source map grids and entry/exit routes for both floors of the player's house.
+- `src/maps/elms-house.js` and `src/maps/elms-house-blocks.js` — source grid and event metadata for Professor Elm's house.
+- `src/maps/players-neighbors-house.js` and `src/maps/players-neighbors-house-blocks.js` — reachable neighbor house with source-derived events; the upstream checkout has no `maps/PlayersNeighborsHouse.blk`, so its interior block grid is explicitly a temporary visual fallback, not source-accurate.
 - `src/maps/elms-lab-blocks.js` — the 30 source block IDs from `maps/ElmsLab.blk`, plus block/metatile/collision lookup helpers.
 - `src/maps-elms-lab.test.js` and `src/maps-elms-lab-blocks.test.js` — source-coordinate, warp, block-grid, and bounds tests.
 - `src/maps-elms-lab.test.js` — verifies the imported Elm's Lab event metadata against the source definitions.
@@ -20,7 +23,7 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps/johto-metatiles.js` — all 128 source Johto metatile definitions, each containing 16 8x8 tile IDs.
 - `src/maps/johto-palette-map.js` — source palette-name assignments for both Johto `tilepal` groups, including the reserved `$ff` gap.
 - `src/assets/johto-tileset.js` — embedded 128×96 source tileset preview image used by the browser map renderer.
-- `index.html` / `app.js` — no-build browser preview that renders New Bark Town and Elm's Lab from source block/metatile data and connects their entrance/exit warps. Player/NPC sprites, palettes, full collision semantics, and original scripts remain incomplete.
+- `index.html` / `app.js` — no-build browser preview that renders New Bark Town, Elm's Lab, the player's house (both floors), Professor Elm's house, and the neighbor's house. House entrances and exits are connected; the neighbor-house interior layout is a temporary fallback because the source block file is absent. Player/NPC sprites, palettes, full collision semantics, and original scripts remain incomplete.
 - `src/maps-metatiles.test.js` — checks the imported metatile table.
 - `src/maps-collision.test.js` — verifies collision-table entries and map block references.
 - `src/graphics.js` — JavaScript decoder for the repository's `lzcompress` stream format, Game Boy 2bpp tile decoding, and 32x32 metatile and full map-grid pixel composition.
