@@ -7,6 +7,7 @@ import { mapBgPalettes, tilePaletteIndex } from '../maps/map-palettes.js';
 import { objectPaletteColors, recolorSprite } from '../maps/object-sprites.js';
 import { GBC_VIEWPORT_WIDTH as W, GBC_VIEWPORT_HEIGHT as H } from '../maps/viewport.js';
 import { describeScene } from './scene.js';
+import { tiles } from '../script/text.js';
 
 const to8 = (c) => Math.round((c * 255) / 31);
 const textColors = TEXT_PALETTE.map((rgb) => rgb.map(to8));
@@ -143,7 +144,7 @@ export class Renderer {
 
   drawText(text, tileX, tileY) {
     let x = tileX * 8;
-    for (const character of text) {
+    for (const character of tiles(text)) {
       if (character !== ' ') {
         const [sheet, index] = this.glyph(character);
         this.ctx.drawImage(sheet, (index % 16) * 8, Math.floor(index / 16) * 8, 8, 8, x, tileY * 8, 8, 8);
@@ -191,7 +192,7 @@ export class Renderer {
       this.drawBox(0, 12, 19, 17);
       this.drawText(scene.textbox.lines[0], 1, 14);
       this.drawText(scene.textbox.lines[1], 1, 16);
-      if (scene.textbox.prompt && ((game.frame >> 4) & 1)) this.drawText('▼', 18, 16);
+      if (scene.textbox.prompt && ((game.frame >> 4) & 1)) this.drawText('▼', 18, 17);   // on the box's bottom border row (measured)
     }
     if (scene.yesno) {
       const y = scene.yesno;

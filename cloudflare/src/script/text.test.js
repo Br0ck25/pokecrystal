@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
-import { renderText } from './text.js';
+import { renderText, tiles, tileLength, takeTiles } from './text.js';
 import { SCRIPTS as shared } from '../generated/scripts/_text.js';
 import { SCRIPTS as playersHouse } from '../generated/scripts/PlayersHouse1F.js';
 
@@ -45,7 +45,7 @@ test('every plain text block in the game fits the 18-column box (names expanded 
   const check = (label, block) => {
     if (block[0]?.[0] !== 'text' || block.some(([n, arg]) => !['text', 'line', 'para', 'cont', 'done', 'prompt'].includes(n) || arg?.includes('{'))) return;
     for (const screen of renderText(block, longest)) {
-      for (const line of screen.lines) if (line.length > 18) tooLong.push(`${label}: "${line}"`);
+      for (const line of screen.lines) if (tileLength(line) > 18) tooLong.push(`${label}: "${line}"`);
     }
     checked++;
   };
@@ -58,4 +58,12 @@ test('every plain text block in the game fits the 18-column box (names expanded 
     // The source itself has these 19-column lines; they are kept as written.
     assert.deepEqual(tooLong.filter((l) => !/\.js:[A-Za-z0-9_]+: "…I haven't given up"$/.test(l)), []);
   });
+});
+
+test("contractions are single tiles, as in charmap.asm ('s is one glyph)", () => {
+  assert.deepEqual(tiles("It's"), ['I', 't', "'s"]);
+  assert.equal(tileLength("isn't it, ELM's"), 13);
+  assert.equal(takeTiles("It's", 3), "It's");
+  assert.equal(takeTiles("It's", 2), 'It');
+  assert.deepEqual(tiles("'x"), ["'", 'x']);
 });

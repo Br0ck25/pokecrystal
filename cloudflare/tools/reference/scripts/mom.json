@@ -1,0 +1,6 @@
+{"steps": [
+ {"shot": "room"},
+ {"hold": "right", "frames": 74}, {"hold": "up", "frames": 58}, {"wait": 150}, {"shot": "downstairs"},
+ {"hold": "down", "frames": 56}, {"wait": 200}, {"shot": "mom_text1"},
+ {"press": "a"}, {"wait": 120}, {"shot": "mom_text2"}
+]}

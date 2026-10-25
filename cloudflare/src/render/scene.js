@@ -2,6 +2,7 @@
 import { DIRECTIONS } from '../game/engine.js';
 import { SPRITES } from '../generated/sprites.js';
 import { objectPaletteIndex, spriteFrame, PLAYER_SPRITE } from '../maps/object-sprites.js';
+import { tileLength, takeTiles } from '../script/text.js';
 import { PLAYER_SCREEN_X, PLAYER_SCREEN_Y, SPRITE_Y_OFFSET } from '../maps/viewport.js';
 
 const TILE = 16;
@@ -55,8 +56,8 @@ export function describeScene(game) {
     textbox = { lines: ['', ''], prompt: false };
     if (wait?.kind === 'text') {
       const screen = wait.screens[wait.index];
-      const first = screen.lines[0].slice(0, wait.chars);
-      const second = screen.lines[1].slice(0, Math.max(0, wait.chars - screen.lines[0].length));
+      const first = takeTiles(screen.lines[0], wait.chars);
+      const second = takeTiles(screen.lines[1], wait.chars - tileLength(screen.lines[0]));
       textbox.lines = [first, second];
       textbox.prompt = wait.ready && screen.wait !== null;
     } else if (wait?.kind === 'button') {

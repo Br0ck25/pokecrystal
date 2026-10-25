@@ -68,6 +68,7 @@ document.querySelectorAll('[data-move]').forEach((button) => {
 const query = new URLSearchParams(window.location.search);
 const game = new Game({ mapId: 'PLAYERS_HOUSE_2F', x: 3, y: 3, facing: 'down' });
 window.game = game;                     // for tools and debugging
+if (query.get('name')) game.state.playerName = query.get('name').toUpperCase().slice(0, 7);   // naming screen is not ported
 
 async function start() {
   await game.ready;
@@ -86,13 +87,18 @@ async function start() {
   requestAnimationFrame(loop);
 }
 
+// ?manual=1: tools/reference/play drives game.update itself, so the real-time loop must not also advance it.
+let manual = query.get('manual') === '1';
+window.__manual = (on) => { manual = on; };
+// Sprites decode on first use, so draw twice with a pause (tools screenshot a single frame).
+window.__draw = async () => { await renderer.prepare(game.world); renderer.draw(game); await new Promise((r) => setTimeout(r, 80)); renderer.draw(game); };
 let lastTime = 0;
 let accumulator = 0;
 let preparedMap = null;
 function loop(now) {
   accumulator += Math.min(100, now - (lastTime || now));
   lastTime = now;
-  while (accumulator >= 1000 / 60) {
+  while (!manual && accumulator >= 1000 / 60) {
     accumulator -= 1000 / 60;
     game.update({ dir: heldDirection(), a: pressed.a, b: pressed.b, aHeld: buttons.a, bHeld: buttons.b });
     pressed.a = pressed.b = false;

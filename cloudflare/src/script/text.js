@@ -3,6 +3,21 @@
 //   cont  waits, scrolls line 2 up and continues on line 2           done  ends (box stays)    prompt  waits, ends
 // '@' ends a string without printing anything; '#' prints "POKé".
 
+import { FONT_CODES } from '../generated/font.js';
+
+// charmap.asm has single glyphs for the contractions 'd 'l 'm 'r 's 't 'v: "It's" is three tiles, not four.
+const CONTRACTIONS = new Set(Object.keys(FONT_CODES).filter((k) => k.length === 2 && k[0] === "'"));
+/** Split a string into the tiles the game prints, one per character code. */
+export function tiles(string) {
+  const out = [];
+  for (let i = 0; i < string.length; i++) {
+    if (CONTRACTIONS.has(string.slice(i, i + 2))) { out.push(string.slice(i, i + 2)); i++; } else out.push(string[i]);
+  }
+  return out;
+}
+export const tileLength = (string) => tiles(string).length;
+export const takeTiles = (string, n) => tiles(string).slice(0, Math.max(0, n)).join('');
+
 /** Replace the character codes that print names or fixed words (home/text.asm CheckDict). */
 export function expandTokens(s, { playerName, rivalName }) {
   if (s.includes('{')) throw new Error(`unsupported compile-time substitution in "${s}"`);

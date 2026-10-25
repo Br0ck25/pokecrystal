@@ -6,9 +6,11 @@
 import { loadWorld } from './world.js';
 import { createScriptContext } from '../script/context.js';
 import { runScript, createScriptState } from '../script/interpreter.js';
+import { tileLength } from '../script/text.js';
 import { COLLISION_PERMISSIONS, COLLISION_VALUES } from '../generated/collision.js';
 import { SCENES, CALLBACKS } from '../generated/scenes.js';
 import { SPRITES } from '../generated/sprites.js';
+import { SFX_FRAMES } from '../generated/sfx.js';
 import { DECORATION_BLOCKS, DECORATION_PLACEMENT, NEW_GAME_DECORATIONS } from '../generated/decorations.js';
 import { initialFacing, objectPaletteIndex, PLAYER_SPRITE } from '../maps/object-sprites.js';
 
@@ -71,11 +73,15 @@ export class Game {
     this.emote = null;
     this.loading = false;
     // MAPCALLBACK_NEWMAP, then OBJECTS and TILES (home/map.asm LoadMapAttributes / HandleNewMap order).
-    for (const type of ['MAPCALLBACK_NEWMAP', 'MAPCALLBACK_OBJECTS', 'MAPCALLBACK_TILES']) {
-      for (const [callbackType, script] of CALLBACKS[world.name] ?? []) {
-        if (callbackType === type) this.runInstant(script);
-      }
-    }
+    const runCallbacks = (type) => {
+      for (const [callbackType, script] of CALLBACKS[world.name] ?? []) if (callbackType === type) this.runInstant(script);
+    };
+    runCallbacks('MAPCALLBACK_NEWMAP');
+    // Objects appear or not as their flags stand now (LoadMapObjects); afterwards only appear/disappear change them,
+    // so a setevent mid-scene does not remove a sprite that is on screen.
+    for (const object of this.objects) object.hidden = this.hiddenByFlags(object);
+    runCallbacks('MAPCALLBACK_OBJECTS');
+    runCallbacks('MAPCALLBACK_TILES');
     // Arriving on a door, staircase or cave square walks the player down one square.
     if (WALK_DOWN_TILES.has(this.world.collisionAt(x, y))) this.startStep(this.player, 'down', { force: true });
     return this;
@@ -115,11 +121,14 @@ export class Game {
   spriteOf(def) { return this.state.variableSprites?.[def.sprite] ?? def.sprite; }
 
   isVisible(object) {
+    return !object.hidden && Boolean(SPRITES[this.spriteOf(object.def)]);   // Pokémon sprites and unset variable sprites are not ported
+  }
+
+  hiddenByFlags(object) {
     const def = object.def;
-    if (!SPRITES[this.spriteOf(def)]) return false;               // Pokémon sprites and unset variable sprites are not ported
-    if (def.eventFlag !== '-1' && this.state.flags.has(def.eventFlag)) return false;
+    if (def.eventFlag !== '-1' && this.state.flags.has(def.eventFlag)) return true;
     const [from, until] = def.hours;
-    if (from === -1) return until === -1 || String(until).split('|').map((t) => t.trim()).includes(this.state.timeOfDay);
+    if (from === -1) return !(until === -1 || String(until).split('|').map((t) => t.trim()).includes(this.state.timeOfDay));
     throw new Error(`hour-limited object ${def.id} is not supported yet`);
   }
 
@@ -347,7 +356,7 @@ export class Game {
   }
 
   screenStart(screens, index) {
-    return index > 0 && screens[index - 1].wait === 'cont' ? screens[index - 1].lines[1].length : 0;
+    return index > 0 && screens[index - 1].wait === 'cont' ? tileLength(screens[index - 1].lines[1]) : 0;
   }
 
   updateRunner(input) {
@@ -375,7 +384,7 @@ export class Game {
 
   updateText(wait, input) {
     const screen = wait.screens[wait.index];
-    const total = screen.lines[0].length + screen.lines[1].length;
+    const total = tileLength(screen.lines[0]) + tileLength(screen.lines[1]);
     this.lastTextLines = screen.lines;                 // stays on screen through the waitbutton or yes/no that follows
     if (!wait.ready) {
       wait.timer++;
@@ -427,7 +436,7 @@ export class Game {
       }
       case 'turnobject': this.objectById(args[0]).facing = args[1].toLowerCase(); return undefined;
       case 'moveobject': { const o = this.objectById(args[0]); o.x = Number(args[1]); o.y = Number(args[2]); return undefined; }
-      case 'appear': case 'disappear': return undefined;          // the interpreter already changed the event flag
+      case 'appear': case 'disappear': this.objectById(args[0]).hidden = name === 'disappear'; return undefined;   // the interpreter changed the flag
       case 'pause': return instant ? undefined : { wait: { kind: 'frames', left: Number(args[0]) } };
       case 'showemote': {
         if (instant) return undefined;
@@ -440,7 +449,18 @@ export class Game {
       case 'follow': this.follow = { leader: args[0], follower: args[1] }; return undefined;
       case 'stopfollow': this.follow = null; return undefined;
       case 'warp': this.unported.add('warp'); return undefined;
-      case 'playmusic': case 'playsound': case 'waitsfx': case 'musicfadeout': case 'specialsound': case 'cry':
+      case 'playsound': case 'specialsound': {
+        // No audio yet, but the effect still takes its real time: waitsfx waits for it (scripting.asm, home/audio.asm WaitSFX).
+        const frames = SFX_FRAMES[name === 'specialsound' ? 'SFX_ITEM' : args[0]];
+        if (frames === undefined) { this.unported.add(`sound ${args[0]}`); return undefined; }
+        this.sfxUntil = this.frame + (frames ?? 0);
+        return undefined;
+      }
+      case 'waitsfx': {
+        const left = (this.sfxUntil ?? 0) - this.frame;
+        return instant || left <= 0 ? undefined : { wait: { kind: 'frames', left } };
+      }
+      case 'playmusic': case 'musicfadeout': case 'cry':
       case 'reanchormap': case 'pokepic': case 'closepokepic': case 'addcellnum': case 'itemnotify':
         return undefined;                                         // audio and presentation are not ported yet
       default:

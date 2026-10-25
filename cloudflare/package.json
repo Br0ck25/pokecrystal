@@ -6,6 +6,7 @@
     "extract": "node tools/extract-browser-data.mjs",
     "test": "node --check app.js && node --test --test-reporter=dot src/*.test.js src/*/*.test.js",
     "q": "node tools/q.mjs",
-    "audit": "sh tools/reference/run.sh"
+    "audit": "sh tools/reference/run.sh",
+    "play": "sh tools/reference/play.sh"
   }
 }
