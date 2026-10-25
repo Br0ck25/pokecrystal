@@ -4,6 +4,7 @@ import {
   NEW_BARK_TOWN_BLOCK_IDS,
   getNewBarkTownBlock,
   getNewBarkTownBlockAtTile,
+  getNewBarkTownCollisionAtTile,
 } from './maps/new-bark-town-blocks.js';
 
 test('source New Bark Town block file contains exactly 10 by 9 block IDs', () => {
@@ -20,4 +21,11 @@ test('tile coordinates resolve to their containing 2x2 source block', () => {
   assert.equal(getNewBarkTownBlockAtTile(20, 0), null);
   assert.equal(getNewBarkTownBlockAtTile(0, 18), null);
   assert.equal(getNewBarkTownBlockAtTile(-1, 0), null);
+});
+
+
+test('tile collision lookup returns source labels rather than guessed passability', () => {
+  assert.equal(getNewBarkTownCollisionAtTile(0, 0), 'WALL');
+  assert.equal(getNewBarkTownCollisionAtTile(0, 16), 'WALL');
+  assert.equal(getNewBarkTownCollisionAtTile(20, 0), null);
 });
