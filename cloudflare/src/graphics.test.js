@@ -16,10 +16,10 @@ test('Crystal LZ decodes literal, iterate, alternate and zero commands', () => {
 });
 
 test('Crystal LZ supports overlapping repeat and bit-flip lookbacks', () => {
-  const repeat = Uint8Array.from([0x01, 0xaa, 0xbb, 0x83, 0x80, 0xff]);
+  const repeat = Uint8Array.from([0x01, 0xaa, 0xbb, 0x83, 0x81, 0xff]);
   assert.deepEqual([...decompressCrystalLz(repeat)], [0xaa, 0xbb, 0xaa, 0xbb, 0xaa, 0xbb]);
-  const flip = Uint8Array.from([0x00, 0x01, 0xa0, 0xa1, 0xff]);
-  assert.deepEqual([...decompressCrystalLz(flip)], [0x01, 0xa0, 0xa1]);
+  const flip = Uint8Array.from([0x00, 0x01, 0xa0, 0x80, 0xff]);
+  assert.deepEqual([...decompressCrystalLz(flip)], [0x01, 0x80]);
 });
 
 test('Crystal LZ rejects missing terminators, truncated payloads and oversized output', () => {
