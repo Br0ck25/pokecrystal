@@ -149,3 +149,44 @@ export function composeMetatilePixels(metatileId, metatileTileIds, decodedTiles)
   }
   return { width: 32, height: 32, pixels };
 }
+
+
+/**
+ * Compose a map block grid into a row-major palette-index image.
+ * Each map block is a 32x32 metatile whose definition contains 16 tile IDs.
+ */
+export function composeMapPixels(blockIds, blocksWide, blocksHigh, metatileTable, decodedTiles) {
+  if (!Array.isArray(blockIds) || !Number.isInteger(blocksWide) || !Number.isInteger(blocksHigh)
+      || blocksWide < 1 || blocksHigh < 1 || blockIds.length !== blocksWide * blocksHigh) {
+    throw new TypeError('blockIds must match positive blocksWide x blocksHigh dimensions');
+  }
+  if (!Array.isArray(metatileTable)) throw new TypeError('metatileTable must be an array');
+  const width = blocksWide * 32;
+  const height = blocksHigh * 32;
+  const pixels = new Uint8Array(width * height);
+
+  for (let blockIndex = 0; blockIndex < blockIds.length; blockIndex++) {
+    const metatileId = blockIds[blockIndex];
+    const tileIds = metatileTable[metatileId];
+    if (!Array.isArray(tileIds) || tileIds.length !== 16) {
+      throw new RangeError(`map block references missing metatile ${metatileId}`);
+    }
+    const blockX = (blockIndex % blocksWide) * 32;
+    const blockY = Math.floor(blockIndex / blocksWide) * 32;
+    for (let tileIndex = 0; tileIndex < 16; tileIndex++) {
+      const tileId = tileIds[tileIndex];
+      if (!Number.isInteger(tileId) || tileId < 0 || tileId >= decodedTiles.tileCount) {
+        throw new RangeError(`metatile ${metatileId} references missing tile ${tileId}`);
+      }
+      const sourceOffset = tileId * 64;
+      const tileX = blockX + (tileIndex % 4) * 8;
+      const tileY = blockY + Math.floor(tileIndex / 4) * 8;
+      for (let y = 0; y < 8; y++) {
+        const sourceStart = sourceOffset + y * 8;
+        const targetStart = (tileY + y) * width + tileX;
+        pixels.set(decodedTiles.pixels.subarray(sourceStart, sourceStart + 8), targetStart);
+      }
+    }
+  }
+  return { width, height, pixels };
+}
