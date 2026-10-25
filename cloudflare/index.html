@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crystal Browser Port — New Bark Town Map Preview</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #111827; color: #f3f4f6; }
+    body { margin: 0; padding: 24px; }
+    main { max-width: 900px; margin: auto; }
+    h1 { font-size: 1.4rem; margin-bottom: .4rem; }
+    p { color: #cbd5e1; line-height: 1.5; }
+    .frame { overflow: auto; border: 1px solid #475569; background: #202020; padding: 12px; }
+    canvas { display: block; width: min(100%, 640px); height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
+    small { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>New Bark Town — source map preview</h1>
+    <p>This is the first browser-rendered map view, composed from the source block grid, metatile tile IDs, and tileset image. It is a visual preview, not a playable game yet.</p>
+    <div class="frame"><canvas id="map" width="320" height="288" aria-label="New Bark Town map rendered from source data"></canvas></div>
+    <p id="status">Rendering source tiles…</p>
+    <small>Source-derived graphics may have separate distribution rights. The palette colors and character sprites are not yet implemented.</small>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
