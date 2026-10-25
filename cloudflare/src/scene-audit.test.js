@@ -74,7 +74,7 @@ test('source NPC positions and dialogue remain present for the connected scenes'
   assert.deepEqual(ELMS_HOUSE.objects.map(o => [o.id, o.x, o.y]), [
     ['ELMS_WIFE',1,5], ['ELMS_SON',5,4],
   ]);
-  assert.match(PLAYERS_HOUSE_1F.objects.find(o => o.id === 'MOM').dialogue.join(' '), /PROF\. ELM was looking for you/);
+  assert.deepEqual(PLAYERS_HOUSE_1F.objects.find(o => o.id === 'MOM').dialogue, ['PROF. ELM is waiting for you.','Hurry up, baby!']);
   assert.match(PLAYERS_NEIGHBORS_HOUSE.objects.find(o => o.id === 'DAUGHTER').dialogue.join(' '), /PIKACHU is an evolved POKéMON/);
 });
 
