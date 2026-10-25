@@ -157,7 +157,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', objectFacings: {}, elmX: null, elmY: null, elmFacing: 'right', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momDstChoiceYes: true, momPhoneChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', objectFacings: {}, elmX: null, elmY: null, elmFacing: 'right', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momDstChoiceYes: true, momPhoneChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null, officerVisible: false };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -393,6 +393,7 @@ function eventsAtFacing() {
     if (event.type !== 'object') return true;
     const object = (current.metadata.objects || []).find(candidate => candidate.id === event.id);
     if (!object) return true;
+    if (!isSceneObjectVisible(currentMapId, object, state)) return false;
     const position = objectPosition(object);
     return position.x === x && position.y === y;
   });
@@ -400,7 +401,7 @@ function eventsAtFacing() {
     if (!isSceneObjectVisible(currentMapId, object, state)) continue;
     const position = objectPosition(object);
     if (position.x !== x || position.y !== y) continue;
-    if (object.id === 'ELMSLAB_OFFICER' && state.starter) continue;
+    if (object.id === 'ELMSLAB_OFFICER' && !state.officerVisible) continue;
     if (object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter) continue;
     if (object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starterBall === object.id) continue;
     if (!events.some(event => event.type === 'object' && event.id === object.id)) {
