@@ -689,12 +689,14 @@ function transition(warp) {
 }
 function step(dx, dy, face) {
   if (state.pendingStarter === 'LAB_INTRO' && state.labIntroStage === 0) {
+    if (dialoguePageIndex < dialoguePages.length - 1) return;
     if (dx !== 0) state.choiceYes = dx < 0;
     showDialogue('PROF. ELM', `Will you help PROF. ELM?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
     return;
   }
   if (state.pendingStarter === 'LAB_INTRO') return;
   if (state.pendingStarter) {
+    if (dialoguePageIndex < dialoguePages.length - 1) return;
     if (dx !== 0) state.choiceYes = dx < 0;
     state.choiceNeedsConfirm = false;
     const starter = state.pendingStarter;
@@ -702,6 +704,7 @@ function step(dx, dy, face) {
     return;
   }
   if (state.momIntroActive) {
+    if (dialoguePageIndex < dialoguePages.length - 1) return;
     if (state.momIntroStage === 2 || state.momIntroStage === 3) {
       if (dx !== 0) state.momChoiceYes = dx < 0;
       const options = state.momChoiceYes ? '▶ YES       NO' : '  YES     ▶ NO';
