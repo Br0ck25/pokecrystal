@@ -341,6 +341,7 @@ function eventsAtFacing() {
     return position.x === x && position.y === y;
   });
   for (const object of current.metadata.objects || []) {
+    if (!isSceneObjectVisible(currentMapId, object, state)) continue;
     const position = objectPosition(object);
     if (position.x !== x || position.y !== y) continue;
     if (object.id === 'ELMSLAB_OFFICER' && state.starter) continue;
@@ -673,7 +674,7 @@ function step(dx, dy, face) {
   if (state.townTeacherStage !== null || state.labExitWarningStage !== null) return;
   const oldX = state.x, oldY = state.y;
   const nx = state.x + dx, ny = state.y + dy;
-  const occupied = (activeMap().metadata.objects || []).some(object => { const position = objectPosition(object); return position.x === nx && position.y === ny
+  const occupied = (activeMap().metadata.objects || []).some(object => { if (!isSceneObjectVisible(currentMapId, object, state)) return false; const position = objectPosition(object); return position.x === nx && position.y === ny
     && !(object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starter)
     && !(object.id === 'ELMSLAB_OFFICER' && state.starter)
     && !(object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter); });
