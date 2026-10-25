@@ -24,6 +24,7 @@ import { isPreviewCollisionWalkable } from './maps/new-bark-town-movement.js';
 import { getTilesetCollision } from './maps/tileset-collision.js';
 import { LAB_STARTERS, getLabStarter, getLabStarterBallId, mustBlockLabExit } from './maps/starter-selection.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './maps/scene-object-state.js';
+import { shouldStartElmOpeningScene, canCancelPendingScene } from './maps/scene-progression.js';
 
 test('all imported house block grids match their source dimensions', () => {
  assert.equal(PLAYERS_HOUSE_1F_BLOCK_IDS.length, PLAYERS_HOUSE_1F.dimensions.blocksWide * PLAYERS_HOUSE_1F.dimensions.blocksHigh);
@@ -302,4 +303,13 @@ test('Elm uses the source first-meeting position and starter objects update visi
  assert.deepEqual(resolveSceneObjectPosition('ELMS_LAB', elm, {labIntroComplete: true}), {x: elm.x, y: elm.y});
  assert.equal(isSceneObjectVisible('ELMS_LAB', ELMS_LAB.objects.find(object => object.id === 'ELMSLAB_POKE_BALL1'), {starterBall: 'ELMSLAB_POKE_BALL1'}), false);
  assert.equal(isSceneObjectVisible('ELMS_LAB', ELMS_LAB.objects.find(object => object.id === 'ELMSLAB_OFFICER'), {starter: 'CYNDAQUIL'}), false);
+});
+
+test('Elm opening scene starts on first lab entry and cannot be cancelled before accepting', () => {
+ assert.equal(shouldStartElmOpeningScene({mapId:'ELMS_LAB',previousMapId:'NEW_BARK_TOWN',starter:null,labIntroComplete:false}), true);
+ assert.equal(shouldStartElmOpeningScene({mapId:'ELMS_LAB',previousMapId:'ELMS_LAB',starter:null,labIntroComplete:false}), false);
+ assert.equal(shouldStartElmOpeningScene({mapId:'ELMS_LAB',previousMapId:'NEW_BARK_TOWN',starter:'TOTODILE',labIntroComplete:false}), false);
+ assert.equal(shouldStartElmOpeningScene({mapId:'ELMS_LAB',previousMapId:'NEW_BARK_TOWN',starter:null,labIntroComplete:true}), false);
+ assert.equal(canCancelPendingScene('LAB_INTRO'), false);
+ assert.equal(canCancelPendingScene('CYNDAQUIL'), true);
 });
