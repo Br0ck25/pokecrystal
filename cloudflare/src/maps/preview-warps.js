@@ -12,6 +12,8 @@ export const PREVIEW_WARP_LANDINGS = Object.freeze({
   'PLAYERS_HOUSE_2F:PLAYERS_HOUSE_1F': Object.freeze({ mapId: 'PLAYERS_HOUSE_1F', x: 9, y: 1, facing: 'down' }),
   'NEW_BARK_TOWN:ELMS_HOUSE': Object.freeze({ mapId: 'ELMS_HOUSE', x: 2, y: 6, facing: 'up' }),
   'ELMS_HOUSE:NEW_BARK_TOWN': Object.freeze({ mapId: 'NEW_BARK_TOWN', x: 11, y: 14, facing: 'down' }),
+  'NEW_BARK_TOWN:PLAYERS_NEIGHBORS_HOUSE': Object.freeze({ mapId: 'PLAYERS_NEIGHBORS_HOUSE', x: 2, y: 6, facing: 'up' }),
+  'PLAYERS_NEIGHBORS_HOUSE:NEW_BARK_TOWN': Object.freeze({ mapId: 'NEW_BARK_TOWN', x: 3, y: 12, facing: 'down' }),
 });
 
 /** Return a supported landing state, or null for an unported destination. */
