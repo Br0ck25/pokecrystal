@@ -2,12 +2,12 @@
  * Raw block IDs extracted from maps/NewBarkTown.blk in upstream pokecrystal.
  * Upstream blob SHA: 4cec0216aa8b8806a41837f8957d9b052ebf21bf
  *
- * This is the source block grid (10 x 9 blocks), not the final tile/pixel map.
- * Each map block occupies 2 x 2 metatiles (16x16-pixel units). Collision
- * cannot be resolved from this grid until the block's four metatile IDs are
- * decoded from the source metatile-definition binary.
+ * This is the source block grid (10 x 9 blocks). Each block ID selects one
+ * 32x32 metatile made from 16 8x8 graphics tiles; collision is defined by
+ * four 16x16 quadrants in the separate source collision table.
  */
 import { NEW_BARK_TOWN } from './new-bark-town.js';
+import { getJohtoMetatileCollision } from './johto-collision.js';
 
 export const NEW_BARK_TOWN_BLOCK_IDS = Object.freeze([
   5, 5, 24, 31, 25, 5, 5, 5, 5, 5,
