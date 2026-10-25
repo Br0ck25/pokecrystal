@@ -139,6 +139,13 @@ const keys = new Set();
 let lastStep = 0;
 
 function activeMap() { return maps[currentMapId]; }
+function objectPosition(object) {
+  if (currentMapId === 'ELMS_LAB' && object.id === 'ELMSLAB_ELM') {
+    // ElmsLabMoveElmCallback moves Elm only for the initial meeting scene.
+    return state.labIntroComplete ? { x: 5, y: 2 } : { x: 3, y: 4 };
+  }
+  return { x: object.x, y: object.y };
+}
 function resizeCanvasForMap() {
   // Crystal's Game Boy Color display is 160x144 pixels. Keep this viewport fixed
   // on every map and scroll the world behind it instead of shrinking maps to fit.
@@ -247,7 +254,8 @@ function drawObjects() {
     if (object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starter) continue;
     if (object.id === 'ELMSLAB_OFFICER' && state.starter) continue;
     if (object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter) continue;
-    drawNpc(object);
+    const position = objectPosition(object);
+    drawNpc({ ...object, ...position });
   }
 }
 function draw() {
@@ -282,7 +290,13 @@ function blocked(x, y) {
 function eventsAtFacing() {
   const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[state.facing];
   if (!delta) return [];
-  return activeMap().eventsAt(state.x + delta[0], state.y + delta[1]);
+  const x = state.x + delta[0], y = state.y + delta[1];
+  const events = activeMap().eventsAt(x, y);
+  if (currentMapId === 'ELMS_LAB') {
+    const elm = activeMap().metadata.objects.find(object => object.id === 'ELMSLAB_ELM');
+    if (elm) { const p = objectPosition(elm); if (p.x === x && p.y === y) events.push({ type: 'object', ...elm, x, y }); }
+  }
+  return events;
 }
 function showDialogue(speaker, text) {
   status.textContent = speaker + "\n" + text;
@@ -412,10 +426,10 @@ function step(dx, dy, face) {
   }
   state.facing = face;
   const nx = state.x + dx, ny = state.y + dy;
-  const occupied = (activeMap().metadata.objects || []).some(object => object.x === nx && object.y === ny
+  const occupied = (activeMap().metadata.objects || []).some(object => { const position = objectPosition(object); return position.x === nx && position.y === ny
     && !(object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starter)
     && !(object.id === 'ELMSLAB_OFFICER' && state.starter)
-    && !(object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter));
+    && !(object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter); });
   if (blocked(nx, ny) || occupied) { draw(); return; }
   state.x = nx; state.y = ny;
   const warp = activeMap().metadata.warps.find(w => w.x === nx && w.y === ny);
