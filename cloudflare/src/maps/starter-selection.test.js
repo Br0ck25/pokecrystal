@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit, LAB_STARTERS } from './maps/starter-selection.js';
+import { getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit, LAB_STARTERS } from './starter-selection.js';
 
 test('the three lab balls map to the original Johto starters at level 5', () => {
   assert.deepEqual(Object.values(LAB_STARTERS).map(({ species, level }) => [species, level]), [

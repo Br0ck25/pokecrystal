@@ -1,3 +1,5 @@
+import { COLLISION_VALUES, COLLISION_PERMISSIONS } from '../generated/collision.js';
+
 /**
  * Conservative movement rules for the browser preview.
  *
@@ -5,23 +7,18 @@
  * port of Pokémon Crystal's movement engine: ledges, doors, surfing, cut,
  * ladders, and warp transitions need dedicated behavior.
  */
-export const PREVIEW_WALKABLE_COLLISIONS = Object.freeze(new Set([
-  'FLOOR',
-  'TALL_GRASS',
-  'DOOR',
-  'WARP_CARPET_LEFT',
-  'WARP_CARPET_RIGHT',
-  'WARP_CARPET_DOWN',
-  'STAIRCASE',
-  // The original collision table names climbable room tiles LADDER; the
-  // upstairs transition uses these cells, so treating them as unknown walls
-  // makes the player's bedroom staircase impossible to reach.
-  'LADDER',
-]));
+const LAND_TILE = 0;
 
-/** Unknown and special collision labels are blocked until explicitly handled. */
+/**
+ * Walkable the way engine/overworld/player_movement.asm CheckWalkable decides it: the collision's entry in
+ * CollisionPermissionTable (data/collision/collision_permissions.asm) must be LAND_TILE. Tile collision labels are
+ * COLL_* names or two-digit hex values; anything else fails closed.
+ */
 export function isPreviewCollisionWalkable(collision) {
-  return typeof collision === 'string' && PREVIEW_WALKABLE_COLLISIONS.has(collision);
+  if (typeof collision !== 'string') return false;
+  const value = collision in COLLISION_VALUES ? COLLISION_VALUES[collision]
+    : /^[0-9a-fA-F]{2}$/.test(collision) ? parseInt(collision, 16) : null;
+  return value !== null && COLLISION_PERMISSIONS[value] === LAND_TILE;
 }
 
 /** Check bounds before querying collision data, failing closed for invalid input. */

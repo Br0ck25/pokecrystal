@@ -4,7 +4,7 @@ import { NEW_BARK_TOWN, eventsAt } from './new-bark-town.js';
 
 test('New Bark Town sign text is sourced and readable by event coordinate', () => {
   assert.match(eventsAt(8, 8).find(e => e.type === 'background').text, /NEW BARK TOWN/);
-  assert.match(eventsAt(3, 3).find(e => e.type === 'background').text, /ELM POKEMON LAB/);
+  assert.match(eventsAt(3, 3).find(e => e.type === 'background').text, /ELM #MON LAB/);
   assert.match(eventsAt(9, 13).find(e => e.type === 'background').text, /ELM'S HOUSE/);
 });
 

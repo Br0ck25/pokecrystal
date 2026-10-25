@@ -1,19 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NEW_BARK_TOWN } from './maps/new-bark-town.js';
-import { NEW_BARK_TOWN_BLOCK_IDS, getNewBarkTownCollisionAtMetatile } from './maps/new-bark-town-blocks.js';
-import { ELMS_LAB } from './maps/elms-lab.js';
-import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './maps/elms-lab-blocks.js';
-import { PLAYERS_HOUSE_1F } from './maps/players-house-1f.js';
-import { PLAYERS_HOUSE_1F_BLOCK_IDS, getPlayersHouse1FCollisionAtMetatile } from './maps/players-house-1f-blocks.js';
-import { PLAYERS_HOUSE_2F } from './maps/players-house-2f.js';
-import { PLAYERS_HOUSE_2F_BLOCK_IDS, getPlayersHouse2FCollisionAtMetatile } from './maps/players-house-2f-blocks.js';
-import { ELMS_HOUSE } from './maps/elms-house.js';
-import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './maps/elms-house-blocks.js';
-import { PLAYERS_NEIGHBORS_HOUSE } from './maps/players-neighbors-house.js';
-import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './maps/players-neighbors-house-blocks.js';
-import { isPreviewCollisionWalkable, canPreviewEnterOrWarp } from './maps/new-bark-town-movement.js';
-import { LAB_STARTERS, getLabStarter } from './maps/starter-selection.js';
+import { NEW_BARK_TOWN } from './new-bark-town.js';
+import { NEW_BARK_TOWN_BLOCK_IDS, getNewBarkTownCollisionAtMetatile } from './new-bark-town-blocks.js';
+import { ELMS_LAB } from './elms-lab.js';
+import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './elms-lab-blocks.js';
+import { PLAYERS_HOUSE_1F } from './players-house-1f.js';
+import { PLAYERS_HOUSE_1F_BLOCK_IDS, getPlayersHouse1FCollisionAtMetatile } from './players-house-1f-blocks.js';
+import { PLAYERS_HOUSE_2F } from './players-house-2f.js';
+import { PLAYERS_HOUSE_2F_BLOCK_IDS, getPlayersHouse2FCollisionAtMetatile } from './players-house-2f-blocks.js';
+import { ELMS_HOUSE } from './elms-house.js';
+import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './elms-house-blocks.js';
+import { PLAYERS_NEIGHBORS_HOUSE } from './players-neighbors-house.js';
+import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './players-neighbors-house-blocks.js';
+import { isPreviewCollisionWalkable, canPreviewEnterOrWarp } from './new-bark-town-movement.js';
+import { LAB_STARTERS, getLabStarter } from './starter-selection.js';
 
 const MAPS = [
   [NEW_BARK_TOWN, NEW_BARK_TOWN_BLOCK_IDS, getNewBarkTownCollisionAtMetatile],
@@ -110,8 +110,8 @@ test('all declared warp destinations are connected to their source map metadata'
 test('main walkable areas reach their important destinations without crossing walls', () => {
   assert.equal(reachable(PLAYERS_HOUSE_1F,getPlayersHouse1FCollisionAtMetatile,{x:6,y:6},{x:9,y:0}),true,
     'ground floor entrance must connect to the upstairs stairs');
-  assert.equal(reachable(ELMS_LAB,getElmsLabCollisionAtMetatile,{x:4,y:10},{x:6,y:3}),true,
-    'lab entry must connect to the starter table area');
+  assert.equal(reachable(ELMS_LAB,getElmsLabCollisionAtMetatile,{x:4,y:10},{x:6,y:4}),true,
+    'lab entry must connect to the floor in front of the starter table (the table itself is a wall)');
   assert.equal(reachable(NEW_BARK_TOWN,getNewBarkTownCollisionAtMetatile,{x:9,y:8},{x:6,y:3}),true,
     'town spawn must connect to Elm Lab entrance');
 });

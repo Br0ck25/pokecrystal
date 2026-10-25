@@ -1,19 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { canPreviewEnter, canPreviewEnterOrWarp, isPreviewCollisionWalkable } from './new-bark-town-movement.js';
 
-test('only explicitly supported ground collision classes are walkable', () => {
-  for (const collision of ['FLOOR', 'TALL_GRASS', 'DOOR', 'WARP_CARPET_LEFT', 'WARP_CARPET_RIGHT', 'WARP_CARPET_DOWN']) {
+test('walkability follows the source collision permission table', () => {
+  // data/collision/collision_permissions.asm: these are LAND_TILE (COLL_01 is "garbage" but still land)
+  for (const collision of ['FLOOR', 'TALL_GRASS', 'DOOR', 'WARP_CARPET_LEFT', 'WARP_CARPET_RIGHT', 'WARP_CARPET_DOWN', 'STAIRCASE', 'LADDER', '01', '01'.toUpperCase()]) {
     assert.equal(isPreviewCollisionWalkable(collision), true, collision);
   }
-  for (const collision of ['WALL', 'WATER', 'BUOY', 'HEADBUTT_TREE', 'CUT_TREE', 'WHIRLPOOL', 'HOP_DOWN', '01', null, undefined, 'UNKNOWN']) {
+  // WALL_TILE, WATER_TILE and WALL_TILE | TALK entries, plus labels the table does not know
+  for (const collision of ['WALL', 'WATER', 'BUOY', 'HEADBUTT_TREE', 'CUT_TREE', 'WHIRLPOOL', null, undefined, 'UNKNOWN', 7]) {
     assert.equal(isPreviewCollisionWalkable(collision), false, String(collision));
   }
 });
 
-test('stairs and ladders are walkable in the preview where source maps use them', () => {
-  assert.equal(isPreviewCollisionWalkable('STAIRCASE'), true);
-  assert.equal(isPreviewCollisionWalkable('LADDER'), true);
+test('walkable labels match the permission table exactly', () => {
+  const table = readFileSync(new URL('../../../data/collision/collision_permissions.asm', import.meta.url), 'utf8');
+  assert.match(table, /db LAND_TILE\s+; COLL_LADDER/);
+  assert.match(table, /db WALL_TILE \| TALK\s+; COLL_CUT_TREE\n/);
 });
 
 test('map bounds and malformed coordinates fail closed', () => {
@@ -40,7 +44,7 @@ test('map collision callback decides whether an in-bounds cell is enterable', ()
 
 
 test('source warp tiles are enterable even when simplified collision is special', () => {
-  const collisionAt = () => 'LADDER';
+  const collisionAt = () => 'WALL';
   const warps = [{ x: 2, y: 7 }, { x: 3, y: 7 }];
   assert.equal(canPreviewEnterOrWarp(2, 7, 8, 8, collisionAt, warps), true);
   assert.equal(canPreviewEnterOrWarp(3, 7, 8, 8, collisionAt, warps), true);

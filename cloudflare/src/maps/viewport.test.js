@@ -7,9 +7,9 @@ test('uses the original fixed 160x144 Game Boy Color viewport', () => {
   assert.equal(GBC_VIEWPORT_HEIGHT, 144);
 });
 
-test('camera always puts the player's tile at the original screen position (64, 64)', () => {
+test('camera always puts the player tile at the original screen position (64, 64)', () => {
   assert.deepEqual({ ...getCameraTransform(10, 9) }, { cameraX: 96, cameraY: 80 });
-  // Map edges do not clamp: the player's tile maps to (64, 60) wherever it is.
+  // Map edges do not clamp: the player's tile maps to (64, 64) wherever it is.
   assert.equal(SPRITE_Y_OFFSET, -4);
   assert.deepEqual({ ...getCameraTransform(0, 0) }, { cameraX: -64, cameraY: -64 });
   assert.deepEqual({ ...getCameraTransform(7, 1) }, { cameraX: 48, cameraY: -48 });
