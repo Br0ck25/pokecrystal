@@ -432,6 +432,7 @@ function interact() {
     }
     if (state.momIntroStage === 2) {
       state.momIntroStage = 3;
+      state.momChoiceYes = true;
       showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?\n\n" + (state.momChoiceYes ? '▶ YES       NO' : '  YES     ▶ NO'));
       return;
     }
