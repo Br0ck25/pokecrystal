@@ -2,13 +2,15 @@
 
 **Contributor and AI-agent rules:** Read the repository-root [`AGENTS.md`](../AGENTS.md) before making any change. It defines the project goal, source-of-truth requirements, safe multi-agent workflow, testing gates, and what counts as complete.
 
-This directory is the beginning of a JavaScript browser port of the Pokémon Crystal disassembly. It is not yet a playable game. The runtime currently defines a small state contract, guarded grid-step handling, local save/load, and crisp canvas setup; it intentionally refuses to guess movement rules without a source-derived map adapter.
+This directory is the beginning of a JavaScript browser port of the Pokémon Crystal disassembly. It is not yet a playable game. Read the repository-root `AGENTS.md` before contributing; all data and mechanics must be source-derived, tested, and described honestly. The runtime currently defines a small state contract, guarded grid-step handling, local save/load, and crisp canvas setup; it intentionally refuses to guess movement rules without a source-derived map adapter.
 
 ## Files
 
 - `src/runtime.js` — renderer sizing and runtime state primitives.
 - `src/runtime.test.js` — tests for state, collision adapter behavior, transitions, and local saves.
 - `src/maps/new-bark-town.js` — source-derived New Bark Town dimensions, warp events, coordinate events, signs, NPC positions, and map callback metadata.
+- `src/maps/elms-lab.js` — source-derived Elm's Lab dimensions, both exit warps, scene-gated coordinate events, background events, and object event coordinates. This is metadata only; the map renderer and scripts are not yet ported.
+- `src/maps-elms-lab.test.js` — verifies the imported Elm's Lab event metadata against the source definitions.
 - `src/maps.test.js` — tests for the New Bark Town source metadata.
 - `src/maps/new-bark-town-blocks.js` — all 90 block IDs from the original `maps/NewBarkTown.blk`, plus metatile-coordinate lookup helpers.
 - `src/maps-blocks.test.js` — checks source block-grid lookup and collision quadrant resolution.
