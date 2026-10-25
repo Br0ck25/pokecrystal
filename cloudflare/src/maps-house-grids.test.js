@@ -349,5 +349,5 @@ function reachable(map, collisionAt, start, target) {
 test('critical first-scene destinations are reachable using actual collision tables', () => {
  assert.equal(reachable(PLAYERS_HOUSE_2F, roomCollision, {x:3,y:3}, {x:7,y:0}), true, 'bedroom spawn must reach the stairs');
  assert.equal(reachable(PLAYERS_HOUSE_1F, downstairsCollision, {x:6,y:6}, {x:9,y:0}), true, 'downstairs landing must reach the bedroom stairs');
- assert.equal(reachable(ELMS_LAB, labCollision, {x:4,y:10}, {x:6,y:3}), true, 'lab entrance must reach the starter table');
+ assert.ok([[5,3],[7,3],[6,2],[6,4]].some(([x,y]) => reachable(ELMS_LAB, labCollision, {x:4,y:10}, {x,y})), 'lab entrance must reach a tile adjacent to the starter table');
 });
