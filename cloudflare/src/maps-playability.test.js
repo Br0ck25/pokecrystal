@@ -107,7 +107,7 @@ test('every readable source sign, radio, PC, bookshelf and lab prop has a reacha
       }
       assert.ok(
         canReach,
-        map.id + ' background event ' + (event.script || event.kind) + ' cannot be reached in any valid scene state',
+        map.id + ' background event ' + (event.script || event.kind) + ' at (' + event.x + ',' + event.y + ') cannot be reached in any valid scene state; approaches=' + JSON.stringify(approaches.map(target => ({...target, collision: collision(target.x,target.y)}))),
       );
     }
   }
