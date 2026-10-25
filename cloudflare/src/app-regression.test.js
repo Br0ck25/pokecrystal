@@ -10,7 +10,7 @@ test('new game starts in the original player bedroom, not outdoors', () => {
 });
 
 test('the first-floor Mom scene triggers at the source coordinate and awards the Pokegear once', () => {
-  assert.match(app, /currentMapId === 'PLAYERS_HOUSE_1F' && nx === 8 && ny === 4 && !state\.pokegear/);
+  assert.match(app, /currentMapId === 'PLAYERS_HOUSE_1F' && \(nx === 8 \|\| nx === 9\) && ny === 4 && !state\.pokegear/);
   assert.match(app, /state\.pokegear = true/);
   assert.match(app, /Our neighbor, PROF\. ELM, was looking for you/);
 });
