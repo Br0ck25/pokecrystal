@@ -16,12 +16,13 @@ import { PLAYERS_HOUSE_TILESET_PNG_BASE64 } from './src/assets/players_house-til
 import { PLAYERS_ROOM_TILESET_PNG_BASE64 } from './src/assets/players_room-tileset.js';
 import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './src/maps/tileset-palette-data.js';
 import { canPreviewEnterOrWarp } from './src/maps/new-bark-town-movement.js';
-import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT, getCameraTransform, integerRenderScale } from './src/maps/viewport.js';
+import { MAPS } from './src/generated/maps.js';
+import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT, SPRITE_Y_OFFSET, getCameraTransform, integerRenderScale } from './src/maps/viewport.js';
 import { resolvePreviewWarp } from './src/maps/preview-warps.js';
 import { PLAYERS_HOUSE_1F, playersHouse1fEventsAt } from './src/maps/players-house-1f.js';
 import { PLAYERS_HOUSE_1F_BLOCK_IDS, getPlayersHouse1FCollisionAtMetatile } from './src/maps/players-house-1f-blocks.js';
 import { PLAYERS_HOUSE_2F, playersHouse2fEventsAt } from './src/maps/players-house-2f.js';
-import { PLAYERS_HOUSE_2F_BLOCK_IDS, getPlayersHouse2FCollisionAtMetatile } from './src/maps/players-house-2f-blocks.js';
+import { PLAYERS_HOUSE_2F_DECORATED_BLOCK_IDS, getPlayersHouse2FCollisionAtMetatile } from './src/maps/players-house-2f-blocks.js';
 import { ELMS_HOUSE, elmsHouseEventsAt } from './src/maps/elms-house.js';
 import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/maps/elms-house-blocks.js';
 import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/maps/players-neighbors-house.js';
@@ -153,7 +154,7 @@ const maps = {
     title: "Professor Elm's Laboratory",
   },
   PLAYERS_HOUSE_1F: { metadata: PLAYERS_HOUSE_1F, blocks: PLAYERS_HOUSE_1F_BLOCK_IDS, collisionAt: getPlayersHouse1FCollisionAtMetatile, eventsAt: playersHouse1fEventsAt, title: "Your House · 1F" },
-  PLAYERS_HOUSE_2F: { metadata: PLAYERS_HOUSE_2F, blocks: PLAYERS_HOUSE_2F_BLOCK_IDS, collisionAt: getPlayersHouse2FCollisionAtMetatile, eventsAt: playersHouse2fEventsAt, title: "Your House · 2F" },
+  PLAYERS_HOUSE_2F: { metadata: PLAYERS_HOUSE_2F, blocks: PLAYERS_HOUSE_2F_DECORATED_BLOCK_IDS, collisionAt: getPlayersHouse2FCollisionAtMetatile, eventsAt: playersHouse2fEventsAt, title: "Your House · 2F" },
   ELMS_HOUSE: { metadata: ELMS_HOUSE, blocks: ELMS_HOUSE_BLOCK_IDS, collisionAt: getElmsHouseCollisionAtMetatile, eventsAt: elmsHouseEventsAt, title: "Professor Elm's House" },
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
@@ -208,9 +209,14 @@ function drawMap() {
   const source = renderedTilesets[tileset];
   const metatiles = metatilesByTileset[tileset];
   if (!source || !metatiles) return;
-  for (let by = 0; by < d.blocksHigh; by++) {
-    for (let bx = 0; bx < d.blocksWide; bx++) {
-      const blockId = current.blocks[by * d.blocksWide + bx];
+  // Everything the screen can show: the map's blocks, with the source border block outside them.
+  const camera = getCameraTransform(state.x, state.y);
+  const firstX = Math.floor(camera.cameraX / 32), lastX = Math.floor((camera.cameraX + GBC_VIEWPORT_WIDTH - 1) / 32);
+  const firstY = Math.floor(camera.cameraY / 32), lastY = Math.floor((camera.cameraY + GBC_VIEWPORT_HEIGHT - 1) / 32);
+  for (let by = firstY; by <= lastY; by++) {
+    for (let bx = firstX; bx <= lastX; bx++) {
+      const inside = bx >= 0 && by >= 0 && bx < d.blocksWide && by < d.blocksHigh;
+      const blockId = inside ? current.blocks[by * d.blocksWide + bx] : MAPS[currentMapId].border;
       const tiles = metatiles[blockId];
       if (!tiles) continue;
       for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 4; tx++) {
@@ -252,6 +258,7 @@ function drawSourceSprite(name, x, y, facing = 'down', flip = false, animate = f
   // The source sheets are six 16x16 poses: down, up, and side, each with
   // alternating walk frames. Static event sprites use frame zero.
   const row = getSpriteFrameRow(facing, animate ? walkFrame : 0);
+  y += SPRITE_Y_OFFSET;
   ctx.save();
   if (flip) {
     ctx.translate(x + TILE, y);
@@ -372,9 +379,9 @@ function draw() {
     return;
   }
   const d = activeMap().metadata.dimensions;
-  const camera = getCameraTransform(d.metatilesWide, d.metatilesHigh, state.x, state.y);
+  const camera = getCameraTransform(state.x, state.y);
   ctx.save();
-  ctx.translate(camera.originX - camera.cameraX, camera.originY - camera.cameraY);
+  ctx.translate(-camera.cameraX, -camera.cameraY);
   drawMap();
   drawCollisionDebugOverlay();
   drawObjects();

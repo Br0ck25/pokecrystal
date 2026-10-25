@@ -2,23 +2,18 @@
 export const GBC_VIEWPORT_WIDTH = 160;
 export const GBC_VIEWPORT_HEIGHT = 144;
 
-export function getCameraTransform(mapWidth, mapHeight, playerX, playerY, viewportWidth = GBC_VIEWPORT_WIDTH, viewportHeight = GBC_VIEWPORT_HEIGHT, tileSize = 16) {
-  if (![mapWidth,mapHeight,playerX,playerY,viewportWidth,viewportHeight,tileSize].every(Number.isFinite)
-      || mapWidth <= 0 || mapHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0 || tileSize <= 0) {
-    throw new TypeError('Camera dimensions and player coordinates must be finite and positive where applicable.');
+// The original always centres the player on screen: the player's tile sits at (64, 64) and the map
+// scrolls under it, so the edge of a map shows its border block (or a connected map). Object sprites
+// are drawn 4px above their tile (measured against the game: the player sprite's top is y=60).
+export const PLAYER_SCREEN_X = 64;
+export const PLAYER_SCREEN_Y = 64;
+export const SPRITE_Y_OFFSET = -4;
+
+export function getCameraTransform(playerX, playerY, tileSize = 16) {
+  if (![playerX, playerY, tileSize].every(Number.isFinite) || tileSize <= 0) {
+    throw new TypeError('Camera player coordinates and tile size must be finite; tile size must be positive.');
   }
-  const worldWidth = mapWidth * tileSize;
-  const worldHeight = mapHeight * tileSize;
-  const maxX = Math.max(0, worldWidth - viewportWidth);
-  const maxY = Math.max(0, worldHeight - viewportHeight);
-  const cameraX = Math.max(0, Math.min(maxX, playerX * tileSize + tileSize / 2 - viewportWidth / 2));
-  const cameraY = Math.max(0, Math.min(maxY, playerY * tileSize + tileSize / 2 - viewportHeight / 2));
-  return Object.freeze({
-    cameraX, cameraY,
-    originX: worldWidth < viewportWidth ? Math.floor((viewportWidth - worldWidth) / 2) : 0,
-    originY: worldHeight < viewportHeight ? Math.floor((viewportHeight - worldHeight) / 2) : 0,
-    worldWidth, worldHeight,
-  });
+  return Object.freeze({ cameraX: playerX * tileSize - PLAYER_SCREEN_X, cameraY: playerY * tileSize - PLAYER_SCREEN_Y });
 }
 
 /**
