@@ -4,6 +4,10 @@
  */
 export function getSourceSpriteForObject(object) {
   const id = String(object?.id || '').toUpperCase();
+  const sprite = String(object?.sprite || '').toUpperCase();
+  if (sprite === 'SPRITE_POKEFAN_F') return 'POKEFAN_F';
+  if (sprite === 'SPRITE_COOLTRAINER_F') return 'COOLTRAINER_F';
+  if (sprite === 'SPRITE_BUG_CATCHER') return 'BUG_CATCHER';
   if (id.includes('POKE_BALL')) return 'POKE_BALL';
   if (id.includes('TEACHER')) return 'TEACHER';
   if (id.includes('OFFICER') || id.includes('COP')) return 'OFFICER';
