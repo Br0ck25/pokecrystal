@@ -1,7 +1,7 @@
 import { NEW_BARK_TOWN_BLOCK_IDS } from './src/maps/new-bark-town-blocks.js';
 import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
-import { NEW_BARK_TOWN } from './src/maps/new-bark-town.js';
+import { NEW_BARK_TOWN, eventsAt } from './src/maps/new-bark-town.js';
 import { getNewBarkTownCollisionAtMetatile } from './src/maps/new-bark-town-blocks.js';
 import { canPreviewEnter } from './src/maps/new-bark-town-movement.js';
 
@@ -45,6 +45,21 @@ function draw() { if(!source.complete||!source.naturalWidth)return; drawMap(); d
 function blocked(x,y) {
   return !canPreviewEnter(x, y, map.width, map.height, getNewBarkTownCollisionAtMetatile);
 }
+function interact() {
+  const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[state.facing];
+  if (!delta) return;
+  const x = state.x + delta[0], y = state.y + delta[1];
+  const event = eventsAt(x, y).find(item => item.type === 'background' || item.type === 'object');
+  if (!event) {
+    status.textContent = 'Nothing to interact with here.';
+    return;
+  }
+  if (event.type === 'background') {
+    status.textContent = event.text || 'A sign.';
+    return;
+  }
+  status.textContent = (event.dialogue || ['…']).join(' ');
+}
 function step(dx,dy,face) {
   state.facing=face;
   const nx=state.x+dx, ny=state.y+dy;
@@ -62,7 +77,7 @@ function frame(now) {
   }
   requestAnimationFrame(frame);
 }
-window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();keys.add(e.key);});
+window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault(); if ((e.key === ' ' || e.key.toLowerCase() === 'e') && !e.repeat) { interact(); return; } keys.add(e.key);});
 document.querySelectorAll('[data-move]').forEach(button => {
   const key = button.dataset.move;
   const down = event => { event.preventDefault(); keys.add(key); };
