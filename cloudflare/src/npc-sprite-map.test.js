@@ -16,6 +16,9 @@ test('town and home NPC IDs retain their intended source sprites', () => {
   assert.equal(getSourceSpriteForObject({ id: 'NEWBARKTOWN_FISHER' }), 'FISHER');
   assert.equal(getSourceSpriteForObject({ id: 'NEWBARKTOWN_RIVAL' }), 'RIVAL');
   assert.equal(getSourceSpriteForObject({ id: 'MOM' }), 'MOM');
-  assert.equal(getSourceSpriteForObject({ id: 'NEIGHBOR' }), null);
+  assert.equal(getSourceSpriteForObject({ id: 'NEIGHBOR' }), 'POKEFAN_F');
+  assert.equal(getSourceSpriteForObject({ id: 'DAUGHTER' }), 'COOLTRAINER_F');
+  assert.equal(getSourceSpriteForObject({ id: 'ELMS_WIFE' }), 'TEACHER');
+  assert.equal(getSourceSpriteForObject({ id: 'ELMS_SON' }), 'BUG_CATCHER');
   assert.equal(getSourceSpriteForObject(null), null);
 });
