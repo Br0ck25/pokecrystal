@@ -100,7 +100,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'NEW_BARK_TOWN';
-const state = { x: 9, y: 8, facing: 'down' };
+const state = { x: 9, y: 8, facing: 'down', starter: null, elmTalked: false };
 const keys = new Set();
 let lastStep = 0;
 
@@ -149,9 +149,44 @@ function drawPlayer() {
   else if (state.facing === 'right') ctx.fillRect(x + 9, y + 5, 2, 1);
   else ctx.fillRect(x + 6, y + 3, 4, 1);
 }
+function drawNpc(object) {
+  const x = object.x * TILE, y = object.y * TILE;
+  const id = String(object.id || object.script || '').toUpperCase();
+  if (id.includes('POKE_BALL')) {
+    const color = id.endsWith('1') ? '#d83b45' : id.endsWith('2') ? '#2679cf' : '#66a84f';
+    ctx.fillStyle = '#202020'; ctx.fillRect(x + 3, y + 4, 10, 9);
+    ctx.fillStyle = '#e6e7e8'; ctx.fillRect(x + 4, y + 3, 8, 5);
+    ctx.fillStyle = color; ctx.fillRect(x + 4, y + 8, 8, 4);
+    ctx.fillStyle = '#202020'; ctx.fillRect(x + 3, y + 7, 10, 2);
+    ctx.fillStyle = '#fff'; ctx.fillRect(x + 7, y + 7, 3, 3);
+    return;
+  }
+  const palette = id.includes('ELM') ? ['#f1c9a5','#d8dce4','#557bba','#7a4b2a']
+    : id.includes('AIDE') || id.includes('SCIENTIST') ? ['#efc5a3','#e7e9ed','#b9c3d3','#514f5a']
+    : id.includes('OFFICER') || id.includes('COP') ? ['#efc5a3','#263b69','#2d4e86','#202020']
+    : id.includes('MOM') || id.includes('WIFE') ? ['#efc5a3','#bd4b6b','#e7d9e8','#65452f']
+    : id.includes('DAUGHTER') || id.includes('SON') ? ['#efc5a3','#e8c75d','#4e8a72','#5a3828']
+    : id.includes('RIVAL') ? ['#efc5a3','#7d405b','#35343c','#6a4834']
+    : ['#efc5a3','#d7d9dc','#548b70','#594332'];
+  ctx.fillStyle = '#25232a'; ctx.fillRect(x + 3, y + 1, 10, 14);
+  ctx.fillStyle = palette[0]; ctx.fillRect(x + 5, y + 2, 6, 6);
+  ctx.fillStyle = palette[3]; ctx.fillRect(x + 4, y + 1, 8, 3);
+  ctx.fillStyle = palette[1]; ctx.fillRect(x + 4, y + 8, 8, 5);
+  ctx.fillStyle = palette[2]; ctx.fillRect(x + 4, y + 13, 3, 3); ctx.fillRect(x + 9, y + 13, 3, 3);
+  ctx.fillStyle = '#272727'; ctx.fillRect(x + 6, y + 5, 1, 1); ctx.fillRect(x + 9, y + 5, 1, 1);
+}
+function drawObjects() {
+  for (const object of activeMap().metadata.objects || []) {
+    if (object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starter) continue;
+    if (object.id === 'ELMSLAB_OFFICER' && state.starter) continue;
+    if (object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter) continue;
+    drawNpc(object);
+  }
+}
 function draw() {
   if (!renderedTilesets[activeMap().metadata.tileset]) return;
   drawMap();
+  drawObjects();
   drawPlayer();
 }
 function blocked(x, y) {
@@ -166,10 +201,32 @@ function eventsAtFacing() {
   if (!delta) return [];
   return activeMap().eventsAt(state.x + delta[0], state.y + delta[1]);
 }
+function showDialogue(speaker, text) {
+  status.textContent = speaker + "\n" + text;
+  status.dataset.kind = 'dialogue';
+}
 function interact() {
   const event = eventsAtFacing().find(item => item.type === 'background' || item.type === 'object');
   if (!event) {
     setHint('Nothing to interact with here.');
+    return;
+  }
+  if (currentMapId === 'ELMS_LAB' && event.type === 'object' && event.id === 'ELMSLAB_ELM') {
+    if (!state.elmTalked) {
+      state.elmTalked = true;
+      showDialogue('PROF. ELM', "Hi! I'm waiting for you.\nChoose one of the three POKéMON on the table.");
+    } else if (!state.starter) {
+      showDialogue('PROF. ELM', 'Go ahead! Choose the POKéMON you like best.');
+    } else {
+      showDialogue('PROF. ELM', 'Take good care of your ' + state.starter + '!');
+    }
+    return;
+  }
+  if (currentMapId === 'ELMS_LAB' && event.type === 'object' && event.id?.startsWith('ELMSLAB_POKE_BALL')) {
+    if (state.starter) { showDialogue('POKé BALL', 'You already chose ' + state.starter + '.'); return; }
+    state.starter = event.id.endsWith('1') ? 'CYNDAQUIL' : event.id.endsWith('2') ? 'TOTODILE' : 'CHIKORITA';
+    showDialogue('PROF. ELM', 'You chose ' + state.starter + '!\nTake good care of it.');
+    draw();
     return;
   }
   if (currentMapId === 'NEW_BARK_TOWN') {
@@ -213,12 +270,16 @@ function transition(warp) {
   state.facing = landing.facing;
   resizeCanvasForMap();
   draw();
-  setHint('Entered ' + activeMap().title + '. Map transition is implemented; original story scripts are still in progress.');
+  setHint('Entered ' + activeMap().title + '. Talk to characters and inspect objects with A.');
 }
 function step(dx, dy, face) {
   state.facing = face;
   const nx = state.x + dx, ny = state.y + dy;
-  if (blocked(nx, ny)) { draw(); return; }
+  const occupied = (activeMap().metadata.objects || []).some(object => object.x === nx && object.y === ny
+    && !(object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starter)
+    && !(object.id === 'ELMSLAB_OFFICER' && state.starter)
+    && !(object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter));
+  if (blocked(nx, ny) || occupied) { draw(); return; }
   state.x = nx; state.y = ny;
   const warp = activeMap().metadata.warps.find(w => w.x === nx && w.y === ny);
   if (warp) { transition(warp); return; }
