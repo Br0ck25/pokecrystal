@@ -22,7 +22,7 @@ import { PLAYERS_ROOM_METATILE_TILES } from './maps/players-room-metatiles.js';
 import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './maps/tileset-palette-data.js';
 import { isPreviewCollisionWalkable } from './maps/new-bark-town-movement.js';
 import { getTilesetCollision } from './maps/tileset-collision.js';
-import { LAB_STARTERS, getLabStarter, getLabStarterBallId, mustBlockLabExit } from './maps/starter-selection.js';
+import { LAB_STARTERS, getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit } from './maps/starter-selection.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './maps/scene-object-state.js';
 import { shouldStartElmOpeningScene, canCancelPendingScene } from './maps/scene-progression.js';
 import { getSourceSpriteForObject } from './maps/npc-sprite-map.js';
