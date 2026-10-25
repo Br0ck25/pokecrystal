@@ -153,7 +153,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momDstChoiceYes: true, momPhoneChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -484,14 +484,18 @@ function interact() {
     }
     if (state.momIntroStage === 1) {
       state.momIntroStage = 2;
+      state.momDstChoiceYes = true;
+      state.momPhoneChoiceYes = true;
       state.momChoiceYes = true;
       showDialogue('MOM', "Is it Daylight Saving Time now?\n\n" + formatYesNoChoice(true));
       return;
     }
     if (state.momIntroStage === 2) {
+      state.momDstChoiceYes = state.momChoiceYes;
       state.momIntroStage = 3;
-      state.momChoiceYes = true;
-      showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?\n\n" + (state.momChoiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false)));
+      state.momPhoneChoiceYes = true;
+      state.momChoiceYes = state.momPhoneChoiceYes;
+      showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?\n\n" + formatYesNoChoice(state.momPhoneChoiceYes));
       return;
     }
     if (state.momIntroStage === 3) {
@@ -768,7 +772,10 @@ function step(dx, dy, face) {
   if (state.momIntroActive) {
     if (dialoguePageIndex < dialoguePages.length - 1) return;
     if (state.momIntroStage === 2 || state.momIntroStage === 3) {
-      state.momChoiceYes = moveYesNoChoice(state.momChoiceYes, dx, dy);
+      const choice = state.momIntroStage === 2 ? state.momDstChoiceYes : state.momPhoneChoiceYes;
+      state.momChoiceYes = moveYesNoChoice(choice, dx, dy);
+      if (state.momIntroStage === 2) state.momDstChoiceYes = state.momChoiceYes;
+      else state.momPhoneChoiceYes = state.momChoiceYes;
       const options = state.momChoiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false);
       const prompt = state.momIntroStage === 2
         ? 'Is it Daylight Saving Time now?'
