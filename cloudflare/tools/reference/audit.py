@@ -9,6 +9,7 @@ ap.add_argument('--build', required=True, help='scratch repo copy containing pok
 ap.add_argument('--out', required=True)
 ap.add_argument('--cases', default=os.path.join(os.path.dirname(__file__), 'cases.json'))
 ap.add_argument('--base', default='http://localhost:8765')
+ap.add_argument('--quiet', action='store_true', help='print only cases with more than 8 differing 8x8 tiles, plus a total')
 ap.add_argument('--threshold', type=int, default=48, help='RGB distance above which a pixel counts as different')
 a = ap.parse_args()
 os.makedirs(a.out, exist_ok=True)
@@ -74,6 +75,7 @@ for c in cases:
 json.dump(cases, open(os.path.join(a.out, 'cases.json'), 'w'))
 subprocess.run(['node', os.path.join(os.path.dirname(__file__), 'app_shots.cjs'), os.path.join(a.out, 'cases.json'), a.out, a.base], check=True)
 
+total = flagged = 0
 for i, c in enumerate(cases):
     rom = roms[i]
     app = Image.open(os.path.join(a.out, f'app_{i}.png')).convert('RGB')
@@ -88,4 +90,8 @@ for i, c in enumerate(cases):
     sheet = Image.new('RGB', (480, 144)); sheet.paste(rom, (0, 0)); sheet.paste(app, (160, 0)); sheet.paste(overlay, (320, 0))
     name = f"{i:02d}_{c['id']}_warp{c['warp']}_{c['x']}_{c['y']}"
     sheet.resize((1440, 432), Image.NEAREST).save(os.path.join(a.out, name + '.png'))
-    print(f"{name}: differing_pixels={int(bad.sum())}/{160*144} differing_8x8_tiles={len(diff_tiles)}")
+    total += 1
+    if not a.quiet or len(diff_tiles) > 8:
+        flagged += 1
+        print(f"{name}: differing_pixels={int(bad.sum())}/{160*144} differing_8x8_tiles={len(diff_tiles)}")
+print(f'{total} cases, {flagged} listed')
