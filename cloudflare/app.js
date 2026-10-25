@@ -13,7 +13,6 @@ source.src = 'data:image/png;base64,' + JOHTO_TILESET_PNG_BASE64;
 const TILE = 16;
 const map = { width: NEW_BARK_TOWN.dimensions.metatilesWide, height: NEW_BARK_TOWN.dimensions.metatilesHigh };
 const state = { x: 9, y: 8, facing: 'down' };
-const palette = { 0:'#f8f8f8', 1:'#a8a8a8', 2:'#585858', 3:'#181818' };
 const keys = new Set();
 let lastStep = 0;
 
@@ -47,7 +46,7 @@ function blocked(x,y) {
   const collision=getNewBarkTownCollisionAtMetatile(x,y);
   // Until all collision labels are mapped to exact engine semantics, only known
   // source solid labels are blocked; unknown labels fail closed.
-  return !collision || /WALL|SOLID|BLOCK|IMPASSABLE|LEDGE|WATER|TREE|ROCK/i.test(collision);
+  return !['FLOOR', 'TALL_GRASS', 'DOOR', 'WARP_CARPET_LEFT', 'WARP_CARPET_RIGHT', 'WARP_CARPET_DOWN'].includes(collision);
 }
 function step(dx,dy,face) {
   state.facing=face;
@@ -67,6 +66,13 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();keys.add(e.key);});
+document.querySelectorAll('[data-move]').forEach(button => {
+  const key = button.dataset.move;
+  const down = event => { event.preventDefault(); keys.add(key); };
+  const up = event => { event.preventDefault(); keys.delete(key); };
+  button.addEventListener('pointerdown', down);
+  for (const type of ['pointerup','pointercancel','pointerleave']) button.addEventListener(type, up);
+});
 window.addEventListener('keyup',e=>keys.delete(e.key));
 window.addEventListener('blur',()=>keys.clear());
 source.addEventListener('load',()=>{draw();status.textContent='Preview loaded · Arrow keys / WASD to move. Movement and collision are preliminary.';});
