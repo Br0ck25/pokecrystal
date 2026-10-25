@@ -134,3 +134,25 @@ test('indoor collision lookups use their own source tables and stairs are traver
  assert.equal(isPreviewCollisionWalkable('STAIRCASE'), true);
  assert.equal(getPlayersNeighborsHouseCollisionAtMetatile(4, 2), 'FLOOR');
 });
+
+test('the upstairs entrance in the player house is reachable from the ground-floor landing', () => {
+ const start = { x: 6, y: 6 };
+ const goal = { x: 9, y: 0 };
+ const width = PLAYERS_HOUSE_1F.dimensions.metatilesWide;
+ const height = PLAYERS_HOUSE_1F.dimensions.metatilesHigh;
+ const queue = [start];
+ const visited = new Set([start.x + ',' + start.y]);
+ for (let i = 0; i < queue.length; i++) {
+  const p = queue[i];
+  if (p.x === goal.x && p.y === goal.y) break;
+  for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+   const x = p.x + dx, y = p.y + dy, key = x + ',' + y;
+   if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
+   const isWarp = PLAYERS_HOUSE_1F.warps.some(warp => warp.x === x && warp.y === y);
+   if (!isWarp && !isPreviewCollisionWalkable(getPlayersHouse1FCollisionAtMetatile(x, y))) continue;
+   visited.add(key);
+   queue.push({ x, y });
+  }
+ }
+ assert.ok(visited.has(goal.x + ',' + goal.y), 'the player must be able to walk from the entrance to the upstairs staircase');
+});
