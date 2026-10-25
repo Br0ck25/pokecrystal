@@ -122,3 +122,25 @@ test('all map block grids have exact dimensions and all source metatile IDs are 
     assert.ok(blocks.every(id => Number.isInteger(id) && id >= 0 && id < 128), map.id + ' invalid metatile ID');
   }
 });
+
+
+test('every source NPC and starter ball has at least one reachable interaction tile', () => {
+  const cases = [
+    [NEW_BARK_TOWN, getNewBarkTownCollisionAtMetatile, [6,4]],
+    [ELMS_LAB, getElmsLabCollisionAtMetatile, [5,10]],
+    [PLAYERS_HOUSE_1F, getPlayersHouse1FCollisionAtMetatile, [6,6]],
+    [PLAYERS_HOUSE_2F, getPlayersHouse2FCollisionAtMetatile, [3,3]],
+    [ELMS_HOUSE, getElmsHouseCollisionAtMetatile, [4,6]],
+    [PLAYERS_NEIGHBORS_HOUSE, getPlayersNeighborsHouseCollisionAtMetatile, [3,6]],
+  ];
+  for (const [map, collisionAt, start] of cases) {
+    const { seen } = reachableWarpCoordinates(map, collisionAt, start);
+    for (const object of map.objects || []) {
+      const adjacent = [[0,-1],[1,0],[0,1],[-1,0]].some(([dx,dy]) => {
+        const x = object.x + dx, y = object.y + dy;
+        return seen.has(x + ',' + y) && isPreviewCollisionWalkable(collisionAt(x,y));
+      });
+      assert.equal(adjacent, true, map.id + ' object has no reachable interaction tile: ' + object.id);
+    }
+  }
+});
