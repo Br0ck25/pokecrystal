@@ -3,6 +3,7 @@ import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
 import { NEW_BARK_TOWN } from './src/maps/new-bark-town.js';
 import { getNewBarkTownCollisionAtMetatile } from './src/maps/new-bark-town-blocks.js';
+import { canPreviewEnter } from './src/maps/new-bark-town-movement.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -42,11 +43,7 @@ function drawPlayer() {
 }
 function draw() { if(!source.complete||!source.naturalWidth)return; drawMap(); drawPlayer(); }
 function blocked(x,y) {
-  if(x<0||y<0||x>=map.width||y>=map.height)return true;
-  const collision=getNewBarkTownCollisionAtMetatile(x,y);
-  // Until all collision labels are mapped to exact engine semantics, only known
-  // source solid labels are blocked; unknown labels fail closed.
-  return !['FLOOR', 'TALL_GRASS', 'DOOR', 'WARP_CARPET_LEFT', 'WARP_CARPET_RIGHT', 'WARP_CARPET_DOWN'].includes(collision);
+  return !canPreviewEnter(x, y, map.width, map.height, getNewBarkTownCollisionAtMetatile);
 }
 function step(dx,dy,face) {
   state.facing=face;
