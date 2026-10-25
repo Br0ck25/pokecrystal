@@ -55,7 +55,7 @@ test('every New Bark Town building and floor has an in-bounds, reversible previe
  const maps = {
   NEW_BARK_TOWN: NEW_BARK_TOWN,
   ELMS_LAB: ELMS_LAB,
-  PLAYERS_HOUSE_1F: { metadata: PLAYERS_HOUSE_1F, collisionAt: getPlayersHouse1FCollisionAtMetatile },
+  PLAYERS_HOUSE_1F: PLAYERS_HOUSE_1F,
   PLAYERS_HOUSE_2F: PLAYERS_HOUSE_2F,
   ELMS_HOUSE: ELMS_HOUSE,
   PLAYERS_NEIGHBORS_HOUSE: PLAYERS_NEIGHBORS_HOUSE,
