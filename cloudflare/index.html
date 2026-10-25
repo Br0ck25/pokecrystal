@@ -31,10 +31,11 @@
     }
     main {
       width: min(100%, 560px);
+      max-height: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: clamp(8px, 2dvh, 16px);
+      gap: clamp(8px, 1.5dvh, 14px);
     }
     .device {
       width: 100%;
@@ -69,6 +70,7 @@
       border: 2px solid #090f12;
       background: #d9e8c8;
       box-shadow: 0 0 0 1px #526b58;
+      contain: strict;
     }
     canvas {
       display: block;
@@ -152,6 +154,18 @@
       font-weight: 650;
     }
     #status[data-kind="hint"] { background: #e4ebd6; }
+    @media (max-height: 820px) and (orientation: portrait) {
+      body { align-items: flex-start; }
+      main { gap: 7px; }
+      .device { padding: 10px; }
+      .screen-bezel { padding: 6px; }
+      .controls-row { padding-top: 1px; }
+      .dpad { grid-template-columns: repeat(3, clamp(34px, 9vw, 44px)); grid-template-rows: repeat(3, clamp(34px, 9vw, 44px)); }
+      .action { width: clamp(46px, 12vw, 56px); height: clamp(46px, 12vw, 56px); }
+      .system-keys { padding-top: 4px; }
+      .system-keys span { margin-top: 13px; }
+      #status { min-height: 2em; padding: 7px 9px; font-size: 12px; }
+    }
     @media (max-height: 720px) and (orientation: landscape) {
       body { align-items: flex-start; }
       main { width: min(58vw, 560px); }
