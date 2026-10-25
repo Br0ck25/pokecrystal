@@ -19,7 +19,8 @@ import { HOUSE_METATILE_TILES } from './maps/house-metatiles.js';
 import { LAB_METATILE_TILES } from './maps/lab-metatiles.js';
 import { PLAYERS_HOUSE_METATILE_TILES } from './maps/players-house-metatiles.js';
 import { PLAYERS_ROOM_METATILE_TILES } from './maps/players-room-metatiles.js';
-import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './maps/tileset-palette-data.js';
+import { TILE_PALETTE_MAPS } from './generated/palettes.js';
+import { mapBgPalettes } from './maps/map-palettes.js';
 import { isPreviewCollisionWalkable } from './maps/new-bark-town-movement.js';
 import { getTilesetCollision } from './maps/tileset-collision.js';
 import { LAB_STARTERS, getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit } from './maps/starter-selection.js';
@@ -32,7 +33,7 @@ import { CRYSTAL_EXTRA_SPRITES } from './assets/source-sprites.js';
 test('interior maps use their source tilesets rather than a similar-looking substitute', () => {
  assert.equal(PLAYERS_HOUSE_1F.tileset, 'PLAYERS_HOUSE');
  assert.equal(PLAYERS_HOUSE_2F.tileset, 'PLAYERS_ROOM');
- assert.equal(ELMS_HOUSE.tileset, 'HOUSE');
+ assert.equal(ELMS_HOUSE.tileset, 'PLAYERS_HOUSE');
  assert.equal(PLAYERS_NEIGHBORS_HOUSE.tileset, 'HOUSE');
 });
 
@@ -131,7 +132,7 @@ test('each map records its original source tileset instead of assuming Johto eve
  assert.equal(ELMS_LAB.tileset, 'LAB');
  assert.equal(PLAYERS_HOUSE_1F.tileset, 'PLAYERS_HOUSE');
  assert.equal(PLAYERS_HOUSE_2F.tileset, 'PLAYERS_ROOM');
- assert.equal(ELMS_HOUSE.tileset, 'HOUSE');
+ assert.equal(ELMS_HOUSE.tileset, 'PLAYERS_HOUSE');
  assert.equal(PLAYERS_NEIGHBORS_HOUSE.tileset, 'HOUSE');
 });
 
@@ -140,11 +141,13 @@ test('each supported map tileset has source metatile graphics and palette assign
  for (const [name, table] of Object.entries({ johto: JOHTO_METATILE_TILES, house: HOUSE_METATILE_TILES, lab: LAB_METATILE_TILES, players_house: PLAYERS_HOUSE_METATILE_TILES, players_room: PLAYERS_ROOM_METATILE_TILES })) {
   assert.ok(table.length > 0, `${name} has no source metatiles`);
   assert.ok(table.every(tile => tile.length === 16), `${name} has a malformed metatile`);
-  assert.equal(TILESET_PALETTE_LABELS[name][0].length, 96, `${name} tile palette bank 0`);
-  assert.equal(TILESET_PALETTE_LABELS[name][1].length, 96, `${name} tile palette bank 1`);
+  assert.equal(TILE_PALETTE_MAPS[name.toUpperCase()][0].length, 96, `${name} tile palette bank 0`);
+  assert.equal(TILE_PALETTE_MAPS[name.toUpperCase()][1].length, 96, `${name} tile palette bank 1`);
  }
- assert.equal(CRYSTAL_PALETTES.day.RED.length, 4);
- assert.equal(CRYSTAL_PALETTES.indoor.BROWN.length, 4);
+ for (const id of ['NEW_BARK_TOWN', 'ELMS_LAB', 'PLAYERS_HOUSE_1F', 'PLAYERS_HOUSE_2F', 'ELMS_HOUSE', 'PLAYERS_NEIGHBORS_HOUSE']) {
+  assert.equal(mapBgPalettes(id).length, 8, id);
+  for (const palette of mapBgPalettes(id)) assert.equal(palette.length, 4);
+ }
  assert.ok(HOUSE_METATILE_TILES.length > Math.max(...PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS));
 });
 

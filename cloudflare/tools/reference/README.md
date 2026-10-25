@@ -14,6 +14,8 @@ Run (from cloudflare/, with the app served at http://localhost:8765, e.g. `pytho
 
     python3 tools/reference/audit.py --build /path/to/scratch/repo --out /path/to/scratch/out
 
+A case may set RAM before warping, e.g. `"ram": {"wElmsLabSceneID": 2}` to skip the Elm intro cutscene.
+
 `audit.py` starts a new game in the emulator, warps it into each case in `cases.json` (map + warp number) exactly as a door does, reads the game's own arrival
 coordinates, screenshots the same map/position in the app (`?map=&x=&y=&facing=`), and writes
 side-by-side images plus a per-8x8-tile difference report.

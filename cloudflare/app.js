@@ -13,7 +13,7 @@ import { HOUSE_TILESET_PNG_BASE64 } from './src/assets/house-tileset.js';
 import { LAB_TILESET_PNG_BASE64 } from './src/assets/lab-tileset.js';
 import { PLAYERS_HOUSE_TILESET_PNG_BASE64 } from './src/assets/players_house-tileset.js';
 import { PLAYERS_ROOM_TILESET_PNG_BASE64 } from './src/assets/players_room-tileset.js';
-import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './src/maps/tileset-palette-data.js';
+import { mapBgPalettes, tilePaletteIndex, tilePngIndex } from './src/maps/map-palettes.js';
 import { canPreviewEnterOrWarp } from './src/maps/new-bark-town-movement.js';
 import { MAPS } from './src/generated/maps.js';
 import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT, SPRITE_Y_OFFSET, getCameraTransform, integerRenderScale } from './src/maps/viewport.js';
@@ -67,31 +67,28 @@ for (const [name, base64] of Object.entries({ CYNDAQUIL: CRYSTAL_EXTRA_SPRITES.C
   image.onerror = () => console.error('[Pokémon Crystal preview] Could not decode starter art:', name);
   image.src = 'data:image/png;base64,' + base64;
 }
-const paletteMapKey = { JOHTO: 'johto', HOUSE: 'house', LAB: 'lab', PLAYERS_HOUSE: 'players_house', PLAYERS_ROOM: 'players_room' };
-function colorizeTileset(image, tileset) {
+// Recolor a tileset PNG (96 bank-0 tiles then 96 bank-1 tiles) for one map: each tile gets its palette from the
+// tileset's palette map and the map's BG palettes (src/maps/map-palettes.js).
+function colorizeTileset(image, mapId) {
+  const tileset = MAPS[mapId].tileset;
+  const palettes = mapBgPalettes(mapId);
   const canvas = document.createElement('canvas');
   canvas.width = image.naturalWidth;
   canvas.height = image.naturalHeight;
-  const paletteKey = paletteMapKey[tileset];
-  const tilePalettes = TILESET_PALETTE_LABELS[paletteKey];
-  const paletteSet = tileset === 'JOHTO' ? CRYSTAL_PALETTES.day : CRYSTAL_PALETTES.indoor;
-  if (!tilePalettes || !paletteSet) return image;
   const colorCtx = canvas.getContext('2d', { willReadFrequently: true });
   if (!colorCtx || !canvas.width || !canvas.height) return image;
   colorCtx.drawImage(image, 0, 0);
   const frame = colorCtx.getImageData(0, 0, canvas.width, canvas.height);
+  const tilesPerRow = canvas.width / 8;
   for (let y = 0; y < canvas.height; y++) {
     for (let x = 0; x < canvas.width; x++) {
       const i = (y * canvas.width + x) * 4;
-      if (frame.data[i + 3] === 0) continue;
-      const tileIndex = Math.floor(y / 8) * 16 + Math.floor(x / 8);
-      const bank = tileIndex >= 96 ? 1 : 0;
-      const paletteName = tilePalettes[bank]?.[tileIndex % 96] || 'GRAY';
-      const shades = paletteSet[paletteName] || paletteSet.GRAY;
+      const pngIndex = Math.floor(y / 8) * tilesPerRow + Math.floor(x / 8);
+      const id = pngIndex < 0x60 ? pngIndex : pngIndex - 0x60 + 0x80;   // inverse of tilePngIndex
+      const palette = palettes[tilePaletteIndex(tileset, id)];
       const luminance = (frame.data[i] + frame.data[i + 1] + frame.data[i + 2]) / 3;
-      const shade = Math.max(0, Math.min(3, Math.round((255 - luminance) / 85)));
-      const rgb = shades[shade];
-      frame.data[i] = rgb[0]; frame.data[i + 1] = rgb[1]; frame.data[i + 2] = rgb[2];
+      const rgb = palette[Math.max(0, Math.min(3, Math.round((255 - luminance) / 85)))];
+      frame.data[i] = rgb[0]; frame.data[i + 1] = rgb[1]; frame.data[i + 2] = rgb[2]; frame.data[i + 3] = 255;
     }
   }
   colorCtx.putImageData(frame, 0, 0);
@@ -107,13 +104,16 @@ for (const [tileset, base64] of Object.entries({
   const image = new Image();
   image.onload = () => {
     try {
-      renderedTilesets[tileset] = colorizeTileset(image, tileset);
+      // Colors depend on the map (roof palette), so each map that uses this tileset gets its own colorized copy.
+      for (const [mapId, map] of Object.entries(maps)) {
+        if (map.metadata.tileset === tileset) renderedTilesets[mapId] = colorizeTileset(image, mapId);
+      }
       draw();
-      if (!bootErrorReported && renderedTilesets[activeMap().metadata.tileset]) {
+      if (!bootErrorReported && renderedTilesets[currentMapId]) {
         setHint('Move with arrows / WASD. Face a person or object, then press A.');
       }
     } catch (error) {
-      renderedTilesets[tileset] = image;
+      for (const [mapId, map] of Object.entries(maps)) if (map.metadata.tileset === tileset) renderedTilesets[mapId] = image;
       draw();
       reportBootError('Palette processing failed; showing the unmodified source tiles. ' + (error?.message || error));
     }
@@ -199,7 +199,7 @@ function drawMap() {
   const current = activeMap();
   const d = current.metadata.dimensions;
   const tileset = current.metadata.tileset;
-  const source = renderedTilesets[tileset];
+  const source = renderedTilesets[currentMapId];
   const metatiles = metatilesByTileset[tileset];
   if (!source || !metatiles) return;
   // Everything the screen can show: the map's blocks, with the source border block outside them.
@@ -213,8 +213,9 @@ function drawMap() {
       const tiles = metatiles[blockId];
       if (!tiles) continue;
       for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 4; tx++) {
-        const id = tiles[ty * 4 + tx];
-        const sx = (id % 16) * 8, sy = Math.floor(id / 16) * 8;
+        const index = tilePngIndex(tiles[ty * 4 + tx]);
+        if (index === null) continue;
+        const sx = (index % 16) * 8, sy = Math.floor(index / 16) * 8;
         ctx.drawImage(source, sx, sy, 8, 8, bx * 32 + tx * 8, by * 32 + ty * 8, 8, 8);
       }
     }
@@ -341,7 +342,7 @@ function draw() {
   ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
   ctx.fillStyle = '#202020';
   ctx.fillRect(0, 0, GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT);
-  if (!renderedTilesets[activeMap().metadata.tileset]) {
+  if (!renderedTilesets[currentMapId]) {
     ctx.fillStyle = '#e8e8e8';
     ctx.fillRect(0, 0, GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT);
     ctx.fillStyle = '#202020';

@@ -25,7 +25,7 @@ const MAPS = [
   { map: ELMS_LAB, blocks: ELMS_LAB_BLOCK_IDS, collisionAt: getElmsLabCollisionAtMetatile, tiles: LAB_METATILE_TILES, spawn: [4, 10] },
   { map: PLAYERS_HOUSE_1F, blocks: PLAYERS_HOUSE_1F_BLOCK_IDS, collisionAt: getPlayersHouse1FCollisionAtMetatile, tiles: PLAYERS_HOUSE_METATILE_TILES, spawn: [6, 6] },
   { map: PLAYERS_HOUSE_2F, blocks: PLAYERS_HOUSE_2F_BLOCK_IDS, collisionAt: getPlayersHouse2FCollisionAtMetatile, tiles: PLAYERS_ROOM_METATILE_TILES, spawn: [3, 3] },
-  { map: ELMS_HOUSE, blocks: ELMS_HOUSE_BLOCK_IDS, collisionAt: getElmsHouseCollisionAtMetatile, tiles: HOUSE_METATILE_TILES, spawn: [3, 6] },
+  { map: ELMS_HOUSE, blocks: ELMS_HOUSE_BLOCK_IDS, collisionAt: getElmsHouseCollisionAtMetatile, tiles: PLAYERS_HOUSE_METATILE_TILES, spawn: [3, 6] },
   { map: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, tiles: HOUSE_METATILE_TILES, spawn: [2, 6] },
 ];
 

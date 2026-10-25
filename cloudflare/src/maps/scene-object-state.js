@@ -1,3 +1,7 @@
+import { MAPS } from '../generated/maps.js';
+import { EVENTS, INITIAL_EVENT_FLAGS } from '../generated/events.js';
+import { sourceObjectAt, TIME_OF_DAY } from './object-sprites.js';
+
 /**
  * Resolve runtime object state that differs from static map event coordinates.
  * Keep this pure so movement, rendering, and interaction tests can share it.
@@ -14,15 +18,29 @@ export function resolveSceneObjectPosition(mapId, object, state = {}) {
   return { x: object.x, y: object.y };
 }
 
+/**
+ * Event flags in effect: the new-game flags (InitializeEventsScript) adjusted for what the port's scenes have
+ * done so far. Remove the adjustments as scripts start setting and clearing flags themselves.
+ */
+export function activeEventFlags(state = {}) {
+  const flags = new Set(INITIAL_EVENT_FLAGS);
+  const ball = state.starterBall && EVENTS.ElmsLab.objects.find((o) => o.id === state.starterBall);
+  if (ball) flags.add(ball.eventFlag);                         // taking a starter sets its *_POKEBALL_IN_ELMS_LAB flag
+  if (state.officerVisible === true) flags.delete('EVENT_COP_IN_ELMS_LAB');
+  return flags;
+}
+
+/**
+ * An object_event is shown unless its event flag is set (macros/scripts/maps.asm: the flag hides it; -1 means
+ * always present) and, for time-of-day objects, only in the listed times. Objects without a source event, and
+ * numeric hour windows, which no ported map uses yet, are not shown.
+ */
 export function isSceneObjectVisible(mapId, object, state = {}) {
   if (!object) return false;
-  // engine/overworld/decorations.asm ToggleDecorationsVisibility hides the console, both ornaments and the
-  // big doll (it sets their EVENT_PLAYERS_HOUSE_2F_* flags) unless the matching wDeco* is owned; a new
-  // game owns none of them (wDecoConsole, wDecoLeftOrnament, wDecoRightOrnament, wDecoBigDoll are all 0).
-  if (mapId === 'PLAYERS_HOUSE_2F') return false;
-  if (mapId === 'NEW_BARK_TOWN' && object.appearsWhen === 'EVENT_RIVAL_NEW_BARK_TOWN' && !state.starter) return false;
-  if (mapId === 'ELMS_LAB' && object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starterBall === object.id) return false;
-  if (mapId === 'ELMS_LAB' && object.id === 'ELMSLAB_OFFICER' && state.officerVisible !== true) return false;
-  if (mapId === 'ELMS_LAB' && object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter) return false;
-  return true;
+  const source = sourceObjectAt(MAPS[mapId]?.name, object.x, object.y);
+  if (!source) return false;
+  if (source.eventFlag !== '-1' && activeEventFlags(state).has(source.eventFlag)) return false;
+  const [from, until] = source.hours;
+  if (from === -1) return until === -1 || String(until).split('|').map((t) => t.trim()).includes(TIME_OF_DAY.toUpperCase());
+  throw new Error(`hour-limited object ${source.id} (${from}-${until}) is not supported yet`);
 }

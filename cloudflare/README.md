@@ -6,7 +6,9 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 
 ## Files
 
-- `tools/extract-browser-data.mjs` — dev-time generator (`npm run extract`). Reads the disassembly's `maps/*.blk`, `data/tilesets/*_metatiles.bin`, `*_collision.asm` and map/tileset tables and writes `src/generated/maps.js` (all 388 maps) and `src/generated/tilesets.js` (all tilesets). Generated files are committed and checked for staleness by `src/generated.test.js`; never edit them by hand.
+- `tools/extract-browser-data.mjs` — dev-time generator (`npm run extract`). Reads the disassembly's `maps/*.blk`, `data/tilesets/*_metatiles.bin`, `*_collision.asm` and map/tileset tables and writes `src/generated/maps.js` (all 388 maps) and `src/generated/tilesets.js` (all tilesets). Beyond maps and tilesets it also generates `events.js` (every map's warps, coord/bg/object events and the new-game event flags), `sprites.js` (all overworld sprites, their default palettes and the NPC palettes), `palettes.js` (BG palettes, environment colors, special-tileset palettes and every tileset's tile-palette map) and `roofs.js`. Generated files are committed and checked for staleness by `src/generated.test.js`; never edit them by hand.
+- `tools/reference/` — dev-time harness that diffs the port against the real game (a locally built ROM in a headless emulator, never committed); see its README. As of this commit the player's house (both floors) and the neighbor's house match the game pixel for pixel; New Bark Town, Elm's Lab and Elm's House differ only by moving NPCs, animated tiles and the connected-map strips beyond the town's edges.
+- `src/maps/object-sprites.js`, `src/maps/map-palettes.js` — sprite palettes/frames and map palettes/tile-graphics lookup, all from the generated source data.
 - `src/runtime.js` — renderer sizing and runtime state primitives.
 - `src/runtime.test.js` — tests for state, collision adapter behavior, transitions, and local saves.
 - `src/maps/new-bark-town.js` — source-derived New Bark Town dimensions, warp events, coordinate events, signs, NPC positions, and map callback metadata.

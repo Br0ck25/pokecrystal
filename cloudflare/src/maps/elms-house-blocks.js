@@ -10,5 +10,5 @@ export function getElmsHouseBlockAtMetatile(x,y){
 }
 export function getElmsHouseCollisionAtMetatile(x,y){
  const blockId=getElmsHouseBlockAtMetatile(x,y);
- return blockId===null?null:getTilesetCollision('HOUSE',blockId,(y%2)*2+(x%2));
+ return blockId===null?null:getTilesetCollision('PLAYERS_HOUSE',blockId,(y%2)*2+(x%2));
 }

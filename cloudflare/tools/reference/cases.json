@@ -3,7 +3,7 @@
   {"id": "NEW_BARK_TOWN", "warp": 2},
   {"id": "NEW_BARK_TOWN", "warp": 3},
   {"id": "NEW_BARK_TOWN", "warp": 4},
-  {"id": "ELMS_LAB", "warp": 1},
+  {"id": "ELMS_LAB", "warp": 1, "ram": {"wElmsLabSceneID": 2}},
   {"id": "PLAYERS_HOUSE_1F", "warp": 1},
   {"id": "PLAYERS_HOUSE_1F", "warp": 3},
   {"id": "PLAYERS_HOUSE_2F", "warp": 1},

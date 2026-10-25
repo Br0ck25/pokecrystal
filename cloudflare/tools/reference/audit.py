@@ -65,6 +65,7 @@ clean = io.BytesIO(); ref.pb.save_state(clean)   # each case starts from the sam
 roms = []
 for c in cases:
     clean.seek(0); ref.pb.load_state(clean)
+    for var, value in c.get('ram', {}).items(): ref.wr(var, value)   # e.g. {"wElmsLabSceneID": 2} skips the intro cutscene
     group, num = ids[c['id']]
     ref.warp_in(group, num, c['warp'])
     assert (ref.rd('wMapGroup'), ref.rd('wMapNumber')) == (group, num), c
