@@ -142,6 +142,10 @@ function resizeCanvasForMap() {
   const d = activeMap().metadata.dimensions;
   canvas.width = d.metatilesWide * TILE;
   canvas.height = d.metatilesHigh * TILE;
+  // Preserve the source map's aspect ratio on the Pixel 9 instead of stretching
+  // every interior into the outdoor map's 10:9 shape.
+  const screen = document.querySelector('.screen');
+  if (screen) screen.style.aspectRatio = `${d.metatilesWide} / ${d.metatilesHigh}`;
 }
 function setHint(text) {
   status.textContent = text;
@@ -415,5 +419,5 @@ window.addEventListener('blur', () => keys.clear());
 // "source" image: every map chooses its own tileset in drawMap().
 resizeCanvasForMap();
 draw();
-setHint('Move with arrows / WASD. Face a sign or person, then press A.');
+setHint('NEW BARK TOWN');
 requestAnimationFrame(frame);
