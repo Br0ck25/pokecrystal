@@ -12,7 +12,7 @@ import { ELMS_HOUSE } from './maps/elms-house.js';
 import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './maps/elms-house-blocks.js';
 import { PLAYERS_NEIGHBORS_HOUSE } from './maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './maps/players-neighbors-house-blocks.js';
-import { isPreviewCollisionWalkable } from './maps/new-bark-town-movement.js';
+import { canPreviewEnterOrWarp, isPreviewCollisionWalkable } from './maps/new-bark-town-movement.js';
 import { resolveSceneObjectPosition } from './maps/scene-object-state.js';
 import { JOHTO_METATILE_TILES } from './maps/johto-metatiles.js';
 import { HOUSE_METATILE_TILES } from './maps/house-metatiles.js';
@@ -80,6 +80,39 @@ test('every declared warp is in bounds and has a walkable adjacent tile on both 
           && isPreviewCollisionWalkable(collisionAt(x,y));
       });
       assert.ok(approachable, map.id + ' warp cannot be reached at ' + warp.x + ',' + warp.y);
+    }
+  }
+});
+
+
+function reachableCells(map, collisionAt, start) {
+  const queue = [start];
+  const visited = new Set([start.join(',')]);
+  for (let i = 0; i < queue.length; i++) {
+    const [x, y] = queue[i];
+    for (const [dx, dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+      const nx = x + dx, ny = y + dy;
+      const key = nx + ',' + ny;
+      if (visited.has(key)) continue;
+      if (!canPreviewEnterOrWarp(nx, ny, map.dimensions.metatilesWide, map.dimensions.metatilesHigh, collisionAt, map.warps)) continue;
+      visited.add(key);
+      queue.push([nx, ny]);
+    }
+  }
+  return visited;
+}
+
+test('all doors and visible NPC interaction positions are reachable from each scene entry', () => {
+  for (const { map, collisionAt, spawn } of MAPS) {
+    const reachable = reachableCells(map, collisionAt, spawn);
+    for (const warp of map.warps || []) {
+      assert.ok(reachable.has(warp.x + ',' + warp.y), map.id + ' door is cut off by collision at ' + warp.x + ',' + warp.y);
+    }
+    for (const object of map.objects || []) {
+      if (object.id?.startsWith('ELMSLAB_POKE_BALL') || /DOLL|CONSOLE/.test(object.id || '')) continue;
+      const position = resolveSceneObjectPosition(map.id, object, { labIntroComplete: false }) || { x: object.x, y: object.y };
+      const canApproach = [[0,-1],[1,0],[0,1],[-1,0]].some(([dx,dy]) => reachable.has((position.x + dx) + ',' + (position.y + dy)));
+      assert.ok(canApproach, map.id + ' NPC ' + object.id + ' is unreachable from entry');
     }
   }
 });
