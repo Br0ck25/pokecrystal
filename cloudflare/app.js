@@ -341,36 +341,37 @@ function showDialogue(speaker, text) {
   status.dataset.kind = 'dialogue';
 }
 function interact() {
+  if (state.starterReveal) { state.starterReveal = null; draw(); }
   if (state.pendingStarter) {
     if (state.pendingStarter === 'LAB_INTRO') {
       if (state.labIntroStage === 0) {
         if (!state.choiceYes) {
-          showDialogue('PROF. ELM', "But… Please, I need your help!\\n\\n▶ YES       NO");
+          showDialogue('PROF. ELM', "But… Please, I need your help!\n\n▶ YES       NO");
           return;
         }
         state.labIntroStage = 1;
-        showDialogue('PROF. ELM', "Thanks, <PLAYER>!\\n\\nYou're a great help!");
+        showDialogue('PROF. ELM', "Thanks, <PLAYER>!\n\nYou're a great help!");
         return;
       }
       if (state.labIntroStage === 1) {
         state.labIntroStage = 2;
-        showDialogue('PROF. ELM', "When I announce my findings, I'm sure we'll delve a bit deeper into the many mysteries of POKéMON.\\n\\nYou can count on it!");
+        showDialogue('PROF. ELM', "When I announce my findings, I'm sure we'll delve a bit deeper into the many mysteries of POKéMON.\n\nYou can count on it!");
         return;
       }
       if (state.labIntroStage === 2) {
         state.labIntroStage = 3;
-        showDialogue('PROF. ELM', "Oh, hey! I got an e-mail!\\n\\n<……><……><……>\\nHm… Uh-huh…\\n\\nOkay…");
+        showDialogue('PROF. ELM', "Oh, hey! I got an e-mail!\n\n<……><……><……>\nHm… Uh-huh…\n\nOkay…");
         return;
       }
       if (state.labIntroStage === 3) {
         state.labIntroStage = 4;
-        showDialogue('PROF. ELM', "Hey, listen. I have an acquaintance called MR. POKéMON. He keeps finding weird things and raving about his discoveries.\\n\\nAnyway, I just got an e-mail from him saying that this time it's real. It is intriguing, but we're busy with our POKéMON research…\\n\\nWait! I know! <PLAYER>, can you go in our place?");
+        showDialogue('PROF. ELM', "Hey, listen. I have an acquaintance called MR. POKéMON. He keeps finding weird things and raving about his discoveries.\n\nAnyway, I just got an e-mail from him saying that this time it's real. It is intriguing, but we're busy with our POKéMON research…\n\nWait! I know! <PLAYER>, can you go in our place?");
         return;
       }
       state.pendingStarter = null;
       state.labIntroStage = 0;
       state.labIntroComplete = true;
-      showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner, <PLAYER>!\\n\\nGo on. Pick one!");
+      showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner, <PLAYER>!\n\nGo on. Pick one!");
       return;
     }
     if (state.choiceYes) {
@@ -378,11 +379,11 @@ function interact() {
       state.starterReveal = state.starter;
       state.starterBall = getLabStarterBallId(state.starter);
       state.pendingStarter = null;
-      showDialogue('PROF. ELM', "I think that's a great POKéMON too!\\n\\n<PLAYER> received " + state.starter + "!");
+      showDialogue('PROF. ELM', "I think that's a great POKéMON too!\n\n<PLAYER> received " + state.starter + "!");
       draw();
     } else {
       state.pendingStarter = null;
-      showDialogue('PROF. ELM', "Think it over carefully.\\n\\nYour partner is important.");
+      showDialogue('PROF. ELM', "Think it over carefully.\n\nYour partner is important.");
       draw();
     }
     return;
@@ -395,9 +396,10 @@ function interact() {
   if (currentMapId === 'ELMS_LAB' && event.type === 'object' && event.id === 'ELMSLAB_ELM') {
     if (!state.labIntroComplete) {
       state.elmTalked = true;
-      showDialogue('PROF. ELM', "ELM: There you are! I needed to ask you a favor.\n\nI'm researching POKéMON and need you to raise one I recently caught. Will you help me?\n\nChoice: YES / NO (left/right, then A)");
       state.pendingStarter = 'LAB_INTRO';
+      state.labIntroStage = 0;
       state.choiceYes = true;
+      showDialogue('PROF. ELM', "ELM: <PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
     } else if (!state.starter) {
       showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner! Go on. Pick one!");
     } else {
