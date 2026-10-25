@@ -12,8 +12,8 @@ export const NEW_BARK_TOWN = Object.freeze({
   dimensions: Object.freeze({
     blocksWide: 10,
     blocksHigh: 9,
-    tilesWide: 20,
-    tilesHigh: 18,
+    metatilesWide: 20,
+    metatilesHigh: 18,
     blockSizeTiles: 2,
   }),
   callbacks: Object.freeze([
