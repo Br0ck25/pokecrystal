@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import {
   NEW_BARK_TOWN_BLOCK_IDS,
   getNewBarkTownBlock,
-  getNewBarkTownBlockAtTile,
-  getNewBarkTownCollisionAtTile,
+  getNewBarkTownBlockAtMetatile,
 } from './maps/new-bark-town-blocks.js';
 
 test('source New Bark Town block file contains exactly 10 by 9 block IDs', () => {
@@ -14,18 +13,11 @@ test('source New Bark Town block file contains exactly 10 by 9 block IDs', () =>
   assert.equal(getNewBarkTownBlock(9, 8), 5);
 });
 
-test('tile coordinates resolve to their containing 2x2 source block', () => {
-  assert.equal(getNewBarkTownBlockAtTile(0, 0), 5);
-  assert.equal(getNewBarkTownBlockAtTile(4, 0), 24);
-  assert.equal(getNewBarkTownBlockAtTile(19, 17), 5);
-  assert.equal(getNewBarkTownBlockAtTile(20, 0), null);
-  assert.equal(getNewBarkTownBlockAtTile(0, 18), null);
-  assert.equal(getNewBarkTownBlockAtTile(-1, 0), null);
-});
-
-
-test('tile collision lookup returns source labels rather than guessed passability', () => {
-  assert.equal(getNewBarkTownCollisionAtTile(0, 0), 'WALL');
-  assert.equal(getNewBarkTownCollisionAtTile(0, 16), 'WALL');
-  assert.equal(getNewBarkTownCollisionAtTile(20, 0), null);
+test('metatile coordinates resolve to their containing 2x2 source block', () => {
+  assert.equal(getNewBarkTownBlockAtMetatile(0, 0), 5);
+  assert.equal(getNewBarkTownBlockAtMetatile(4, 0), 24);
+  assert.equal(getNewBarkTownBlockAtMetatile(19, 17), 5);
+  assert.equal(getNewBarkTownBlockAtMetatile(20, 0), null);
+  assert.equal(getNewBarkTownBlockAtMetatile(0, 18), null);
+  assert.equal(getNewBarkTownBlockAtMetatile(-1, 0), null);
 });
