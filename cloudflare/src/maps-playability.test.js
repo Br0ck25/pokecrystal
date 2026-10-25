@@ -78,3 +78,21 @@ test('doorways remain reachable when source object sprites block movement', () =
     }
   }
 });
+
+test('every readable source sign, radio, PC, bookshelf and lab prop has a reachable approach tile', () => {
+  for (const { map, collision, spawn } of MAPS) {
+    for (const event of map.backgroundEvents || []) {
+      const approaches = [[0,1],[1,0],[0,-1],[-1,0]]
+        .map(([dx,dy]) => ({ x: event.x + dx, y: event.y + dy }))
+        .filter(({x,y}) => x >= 0 && y >= 0
+          && x < map.dimensions.metatilesWide && y < map.dimensions.metatilesHigh
+          && isPreviewCollisionWalkable(collision(x,y))
+          && !(map.objects || []).some(object => object.x === x && object.y === y));
+      assert.ok(approaches.length, map.id + ' background event ' + (event.script || event.kind) + ' has no walkable approach');
+      assert.ok(
+        approaches.some(target => reachable(map, collision, spawn, target, true)),
+        map.id + ' background event ' + (event.script || event.kind) + ' cannot be reached from its scene spawn',
+      );
+    }
+  }
+});
