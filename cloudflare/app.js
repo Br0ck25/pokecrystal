@@ -27,7 +27,7 @@ import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/map
 import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './src/maps/players-neighbors-house-blocks.js';
 import { getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit } from './src/maps/starter-selection.js';
-import { shouldStartElmOpeningScene, canCancelPendingScene, ELM_OPENING_MOVEMENT } from './src/maps/scene-progression.js';
+import { shouldStartElmOpeningScene, canCancelPendingScene, ELM_OPENING_MOVEMENT, ELM_RETURN_TO_STATION_MOVEMENT } from './src/maps/scene-progression.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
 import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
 import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
@@ -577,15 +577,7 @@ function interact() {
       }
       // Source: ElmsLab_ElmToDefaultPositionMovement1/2. Elm moves up,
       // then right twice and up once while the player turns to face him.
-      startScriptedMovement([
-        { actor: 'ELM', direction: 'up' },
-        { actor: 'PLAYER', facing: 'up' },
-        { actor: 'ELM', direction: 'right' },
-        { actor: 'ELM', direction: 'right' },
-        { actor: 'ELM', direction: 'up' },
-        { actor: 'ELM', facing: 'down' },
-        { actor: 'PLAYER', facing: 'right' },
-      ], () => {
+      startScriptedMovement(ELM_RETURN_TO_STATION_MOVEMENT, () => {
         state.pendingStarter = null;
         state.labIntroStage = 0;
         state.labIntroComplete = true;
