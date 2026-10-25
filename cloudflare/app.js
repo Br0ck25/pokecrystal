@@ -3,6 +3,7 @@ import { NEW_BARK_TOWN_BLOCK_IDS, getNewBarkTownCollisionAtMetatile } from './sr
 import { ELMS_LAB, elmLabEventsAt } from './src/maps/elms-lab.js';
 import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './src/maps/elms-lab-blocks.js';
 import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
+import { CRYSTAL_OVERWORLD_SPRITES } from './src/assets/overworld-sprites.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
 import { HOUSE_METATILE_TILES } from './src/maps/house-metatiles.js';
 import { LAB_METATILE_TILES } from './src/maps/lab-metatiles.js';
@@ -41,6 +42,13 @@ window.addEventListener('error', event => reportBootError(event.message || 'A sc
 window.addEventListener('unhandledrejection', event => reportBootError(event.reason?.message || String(event.reason || 'An unexpected error occurred.')));
 const tileSources = {};
 const renderedTilesets = {};
+const overworldSpriteImages = {};
+for (const [name, base64] of Object.entries(CRYSTAL_OVERWORLD_SPRITES)) {
+  const image = new Image();
+  image.onload = () => { overworldSpriteImages[name] = image; draw(); };
+  image.onerror = () => console.error('[Pokémon Crystal preview] Could not decode source sprite:', name);
+  image.src = 'data:image/png;base64,' + base64;
+}
 const paletteMapKey = { JOHTO: 'johto', HOUSE: 'house', LAB: 'lab', PLAYERS_HOUSE: 'players_house', PLAYERS_ROOM: 'players_room' };
 function colorizeTileset(image, tileset) {
   const canvas = document.createElement('canvas');
@@ -161,21 +169,39 @@ function drawMap() {
     }
   }
 }
+function drawSourceSprite(name, x, y, facing = 'down', flip = false) {
+  const image = overworldSpriteImages[name];
+  if (!image || image.naturalWidth < 16 || image.naturalHeight < 96) return false;
+  // The source sheets are six 16x16 poses: down, up, and side, each with
+  // alternating walk frames. Static event sprites use frame zero.
+  const row = facing === 'up' ? 2 : facing === 'left' || facing === 'right' ? 4 : 0;
+  ctx.save();
+  if (flip) {
+    ctx.translate(x + TILE, y);
+    ctx.scale(-1, 1);
+    ctx.drawImage(image, 0, row * TILE, TILE, TILE, 0, 0, TILE, TILE);
+  } else {
+    ctx.drawImage(image, 0, row * TILE, TILE, TILE, x, y, TILE, TILE);
+  }
+  ctx.restore();
+  return true;
+}
 function drawPlayer() {
   const x = state.x * TILE, y = state.y * TILE;
+  if (drawSourceSprite('KRIS', x, y, state.facing, state.facing === 'right')) return;
+  // Visible fallback if an embedded source sprite fails to decode.
   ctx.fillStyle = '#111827'; ctx.fillRect(x + 3, y + 2, 10, 13);
   ctx.fillStyle = '#f1c7a5'; ctx.fillRect(x + 5, y + 3, 6, 6);
   ctx.fillStyle = '#7b3f21'; ctx.fillRect(x + 4, y + 1, 8, 3);
   ctx.fillStyle = '#b72c38'; ctx.fillRect(x + 4, y + 9, 8, 4);
   ctx.fillStyle = '#284d9b'; ctx.fillRect(x + 4, y + 13, 3, 3); ctx.fillRect(x + 9, y + 13, 3, 3);
-  ctx.fillStyle = '#202020';
-  if (state.facing === 'down') { ctx.fillRect(x + 6, y + 5, 1, 1); ctx.fillRect(x + 9, y + 5, 1, 1); }
-  else if (state.facing === 'left') ctx.fillRect(x + 5, y + 5, 2, 1);
-  else if (state.facing === 'right') ctx.fillRect(x + 9, y + 5, 2, 1);
-  else ctx.fillRect(x + 6, y + 3, 4, 1);
 }
 function drawNpc(object) {
   const x = object.x * TILE, y = object.y * TILE;
+  const sourceId = String(object.id || '').toUpperCase();
+  if (sourceId.includes('TEACHER') && drawSourceSprite('TEACHER', x, y, 'down')) return;
+  if (sourceId.includes('FISHER') && drawSourceSprite('FISHER', x, y, 'down')) return;
+  if (sourceId.includes('RIVAL') && drawSourceSprite('RIVAL', x, y, 'right', true)) return;
   const id = String(object.id || object.script || '').toUpperCase();
   if (id.includes('CONSOLE')) {
     ctx.fillStyle = '#24242b'; ctx.fillRect(x + 1, y + 4, 14, 9);
