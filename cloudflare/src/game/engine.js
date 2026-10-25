@@ -7,6 +7,8 @@ import { loadWorld } from './world.js';
 import { createScriptContext } from '../script/context.js';
 import { runScript, createScriptState } from '../script/interpreter.js';
 import { tileLength } from '../script/text.js';
+import { startMenuItems, saveFlow } from './menu.js';
+import { serializeSave, parseSave } from './save.js';
 import { COLLISION_PERMISSIONS, COLLISION_VALUES } from '../generated/collision.js';
 import { SCENES, CALLBACKS } from '../generated/scenes.js';
 import { SPRITES } from '../generated/sprites.js';
@@ -37,8 +39,12 @@ const directionalCarpet = { [COLLISION_VALUES.WARP_CARPET_DOWN]: 'down', [COLLIS
 const WALK_DOWN_TILES = new Set([COLLISION_VALUES.DOOR, COLLISION_VALUES.DOOR_79, COLLISION_VALUES.STAIRCASE, COLLISION_VALUES.CAVE]);
 
 export class Game {
-  constructor({ mapId, x, y, facing = 'down', state = createScriptState() } = {}) {
+  constructor({ mapId, x, y, facing = 'down', state = createScriptState(), prev = { map: null, warp: null }, saveStore = null } = {}) {
     this.state = state;
+    this.saveStore = saveStore;       // { read(): text | null, write(text) }; see save.js
+    this.menu = null;                 // the open start menu: { cursor, lastDir, repeat }
+    this.menuCursor = 0;              // wBattleMenuCursorPosition
+    this.savingInfo = false;          // the save-info box is up (SaveMenu)
     this.frame = 0;
     this.player = { x, y, facing, step: null, parity: 0, queue: [] };
     this.objects = [];
@@ -48,9 +54,15 @@ export class Game {
     this.textboxOpen = false;
     this.emote = null;
     this.unported = new Set();        // script specials the port does not implement yet
-    this.prev = { map: null, warp: null };
+    this.prev = prev;
     this.fade = null;
     this.ready = this.enterMap(mapId, x, y, facing, { newGame: true });
+  }
+
+  /** Continue: a game resumed from a save file's text (see save.js). */
+  static fromSave(text, options = {}) {
+    const { mapId, x, y, facing, prev, state } = parseSave(text);
+    return new Game({ mapId, x, y, facing, state, prev, ...options });
   }
 
   // ---- map entry ----------------------------------------------------------------------------------------------
@@ -179,10 +191,12 @@ export class Game {
   update(input = {}) {
     if (this.loading) return;
     this.frame++;
+    this.state.playFrames = (this.state.playFrames ?? 0) + 1;     // wGameTime*, counted while playing
     if (this.fade) { this.fade.frame++; if (this.fade.frame >= this.fade.frames) this.fade = null; }
     for (const object of this.objects) this.updateActor(object);
     this.updateActor(this.player);
     if (this.runner) { this.updateRunner(input); return; }
+    if (this.menu) { this.updateMenu(input); return; }
     if (this.player.step) return;
     this.idleEvents(input);
   }
@@ -213,6 +227,7 @@ export class Game {
     // engine/overworld/events.asm PlayerEvents: tile events, then the scene script, then the joypad.
     if (this.tileEvents()) return;
     if (this.runScene()) return;
+    if (input.start) { this.menu = { cursor: Math.min(this.menuCursor, startMenuItems(this.state).length - 1), lastDir: null, repeat: 0 }; return; }
     if (input.a && this.interact()) return;
     if (input.dir) this.tryMove(input.dir);
   }
@@ -346,14 +361,14 @@ export class Game {
     for (let guard = 0; guard < 100000; guard++) {
       const r = runner.gen.next(answer);
       answer = undefined;
-      if (r.done) { this.runner = null; return; }
+      if (r.done) { this.runner = null; runner.after?.(r.value); return; }
       const request = r.value;
       switch (request.type) {
         case 'opentext': this.textboxOpen = true; this.lastTextLines = null; break;
         case 'closetext': this.textboxOpen = false; this.lastTextLines = null; break;
         case 'text': runner.wait = { kind: 'text', screens: request.screens, index: 0, chars: this.screenStart(request.screens, 0), timer: 0, ready: false }; this.textboxOpen = true; return;
         case 'waitbutton': case 'promptbutton': runner.wait = { kind: 'button' }; return;
-        case 'yesorno': runner.wait = { kind: 'yesno', cursor: 0 }; return;
+        case 'yesorno': runner.wait = { kind: 'yesno', cursor: 0, x: request.x ?? 14 }; return;   // YesNoBox is at column 14; SaveTheGame_yesorno puts it at 0
         case 'movement': this.beginMovement(request); runner.wait = { kind: 'movement', object: request.object }; return;
         case 'special': this.applySpecial(request.name); break;
         case 'effect': {
@@ -366,6 +381,50 @@ export class Game {
       }
     }
     throw new Error('script did not yield');
+  }
+
+  /** Run a generator of script requests (not a script label), then call after(returnValue). */
+  startFlow(gen, label, after) {
+    this.runner = { gen, wait: null, caller: null, label, after };
+    this.advanceRunner(undefined);
+  }
+
+  // ---- the start menu (engine/menus/start_menu.asm) -----------------------------------------------------------------
+
+  updateMenu(input) {
+    const m = this.menu;
+    const items = startMenuItems(this.state);
+    // JoyTextDelay in a menu: the cursor moves on the press, again after 15 frames held, then every 5.
+    const dir = input.dir === 'up' || input.dir === 'down' ? input.dir : null;
+    if (dir && (dir !== m.lastDir || --m.repeat <= 0)) {
+      m.repeat = dir !== m.lastDir ? 15 : 5;
+      m.cursor = (m.cursor + (dir === 'up' ? -1 : 1) + items.length) % items.length;
+    }
+    m.lastDir = dir;
+    this.menuCursor = m.cursor;
+    if (input.b || input.start) { this.menu = null; return; }
+    if (!input.a) return;
+    const item = items[m.cursor];
+    if (item === 'EXIT') this.menu = null;
+    else if (item === 'SAVE') this.startSave();
+    else this.unported.add(`start menu ${item}`);
+  }
+
+  startSave() {
+    const { state, saveStore } = this;
+    if (!saveStore) { this.unported.add('SAVE without a save store'); return; }
+    let existing = null;
+    try { existing = parseSave(saveStore.read()); } catch { /* nothing stored, or damaged: nothing to overwrite */ }
+    this.menu.hollow = true;
+    this.savingInfo = true;
+    const flow = saveFlow(state, { existing, save: () => saveStore.write(serializeSave(this)) });
+    this.startFlow(flow, 'SaveMenu', (saved) => {
+      this.textboxOpen = false;
+      this.lastTextLines = null;
+      this.savingInfo = false;
+      if (saved) this.menu = null;                             // StartMenu_Save returns 1: leave the menu
+      else this.menu.hollow = false;                           // refused: back to the menu
+    });
   }
 
   screenStart(screens, index) {

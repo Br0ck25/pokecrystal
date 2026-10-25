@@ -1,5 +1,6 @@
 // Browser shell: input, the 60 Hz loop and drawing. The game itself lives in src/game; see src/render for drawing.
 import { Game } from './src/game/engine.js';
+import { browserSaveStore, parseSave } from './src/game/save.js';
 import { Renderer } from './src/render/canvas.js';
 import { integerRenderScale } from './src/maps/viewport.js';
 import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT } from './src/maps/viewport.js';
@@ -33,8 +34,8 @@ new ResizeObserver(resize).observe(screen);
 
 // ---- input: held directions (down, up, left, right take priority in that order) and A/B presses -----------------
 const held = new Set();
-const pressed = { a: false, b: false };
-const buttons = { a: false, b: false };
+const pressed = { a: false, b: false, start: false, select: false };
+const buttons = { a: false, b: false, start: false, select: false };
 const DIRECTION_FOR_KEY = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
 const heldDirection = () => ['down', 'up', 'left', 'right'].find((d) => [...held].some((k) => DIRECTION_FOR_KEY[k] === d)) ?? null;
 
@@ -50,7 +51,7 @@ window.addEventListener('keyup', (e) => {
   const action = getButtonAction(key);
   if (action) buttons[action] = false; else held.delete(key);
 });
-window.addEventListener('blur', () => { held.clear(); buttons.a = buttons.b = false; });
+window.addEventListener('blur', () => { held.clear(); for (const name in buttons) buttons[name] = false; });
 document.querySelectorAll('[data-action]').forEach((button) => {
   const action = button.dataset.action;
   button.addEventListener('pointerdown', (e) => { e.preventDefault(); pressed[action] = true; buttons[action] = true; });
@@ -66,7 +67,9 @@ document.querySelectorAll('[data-move]').forEach((button) => {
 // A new game starts in the player's room (home/... NewGame: PlayersHouse2F at 3,3). Audit hook for tools/reference:
 // ?map=ELMS_LAB&x=4&y=6&facing=up&scene=ElmsLab:2 opens a map at a position (after the new-game setup) with scenes set.
 const query = new URLSearchParams(window.location.search);
-const game = new Game({ mapId: 'PLAYERS_HOUSE_2F', x: 3, y: 3, facing: 'down' });
+const saveStore = browserSaveStore();
+let game = new Game({ mapId: 'PLAYERS_HOUSE_2F', x: 3, y: 3, facing: 'down', saveStore });
+game.state.playerId = Math.floor(Math.random() * 0x10000);   // wPlayerID: told apart from another save file when saving
 window.game = game;                     // for tools and debugging
 if (query.get('name')) game.state.playerName = query.get('name').toUpperCase().slice(0, 7);   // naming screen is not ported
 
@@ -82,10 +85,39 @@ async function start() {
     if (Number.isInteger(x) && Number.isInteger(y)) await game.enterMap(map, x, y, query.get('facing') ?? 'down');
   }
   await renderer.prepare(game.world);
-  status.textContent = 'Move with the arrow keys or WASD. A: Z, E, Enter or Space. B: X or Escape.';
+  status.textContent = 'Move with the arrow keys or WASD. A: Z, E or Space. B: X or Escape. START: Enter (menu, save). SELECT: Shift.';
   status.dataset.kind = 'hint';
   requestAnimationFrame(loop);
 }
+
+// ---- save files: the SAVE command stores in the browser; these buttons move that file in and out -------------------
+document.querySelector('#export-save').addEventListener('click', () => {
+  const text = saveStore.read();
+  if (!text) { status.textContent = 'Nothing to export yet: choose SAVE in the START menu first.'; status.dataset.kind = 'hint'; return; }
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  link.download = `pokemon-crystal-${parseSave(text).state.playerName}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+const importFile = document.querySelector('#import-file');
+document.querySelector('#import-save').addEventListener('click', () => importFile.click());
+importFile.addEventListener('change', async () => {
+  const [file] = importFile.files;
+  importFile.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    parseSave(text);                                              // refuse anything that is not a valid save before replacing the game
+    saveStore.write(text);
+    game = Game.fromSave(text, { saveStore });
+    window.game = game;
+    await game.ready;
+    await renderer.prepare(game.world);
+    status.textContent = `Loaded the save of ${game.state.playerName}.`;
+    status.dataset.kind = 'hint';
+  } catch (e) { showError(e.message); }
+});
 
 // ?manual=1: tools/reference/play drives game.update itself, so the real-time loop must not also advance it.
 let manual = query.get('manual') === '1';
@@ -100,8 +132,8 @@ function loop(now) {
   lastTime = now;
   while (!manual && accumulator >= 1000 / 60) {
     accumulator -= 1000 / 60;
-    game.update({ dir: heldDirection(), a: pressed.a, b: pressed.b, aHeld: buttons.a, bHeld: buttons.b });
-    pressed.a = pressed.b = false;
+    game.update({ dir: heldDirection(), a: pressed.a, b: pressed.b, start: pressed.start, aHeld: buttons.a, bHeld: buttons.b });
+    for (const name in pressed) pressed[name] = false;
   }
   if (!game.loading && game.world.id !== preparedMap) {
     preparedMap = game.world.id;

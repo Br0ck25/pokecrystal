@@ -1,0 +1,9 @@
+{"steps": [
+ {"wait": 30}, {"shot": "room"},
+ {"press": "start"}, {"wait": 60}, {"shot": "menu"},
+ {"press": "down"}, {"wait": 20}, {"shot": "down1"}, {"press": "down"}, {"wait": 30}, {"shot": "cursor_save"},
+ {"press": "a"}, {"wait": 20}, {"shot": "a_pressed"}, {"wait": 180}, {"shot": "ask"},
+ {"press": "a"}, {"wait": 10}, {"shot": "saving"}, {"wait": 40}, {"shot": "saving2"}, {"wait": 40}, {"shot": "saving3"}, {"wait": 40}, {"shot": "saving4"},
+ {"wait": 40}, {"shot": "s5"}, {"wait": 20}, {"shot": "s6"}, {"wait": 20}, {"shot": "s7"}, {"wait": 20}, {"shot": "s8"}, {"wait": 20}, {"shot": "s9"}, {"wait": 20}, {"shot": "s10"}, {"wait": 20}, {"shot": "s11"},
+ {"wait": 5}, {"shot": "s12"}, {"wait": 5}, {"shot": "s13"}, {"wait": 5}, {"shot": "s14"}, {"wait": 5}, {"shot": "s15"}, {"wait": 5}, {"shot": "s16"}, {"wait": 5}, {"shot": "s17"}
+]}

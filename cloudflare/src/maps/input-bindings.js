@@ -5,8 +5,10 @@ export function normalizeKey(key) {
 
 export function getButtonAction(key) {
   const normalized = typeof key === 'string' ? key.toLowerCase() : key;   // 'Enter' and 'Escape' arrive capitalised
-  if ([' ', 'enter', 'z', 'e'].includes(normalized)) return 'a';
+  if ([' ', 'z', 'e'].includes(normalized)) return 'a';
   if (['x', 'escape', 'backspace'].includes(normalized)) return 'b';
+  if (normalized === 'enter') return 'start';
+  if (normalized === 'shift') return 'select';
   return null;
 }
 

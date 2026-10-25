@@ -3,6 +3,7 @@ import { DIRECTIONS } from '../game/engine.js';
 import { SPRITES } from '../generated/sprites.js';
 import { objectPaletteIndex, spriteFrame, PLAYER_SPRITE } from '../maps/object-sprites.js';
 import { tileLength, takeTiles } from '../script/text.js';
+import { startMenuView, saveInfoView } from '../game/menu.js';
 import { PLAYER_SCREEN_X, PLAYER_SCREEN_Y, SPRITE_Y_OFFSET } from '../maps/viewport.js';
 
 const TILE = 16;
@@ -65,6 +66,9 @@ export function describeScene(game) {
       textbox.prompt = true;
     } else if (game.lastTextLines) textbox.lines = game.lastTextLines;
   }
-  const yesno = wait?.kind === 'yesno' ? { cursor: wait.cursor, left: 14, top: 7, right: 19, bottom: 11 } : null;
-  return { camera, sprites, textbox, yesno, fade: game.fade, mapId: game.world.id };
+  const yesno = wait?.kind === 'yesno' ? { cursor: wait.cursor, left: wait.x, top: 7, right: wait.x + 5, bottom: 11 } : null;
+  const panels = [];                                                    // boxes of text drawn under the dialogue box
+  if (game.menu) panels.push(startMenuView(game.state, game.menu.cursor, game.menu.hollow));
+  if (game.savingInfo) panels.push(saveInfoView(game.state));
+  return { camera, sprites, panels, textbox, yesno, fade: game.fade, mapId: game.world.id };
 }

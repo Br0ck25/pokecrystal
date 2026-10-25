@@ -18,7 +18,7 @@ const fs = require('fs');
         const frame = (input) => { g.update(input); };
         const settle = async () => { while (g.loading) await new Promise((r) => setTimeout(r, 2)); };
         if (s.hold) for (let i = 0; i < s.frames; i++) { await settle(); frame(dirs.includes(s.hold) ? { dir: s.hold } : { a: s.hold === 'a' && i === 0, b: s.hold === 'b' && i === 0, aHeld: s.hold === 'a', bHeld: s.hold === 'b' }); }
-        else if (s.press) { for (let i = 0; i < 11; i++) { await settle(); frame(i < 3 ? { a: s.press === 'a' && i === 0, b: s.press === 'b' && i === 0, aHeld: s.press === 'a' && i < 3, bHeld: s.press === 'b' && i < 3 } : {}); } }
+        else if (s.press) { for (let i = 0; i < 11; i++) { await settle(); frame(i < 3 ? { dir: dirs.includes(s.press) ? s.press : null, a: s.press === 'a' && i === 0, b: s.press === 'b' && i === 0, start: s.press === 'start' && i === 0, aHeld: s.press === 'a' && i < 3, bHeld: s.press === 'b' && i < 3 } : {}); } }
         else for (let i = 0; i < s.wait; i++) { await settle(); frame({}); }
         await settle();
       }, s);

@@ -188,6 +188,12 @@ export class Renderer {
       else c.drawImage(sheet, 0, s.row * 16, 16, 16, x, y, 16, 16);
       c.restore();
     }
+    for (const panel of scene.panels) {
+      if (panel.clear) { const [x, y, w, h] = panel.clear; this.ctx.fillStyle = `rgb(${textColors[0]})`; this.ctx.fillRect(x * 8, y * 8, w * 8, h * 8); }
+      this.drawBox(...panel.box);
+      for (const [x, y, text] of panel.texts) this.drawText(text, x, y);
+      if (panel.cursor) this.drawText(panel.cursor[2], panel.cursor[0], panel.cursor[1]);
+    }
     if (scene.textbox) {
       this.drawBox(0, 12, 19, 17);
       this.drawText(scene.textbox.lines[0], 1, 14);
