@@ -12,6 +12,7 @@ export const PREVIEW_WALKABLE_COLLISIONS = Object.freeze(new Set([
   'WARP_CARPET_LEFT',
   'WARP_CARPET_RIGHT',
   'WARP_CARPET_DOWN',
+  'STAIRCASE',
 ]));
 
 /** Unknown and special collision labels are blocked until explicitly handled. */
