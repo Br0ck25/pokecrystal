@@ -13,6 +13,6 @@ export function getLabStarterBallId(species) {
   return Object.keys(LAB_STARTERS).find(id => LAB_STARTERS[id].species === species) ?? null;
 }
 
-export function canLeaveLabBeforeStarter(starter) {
+export function mustBlockLabExit(starter) {
   return !starter;
 }
