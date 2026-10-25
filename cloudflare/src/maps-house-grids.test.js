@@ -491,3 +491,37 @@ test('starter choice maps all three source Poké Balls to distinct level-five sp
   assert.ok(getLabStarterPrompt(starter.species), `${starter.species} selection prompt missing`);
  }
 });
+
+test('every source NPC and starter uses a decodable source PNG sprite', () => {
+ const pngDimensions = (base64) => {
+  const bytes = Buffer.from(base64, 'base64');
+  assert.equal(bytes.toString('hex', 0, 8), '89504e470d0a1a0a', 'embedded asset must be a PNG');
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+ };
+ const sheets = { ...CRYSTAL_EXTRA_SPRITES };
+ const sourceObjects = [
+  { id: 'NEWBARKTOWN_TEACHER', sprite: 'SPRITE_TEACHER', expected: 'TEACHER' },
+  { id: 'NEWBARKTOWN_FISHER', sprite: 'SPRITE_FISHER', expected: 'FISHER' },
+  { id: 'NEWBARKTOWN_RIVAL', sprite: 'SPRITE_RIVAL', expected: 'RIVAL' },
+  { id: 'ELMSLAB_ELM', sprite: 'SPRITE_ELM', expected: 'ELM' },
+  { id: 'ELMSLAB_ELMS_AIDE', sprite: 'SPRITE_SCIENTIST', expected: 'SCIENTIST' },
+  { id: 'ELMSLAB_OFFICER', sprite: 'SPRITE_OFFICER', expected: 'OFFICER' },
+  { id: 'MOM', expected: 'MOM' },
+  { id: 'NEIGHBOR', expected: 'POKEFAN_F' },
+  { id: 'DAUGHTER', expected: 'COOLTRAINER_F' },
+  { id: 'ELMSLAB_POKE_BALL1', expected: 'POKE_BALL' },
+ ];
+ for (const object of sourceObjects) {
+  const key = getSourceSpriteForObject(object);
+  assert.equal(key, object.expected, object.id + ' must use its source sprite');
+  assert.ok(sheets[key], object.id + ' source sprite is missing');
+  const { width, height } = pngDimensions(sheets[key]);
+  assert.equal(width, 16, object.id + ' overworld sprite width');
+  assert.equal(height, 96, object.id + ' overworld sprite frame sheet height');
+ }
+ for (const species of ['CYNDAQUIL', 'TOTODILE', 'CHIKORITA']) {
+  const { width, height } = pngDimensions(CRYSTAL_EXTRA_SPRITES[species]);
+  assert.equal(width, 40, species + ' front sprite width');
+  assert.ok(height >= 40, species + ' front sprite must contain at least one frame');
+ }
+});
