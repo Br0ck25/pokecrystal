@@ -39,6 +39,9 @@ test('first lab entry plays Elm source movement from the doorway to the meeting 
   assert.match(app, /function advanceScriptedMovement\(now\)/);
   assert.match(app, /state\.facing = 'left'/);
   assert.match(app, /ELM_OPENING_MOVEMENT/);
+  assert.match(app, /actor: 'ELM', direction: 'right'/);
+  assert.match(app, /state\.elmX \+= delta\[0\]/);
+  assert.match(app, /state\.labIntroComplete = true/);
   assert.doesNotMatch(app, /state\.y = Math\.max\(0, landing\.y - 7\)/);
 });
 
