@@ -9,5 +9,5 @@ export function getPlayersHouse1fBlockAtMetatile(x,y){
 }
 export function getPlayersHouse1FCollisionAtMetatile(x,y){
  const blockId=getPlayersHouse1fBlockAtMetatile(x,y);
- return blockId===null?null:getJohtoMetatileCollision(blockId,(y%2)*2+(x%2));
+ return blockId===null?null:getTilesetCollision('PLAYERS_HOUSE',blockId,(y%2)*2+(x%2));
 }
