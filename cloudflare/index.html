@@ -10,7 +10,9 @@
     main { max-width: 900px; margin: auto; }
     h1 { font-size: 1.4rem; margin-bottom: .4rem; }
     p { color: #cbd5e1; line-height: 1.5; }
-    #status { white-space: pre-line; min-height: 2.8em; margin: 14px 0; padding: 12px 14px; border: 2px solid #64748b; border-radius: 10px; background: #1e293b; color: #f8fafc; line-height: 1.5; overflow-wrap: anywhere; }\n    #status[data-kind="dialogue"] { background: #f8fafc; color: #111827; border-color: #94a3b8; font-weight: 600; }\n    .frame { overflow: auto; border: 1px solid #475569; background: #202020; padding: 12px; }
+    #status { white-space: pre-line; min-height: 2.8em; margin: 14px 0; padding: 12px 14px; border: 2px solid #64748b; border-radius: 10px; background: #1e293b; color: #f8fafc; line-height: 1.5; overflow-wrap: anywhere; }
+    #status[data-kind="dialogue"] { background: #f8fafc; color: #111827; border-color: #94a3b8; font-weight: 600; }
+    .frame { overflow: auto; border: 1px solid #475569; background: #202020; padding: 12px; }
     .controls { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; justify-content: center; margin: 14px auto; touch-action: none; }
     .controls button { min-height: 48px; border: 1px solid #64748b; border-radius: 10px; background: #273449; color: white; font-size: 1.25rem; touch-action: none; }
     .controls button:active { background: #475569; }
@@ -18,6 +20,10 @@
     .controls .left { grid-column: 1; grid-row: 2; }
     .controls .down { grid-column: 2; grid-row: 2; }
     .controls .right { grid-column: 3; grid-row: 2; }
+    .action-controls { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 10px auto 18px; }
+    .action-controls button { width: 64px; height: 64px; border: 2px solid #94a3b8; border-radius: 50%; background: #9f2538; color: #fff; font-size: 1.3rem; font-weight: 800; box-shadow: 0 3px 0 #4c1520; touch-action: manipulation; }
+    .action-controls button[data-action="b"] { background: #2456a6; box-shadow: 0 3px 0 #142e59; }
+    .action-controls button:active { transform: translateY(2px); box-shadow: none; }
     canvas { display: block; width: min(100%, 640px); height: auto; image-rendering: pixelated; image-rendering: crisp-edges; outline: none; }
     small { color: #94a3b8; }
   </style>
@@ -25,9 +31,13 @@
 <body>
   <main>
     <h1>New Bark Town — source map preview</h1>
-    <p>Interactive map preview composed from the source block grid, metatile tile IDs, and tileset image. Use arrow keys or WASD, or the on-screen buttons on a phone, to move the temporary player marker. This is an early movement prototype, not the complete game.</p>
+    <p>Interactive map preview composed from the source block grid, metatile tile IDs, and tileset image. Use arrow keys or WASD to move. On a phone, use the directional pad plus A to interact/confirm and B to cancel/close dialogue. This is an early movement prototype, not the complete game.</p>
     <div class="frame"><canvas id="map" width="320" height="288" aria-label="New Bark Town map rendered from source data"></canvas></div>
     <div class="controls" aria-label="Touch movement controls"><button class="up" data-move="ArrowUp" aria-label="Move up">▲</button><button class="left" data-move="ArrowLeft" aria-label="Move left">◀</button><button class="down" data-move="ArrowDown" aria-label="Move down">▼</button><button class="right" data-move="ArrowRight" aria-label="Move right">▶</button></div>
+    <div class="action-controls" aria-label="Game action buttons">
+      <button type="button" data-action="b" aria-label="B button: cancel or close dialogue">B</button>
+      <button type="button" data-action="a" aria-label="A button: interact or confirm">A</button>
+    </div>
     <p id="status">Rendering source tiles…</p>
     <p><small>Temporary player marker and grayscale preview. Exact source palettes, official player sprite, complete collision semantics, scripts, and map transitions are still in progress.</small></p>
   </main>
