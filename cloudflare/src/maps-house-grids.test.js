@@ -33,6 +33,7 @@ test('all imported house block grids match their source dimensions', () => {
 test('house collision lookups fail closed outside map bounds',()=>{
  assert.equal(getPlayersHouse1FCollisionAtMetatile(-1,0),null);
  assert.equal(getPlayersHouse2FCollisionAtMetatile(8,0),null);
+ assert.equal(isPreviewCollisionWalkable(getPlayersHouse2FCollisionAtMetatile(3,3)), true, 'new game spawn must be walkable');
  assert.equal(getElmsHouseCollisionAtMetatile(0,8),null);
  assert.equal(getPlayersNeighborsHouseCollisionAtMetatile(-1,0),null);
 });
