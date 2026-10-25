@@ -12,6 +12,8 @@ import { PLAYERS_HOUSE_2F, playersHouse2fEventsAt } from './src/maps/players-hou
 import { PLAYERS_HOUSE_2F_BLOCK_IDS, getPlayersHouse2FCollisionAtMetatile } from './src/maps/players-house-2f-blocks.js';
 import { ELMS_HOUSE, elmsHouseEventsAt } from './src/maps/elms-house.js';
 import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/maps/elms-house-blocks.js';
+import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/maps/players-neighbors-house.js';
+import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './src/maps/players-neighbors-house-blocks.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -38,6 +40,7 @@ const maps = {
   PLAYERS_HOUSE_1F: { metadata: PLAYERS_HOUSE_1F, blocks: PLAYERS_HOUSE_1F_BLOCK_IDS, collisionAt: getPlayersHouse1FCollisionAtMetatile, eventsAt: playersHouse1fEventsAt, title: "Your House · 1F" },
   PLAYERS_HOUSE_2F: { metadata: PLAYERS_HOUSE_2F, blocks: PLAYERS_HOUSE_2F_BLOCK_IDS, collisionAt: getPlayersHouse2FCollisionAtMetatile, eventsAt: playersHouse2fEventsAt, title: "Your House · 2F" },
   ELMS_HOUSE: { metadata: ELMS_HOUSE, blocks: ELMS_HOUSE_BLOCK_IDS, collisionAt: getElmsHouseCollisionAtMetatile, eventsAt: elmsHouseEventsAt, title: "Professor Elm's House" },
+  PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House (layout placeholder)" },
 };
 let currentMapId = 'NEW_BARK_TOWN';
 const state = { x: 9, y: 8, facing: 'down' };
