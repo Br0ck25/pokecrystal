@@ -28,6 +28,17 @@ const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
 ctx.imageSmoothingEnabled = false;
 const status = document.querySelector('#status');
+let bootErrorReported = false;
+function reportBootError(message) {
+  bootErrorReported = true;
+  if (status) {
+    status.dataset.kind = 'dialogue';
+    status.textContent = 'The game encountered a startup error. ' + message + ' Refresh the page after the latest deployment finishes.';
+  }
+  console.error('[Pokémon Crystal preview]', message);
+}
+window.addEventListener('error', event => reportBootError(event.message || 'A script failed to load.'));
+window.addEventListener('unhandledrejection', event => reportBootError(event.reason?.message || String(event.reason || 'An unexpected error occurred.')));
 const tileSources = {};
 const renderedTilesets = {};
 const paletteMapKey = { JOHTO: 'johto', HOUSE: 'house', LAB: 'lab', PLAYERS_HOUSE: 'players_house', PLAYERS_ROOM: 'players_room' };
@@ -40,6 +51,7 @@ function colorizeTileset(image, tileset) {
   const paletteSet = tileset === 'JOHTO' ? CRYSTAL_PALETTES.day : CRYSTAL_PALETTES.indoor;
   if (!tilePalettes || !paletteSet) return image;
   const colorCtx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!colorCtx || !canvas.width || !canvas.height) return image;
   colorCtx.drawImage(image, 0, 0);
   const frame = colorCtx.getImageData(0, 0, canvas.width, canvas.height);
   for (let y = 0; y < canvas.height; y++) {
@@ -67,8 +79,21 @@ for (const [tileset, base64] of Object.entries({
   PLAYERS_ROOM: PLAYERS_ROOM_TILESET_PNG_BASE64,
 })) {
   const image = new Image();
+  image.onload = () => {
+    try {
+      renderedTilesets[tileset] = colorizeTileset(image, tileset);
+      draw();
+      if (!bootErrorReported && renderedTilesets[activeMap().metadata.tileset]) {
+        setHint('Move with arrows / WASD. Face a person or object, then press A.');
+      }
+    } catch (error) {
+      renderedTilesets[tileset] = image;
+      draw();
+      reportBootError('Palette processing failed; showing the unmodified source tiles. ' + (error?.message || error));
+    }
+  };
+  image.onerror = () => reportBootError('The embedded ' + tileset + ' tileset image could not be decoded.');
   image.src = 'data:image/png;base64,' + base64;
-  image.onload = () => { renderedTilesets[tileset] = colorizeTileset(image, tileset); draw(); };
   tileSources[tileset] = image;
 }
 const metatilesByTileset = {
@@ -198,7 +223,15 @@ function drawObjects() {
   }
 }
 function draw() {
-  if (!renderedTilesets[activeMap().metadata.tileset]) return;
+  if (!ctx || !activeMap()) return;
+  if (!renderedTilesets[activeMap().metadata.tileset]) {
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#202020';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('Loading map graphics…', 12, 24);
+    return;
+  }
   drawMap();
   drawObjects();
   drawPlayer();
