@@ -258,6 +258,17 @@ test('all three starter images and all required NPC sprite sheets are embedded a
  }
 });
 
+test('Elm, each starter ball, the lab exit, and the healing machine are reachable from the lab entrance', () => {
+ const reachable = reachableTiles(ELMS_LAB, (x,y) => getTilesetCollision('LAB', ELMS_LAB_BLOCK_IDS[Math.floor(y/2)*ELMS_LAB.dimensions.blocksWide+Math.floor(x/2)], (y%2)*2+(x%2)), {x:4,y:10});
+ const interactionReachable = (x,y) => [[x,y-1],[x+1,y],[x,y+1],[x-1,y]].some(([nx,ny]) => reachable.has(nx+','+ny));
+ assert.ok(interactionReachable(3,4), 'Elm must be approachable at the source opening-scene position');
+ for (const ball of ELMS_LAB.objects.filter(object => object.id.startsWith('ELMSLAB_POKE_BALL'))) {
+  assert.ok(interactionReachable(ball.x,ball.y), ball.id + ' must be reachable for starter selection');
+ }
+ assert.ok(reachable.has('4,11') || reachable.has('5,11'), 'lab exit warp tiles must be reachable after choosing a starter');
+ assert.ok(interactionReachable(2,1), 'healing machine must be reachable');
+});
+
 test('source map event coordinates stay within their map bounds', () => {
  const maps = [NEW_BARK_TOWN, ELMS_LAB, PLAYERS_HOUSE_1F, PLAYERS_HOUSE_2F, ELMS_HOUSE, PLAYERS_NEIGHBORS_HOUSE];
  for (const map of maps) {
