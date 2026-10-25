@@ -51,12 +51,24 @@ export function resolvePreviewWarp(sourceMapId, warp, maps = null) {
   // source warp is embedded in wall graphics (notably the player's downstairs
   // staircase). Prefer the source-pair landing only when the computed cell is
   // blocked, and only if the fallback is in-bounds and walkable on that map.
-  if (typeof destinationMap?.collisionAt === 'function'
-      && !isPreviewCollisionWalkable(destinationMap.collisionAt(x, y))) {
-    if (fallback.x < 0 || fallback.y < 0
-        || fallback.x >= d.metatilesWide || fallback.y >= d.metatilesHigh
-        || !isPreviewCollisionWalkable(destinationMap.collisionAt(fallback.x, fallback.y))) return null;
-    return { ...fallback };
+  if (typeof destinationMap?.collisionAt === 'function') {
+    const isUsableLanding = (px, py) => {
+      if (px < 0 || py < 0 || px >= d.metatilesWide || py >= d.metatilesHigh
+          || !isPreviewCollisionWalkable(destinationMap.collisionAt(px, py))) return false;
+      // A landing on an isolated staircase/door tile is technically walkable
+      // but traps the player immediately. Require at least one adjacent floor
+      // tile that is not another warp.
+      return [[0,-1],[1,0],[0,1],[-1,0]].some(([dx,dy]) => {
+        const nx = px + dx, ny = py + dy;
+        if (nx < 0 || ny < 0 || nx >= d.metatilesWide || ny >= d.metatilesHigh) return false;
+        if ((destination.warps || []).some(entry => entry.x === nx && entry.y === ny)) return false;
+        return isPreviewCollisionWalkable(destinationMap.collisionAt(nx, ny));
+      });
+    };
+    if (!isUsableLanding(x, y)) {
+      if (!isUsableLanding(fallback.x, fallback.y)) return null;
+      return { ...fallback };
+    }
   }
   return { mapId: warp.destinationMap, x, y, facing };
 }
