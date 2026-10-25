@@ -4,6 +4,14 @@ import { ELMS_LAB, elmLabEventsAt } from './src/maps/elms-lab.js';
 import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './src/maps/elms-lab-blocks.js';
 import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
+import { HOUSE_METATILE_TILES } from './src/maps/house-metatiles.js';
+import { LAB_METATILE_TILES } from './src/maps/lab-metatiles.js';
+import { PLAYERS_HOUSE_METATILE_TILES } from './src/maps/players-house-metatiles.js';
+import { PLAYERS_ROOM_METATILE_TILES } from './src/maps/players-room-metatiles.js';
+import { HOUSE_TILESET_PNG_BASE64 } from './src/assets/house-tileset.js';
+import { LAB_TILESET_PNG_BASE64 } from './src/assets/lab-tileset.js';
+import { PLAYERS_HOUSE_TILESET_PNG_BASE64 } from './src/assets/players-house-tileset.js';
+import { PLAYERS_ROOM_TILESET_PNG_BASE64 } from './src/assets/players-room-tileset.js';
 import { canPreviewEnterOrWarp } from './src/maps/new-bark-town-movement.js';
 import { resolvePreviewWarp } from './src/maps/preview-warps.js';
 import { PLAYERS_HOUSE_1F, playersHouse1fEventsAt } from './src/maps/players-house-1f.js';
@@ -19,8 +27,26 @@ const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
 ctx.imageSmoothingEnabled = false;
 const status = document.querySelector('#status');
-const source = new Image();
-source.src = 'data:image/png;base64,' + JOHTO_TILESET_PNG_BASE64;
+const tileSources = {};
+for (const [tileset, base64] of Object.entries({
+  JOHTO: JOHTO_TILESET_PNG_BASE64,
+  HOUSE: HOUSE_TILESET_PNG_BASE64,
+  LAB: LAB_TILESET_PNG_BASE64,
+  PLAYERS_HOUSE: PLAYERS_HOUSE_TILESET_PNG_BASE64,
+  PLAYERS_ROOM: PLAYERS_ROOM_TILESET_PNG_BASE64,
+})) {
+  const image = new Image();
+  image.src = 'data:image/png;base64,' + base64;
+  image.onload = draw;
+  tileSources[tileset] = image;
+}
+const metatilesByTileset = {
+  JOHTO: JOHTO_METATILE_TILES,
+  HOUSE: HOUSE_METATILE_TILES,
+  LAB: LAB_METATILE_TILES,
+  PLAYERS_HOUSE: PLAYERS_HOUSE_METATILE_TILES,
+  PLAYERS_ROOM: PLAYERS_ROOM_METATILE_TILES,
+};
 const TILE = 16;
 const maps = {
   NEW_BARK_TOWN: {
@@ -60,12 +86,16 @@ function setHint(text) {
 function drawMap() {
   const current = activeMap();
   const d = current.metadata.dimensions;
+  const tileset = current.metadata.tileset;
+  const source = tileSources[tileset];
+  const metatiles = metatilesByTileset[tileset];
+  if (!source || !source.complete || !source.naturalWidth || !metatiles) return;
   ctx.fillStyle = '#202020';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   for (let by = 0; by < d.blocksHigh; by++) {
     for (let bx = 0; bx < d.blocksWide; bx++) {
       const blockId = current.blocks[by * d.blocksWide + bx];
-      const tiles = JOHTO_METATILE_TILES[blockId];
+      const tiles = metatiles[blockId];
       if (!tiles) continue;
       for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 4; tx++) {
         const id = tiles[ty * 4 + tx];
@@ -89,7 +119,7 @@ function drawPlayer() {
   else ctx.fillRect(x + 6, y + 3, 4, 1);
 }
 function draw() {
-  if (!source.complete || !source.naturalWidth) return;
+  if (!tileSources[activeMap().metadata.tileset]?.complete || !tileSources[activeMap().metadata.tileset]?.naturalWidth) return;
   drawMap();
   drawPlayer();
 }
