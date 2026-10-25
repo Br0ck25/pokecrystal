@@ -75,3 +75,11 @@ test('warp arrival coordinates come from the numbered destination warp entry', (
  assert.deepEqual(downstairs, { mapId: 'PLAYERS_HOUSE_1F', x: 9, y: 1, facing: 'down' });
  assert.equal(resolvePreviewWarp('NEW_BARK_TOWN', { destinationMap: 'ELMS_LAB', destinationWarp: 99 }, maps), null);
 });
+
+
+test('player house interaction metadata keeps source NPC coordinates and dialogue', () => {
+ const neighbor = PLAYERS_HOUSE_1F.objects.find(object => object.id === 'NEIGHBOR');
+ assert.deepEqual({ x: neighbor.x, y: neighbor.y }, { x: 2, y: 2 });
+ assert.match(neighbor.dialogue.join(' '), /adamant about becoming PROF\. ELM's assistant/);
+ assert.equal(PLAYERS_HOUSE_1F.objects.find(object => object.id === 'MOM').x, 7);
+});
