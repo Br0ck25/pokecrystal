@@ -12,7 +12,7 @@ import { PLAYERS_HOUSE_1F_BLOCK_IDS } from './maps/players-house-1f-blocks.js';
 import { PLAYERS_HOUSE_2F_BLOCK_IDS } from './maps/players-house-2f-blocks.js';
 import { ELMS_HOUSE_BLOCK_IDS } from './maps/elms-house-blocks.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS } from './maps/players-neighbors-house-blocks.js';
-import { LAB_STARTERS, getLabStarter, getLabStarterBallId, canLeaveLabBeforeStarter } from './maps/starter-selection.js';
+import { LAB_STARTERS, getLabStarter, getLabStarterBallId, mustBlockLabExit } from './maps/starter-selection.js';
 
 const maps = [NEW_BARK_TOWN, ELMS_LAB, PLAYERS_HOUSE_1F, PLAYERS_HOUSE_2F, ELMS_HOUSE, PLAYERS_NEIGHBORS_HOUSE];
 const grids = {
