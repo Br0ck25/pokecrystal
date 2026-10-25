@@ -3,7 +3,6 @@ import { NEW_BARK_TOWN_BLOCK_IDS, getNewBarkTownCollisionAtMetatile } from './sr
 import { ELMS_LAB, elmLabEventsAt } from './src/maps/elms-lab.js';
 import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './src/maps/elms-lab-blocks.js';
 import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
-import { CRYSTAL_OVERWORLD_SPRITES } from './src/assets/overworld-sprites.js';
 import { CRYSTAL_EXTRA_SPRITES } from './src/assets/source-sprites.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
 import { HOUSE_METATILE_TILES } from './src/maps/house-metatiles.js';
@@ -30,8 +29,9 @@ import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtM
 import { getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit } from './src/maps/starter-selection.js';
 import { shouldStartElmOpeningScene, canCancelPendingScene, ELM_OPENING_MOVEMENT, ELM_RETURN_TO_STATION_MOVEMENT } from './src/maps/scene-progression.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
-import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
-import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
+import { getCardinalStep } from './src/maps/movement-input.js';
+import { SPRITES } from './src/generated/sprites.js';
+import { PLAYER_SPRITE, initialFacing, objectPaletteColors, objectPaletteIndex, recolorSprite, sourceObjectAt, spriteFrame } from './src/maps/object-sprites.js';
 import { getNpcFacingTowardPlayer } from './src/maps/npc-facing.js';
 import { formatSourceText } from './src/maps/source-text.js';
 import { advanceRadioSequence } from './src/maps/radio-sequence.js';
@@ -60,18 +60,11 @@ window.addEventListener('error', event => reportBootError(event.message || 'A sc
 window.addEventListener('unhandledrejection', event => reportBootError(event.reason?.message || String(event.reason || 'An unexpected error occurred.')));
 const tileSources = {};
 const renderedTilesets = {};
-const overworldSpriteImages = {};
 const starterImages = {};
 for (const [name, base64] of Object.entries({ CYNDAQUIL: CRYSTAL_EXTRA_SPRITES.CYNDAQUIL, TOTODILE: CRYSTAL_EXTRA_SPRITES.TOTODILE, CHIKORITA: CRYSTAL_EXTRA_SPRITES.CHIKORITA })) {
   const image = new Image();
   image.onload = () => { starterImages[name] = image; draw(); };
   image.onerror = () => console.error('[Pokémon Crystal preview] Could not decode starter art:', name);
-  image.src = 'data:image/png;base64,' + base64;
-}
-for (const [name, base64] of Object.entries({ ...CRYSTAL_OVERWORLD_SPRITES, ...Object.fromEntries(Object.entries(CRYSTAL_EXTRA_SPRITES).filter(([name]) => ['ELM','MOM','SCIENTIST','OFFICER','POKE_BALL','POKEFAN_F','COOLTRAINER_F','BUG_CATCHER'].includes(name))) })) {
-  const image = new Image();
-  image.onload = () => { overworldSpriteImages[name] = image; draw(); };
-  image.onerror = () => console.error('[Pokémon Crystal preview] Could not decode source sprite:', name);
   image.src = 'data:image/png;base64,' + base64;
 }
 const paletteMapKey = { JOHTO: 'johto', HOUSE: 'house', LAB: 'lab', PLAYERS_HOUSE: 'players_house', PLAYERS_ROOM: 'players_room' };
@@ -252,83 +245,61 @@ function drawCollisionDebugOverlay() {
   }
   ctx.restore();
 }
-function drawSourceSprite(name, x, y, facing = 'down', flip = false, animate = false) {
-  const image = overworldSpriteImages[name];
-  if (!image || image.naturalWidth < 16 || image.naturalHeight < 96) return false;
-  // The source sheets are six 16x16 poses: down, up, and side, each with
-  // alternating walk frames. Static event sprites use frame zero.
-  const row = getSpriteFrameRow(facing, animate ? walkFrame : 0);
+// Overworld sprite sheets are decoded on first use and recolored with the object's palette (see src/maps/object-sprites.js).
+const spriteSheets = {};
+const coloredSprites = {};
+function coloredSprite(spriteConst, paletteIndex) {
+  const key = `${spriteConst}|${paletteIndex}`;
+  if (coloredSprites[key]) return coloredSprites[key];
+  if (!SPRITES[spriteConst]) return null;
+  let sheet = spriteSheets[spriteConst];
+  if (!sheet) {
+    sheet = spriteSheets[spriteConst] = new Image();
+    sheet.onload = () => draw();
+    sheet.onerror = () => console.error('[Pokémon Crystal preview] Could not decode source sprite:', spriteConst);
+    sheet.src = 'data:image/png;base64,' + SPRITES[spriteConst].png;
+  }
+  if (!sheet.complete || !sheet.naturalWidth) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = sheet.naturalWidth;
+  canvas.height = sheet.naturalHeight;
+  const sheetCtx = canvas.getContext('2d', { willReadFrequently: true });
+  sheetCtx.drawImage(sheet, 0, 0);
+  const frame = sheetCtx.getImageData(0, 0, canvas.width, canvas.height);
+  recolorSprite(frame.data, objectPaletteColors(paletteIndex));
+  sheetCtx.putImageData(frame, 0, 0);
+  return (coloredSprites[key] = canvas);
+}
+function drawSprite(spriteConst, paletteIndex, x, y, facing = 'down', step = 0) {
+  const sheet = coloredSprite(spriteConst, paletteIndex);
+  if (!sheet) return;
+  let { row, mirror } = spriteFrame(facing, step);
+  // STANDING and STILL sprites ship fewer frames than WALKING ones; fall back to the standing frame.
+  if ((row + 1) * TILE > sheet.height) ({ row } = spriteFrame(facing, 0));
+  if ((row + 1) * TILE > sheet.height) row = 0;
   y += SPRITE_Y_OFFSET;
   ctx.save();
-  if (flip) {
+  if (mirror) {
     ctx.translate(x + TILE, y);
     ctx.scale(-1, 1);
-    ctx.drawImage(image, 0, row * TILE, TILE, TILE, 0, 0, TILE, TILE);
+    ctx.drawImage(sheet, 0, row * TILE, TILE, TILE, 0, 0, TILE, TILE);
   } else {
-    ctx.drawImage(image, 0, row * TILE, TILE, TILE, x, y, TILE, TILE);
+    ctx.drawImage(sheet, 0, row * TILE, TILE, TILE, x, y, TILE, TILE);
   }
   ctx.restore();
-  return true;
 }
 function drawPlayer() {
-  const x = state.x * TILE, y = state.y * TILE;
-  if (drawSourceSprite('KRIS', x, y, state.facing, state.facing === 'right', true)) return;
-  // Visible fallback if an embedded source sprite fails to decode.
-  ctx.fillStyle = '#111827'; ctx.fillRect(x + 3, y + 2, 10, 13);
-  ctx.fillStyle = '#f1c7a5'; ctx.fillRect(x + 5, y + 3, 6, 6);
-  ctx.fillStyle = '#7b3f21'; ctx.fillRect(x + 4, y + 1, 8, 3);
-  ctx.fillStyle = '#b72c38'; ctx.fillRect(x + 4, y + 9, 8, 4);
-  ctx.fillStyle = '#284d9b'; ctx.fillRect(x + 4, y + 13, 3, 3); ctx.fillRect(x + 9, y + 13, 3, 3);
-}
-function drawNpc(object) {
-  const x = object.x * TILE, y = object.y * TILE;
-  const sourceSprite = getSourceSpriteForObject(object);
-  const facing = object.facing || 'down';
-  if (sourceSprite && drawSourceSprite(sourceSprite, x, y, facing, facing === 'right')) return;
-  const id = String(object.id || object.script || '').toUpperCase();
-  if (id.includes('CONSOLE')) {
-    ctx.fillStyle = '#24242b'; ctx.fillRect(x + 1, y + 4, 14, 9);
-    ctx.fillStyle = '#9aa3af'; ctx.fillRect(x + 3, y + 2, 10, 3);
-    ctx.fillStyle = '#cf3547'; ctx.fillRect(x + 4, y + 6, 2, 2);
-    ctx.fillStyle = '#4a79d0'; ctx.fillRect(x + 9, y + 6, 2, 2);
-    return;
-  }
-  if (id.includes('DOLL')) {
-    ctx.fillStyle = '#553b54'; ctx.fillRect(x + 4, y + 3, 8, 10);
-    ctx.fillStyle = id.includes('2') ? '#80a7d7' : '#e7a8ba'; ctx.fillRect(x + 3, y + 5, 10, 6);
-    ctx.fillStyle = '#f1d0b0'; ctx.fillRect(x + 5, y + 1, 6, 5);
-    ctx.fillStyle = '#30252a'; ctx.fillRect(x + 6, y + 3, 1, 1); ctx.fillRect(x + 9, y + 3, 1, 1);
-    return;
-  }
-  if (id.includes('POKE_BALL') && drawSourceSprite('POKE_BALL', x, y, 'down')) return;
-  if (id.includes('POKE_BALL')) {
-    const color = id.endsWith('1') ? '#d83b45' : id.endsWith('2') ? '#2679cf' : '#66a84f';
-    ctx.fillStyle = '#202020'; ctx.fillRect(x + 3, y + 4, 10, 9);
-    ctx.fillStyle = '#e6e7e8'; ctx.fillRect(x + 4, y + 3, 8, 5);
-    ctx.fillStyle = color; ctx.fillRect(x + 4, y + 8, 8, 4);
-    ctx.fillStyle = '#202020'; ctx.fillRect(x + 3, y + 7, 10, 2);
-    ctx.fillStyle = '#fff'; ctx.fillRect(x + 7, y + 7, 3, 3);
-    return;
-  }
-  const palette = id.includes('ELM') ? ['#f1c9a5','#d8dce4','#557bba','#7a4b2a']
-    : id.includes('AIDE') || id.includes('SCIENTIST') ? ['#efc5a3','#e7e9ed','#b9c3d3','#514f5a']
-    : id.includes('OFFICER') || id.includes('COP') ? ['#efc5a3','#263b69','#2d4e86','#202020']
-    : id.includes('MOM') || id.includes('WIFE') ? ['#efc5a3','#bd4b6b','#e7d9e8','#65452f']
-    : id.includes('DAUGHTER') || id.includes('SON') ? ['#efc5a3','#e8c75d','#4e8a72','#5a3828']
-    : id.includes('RIVAL') ? ['#efc5a3','#7d405b','#35343c','#6a4834']
-    : ['#efc5a3','#d7d9dc','#548b70','#594332'];
-  ctx.fillStyle = '#25232a'; ctx.fillRect(x + 3, y + 1, 10, 14);
-  ctx.fillStyle = palette[0]; ctx.fillRect(x + 5, y + 2, 6, 6);
-  ctx.fillStyle = palette[3]; ctx.fillRect(x + 4, y + 1, 8, 3);
-  ctx.fillStyle = palette[1]; ctx.fillRect(x + 4, y + 8, 8, 5);
-  ctx.fillStyle = palette[2]; ctx.fillRect(x + 4, y + 13, 3, 3); ctx.fillRect(x + 9, y + 13, 3, 3);
-  ctx.fillStyle = '#272727'; ctx.fillRect(x + 6, y + 5, 1, 1); ctx.fillRect(x + 9, y + 5, 1, 1);
+  drawSprite(PLAYER_SPRITE, objectPaletteIndex({ sprite: PLAYER_SPRITE, palette: '0' }), state.x * TILE, state.y * TILE, state.facing, walkFrame);
 }
 function drawObjects() {
+  const mapName = MAPS[currentMapId].name;
   for (const object of activeMap().metadata.objects || []) {
     if (!isSceneObjectVisible(currentMapId, object, state)) continue;
+    // Sprite, palette and starting facing come from the object_event in maps/<Map>.asm at its source coordinates.
+    const source = sourceObjectAt(mapName, object.x, object.y);
+    if (!source) continue;
     const position = objectPosition(object);
-    let facing = state.objectFacings[object.id] || object.facing || 'down';
+    let facing = state.objectFacings[object.id] || initialFacing(source);
     if (object.id === 'MOM' && state.momIntroActive) facing = 'right';
     if (object.id === 'ELMSLAB_ELM') {
       facing = state.elmFacing || (state.labIntroComplete ? 'down' : 'right');
@@ -339,7 +310,7 @@ function drawObjects() {
     if (object.id === 'NEWBARKTOWN_RIVAL' && state.rivalStage > 0) {
       facing = state.rivalStage === 1 ? 'left' : 'down';
     }
-    drawNpc({ ...object, ...position, facing });
+    drawSprite(source.sprite, objectPaletteIndex(source), position.x * TILE, position.y * TILE, facing, 0);
   }
 }
 function drawStarterPreview() {

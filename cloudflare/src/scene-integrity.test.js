@@ -60,8 +60,8 @@ test('Elm and starter balls retain their source event positions and species mapp
   assert.equal(mustBlockLabExit('CYNDAQUIL'), false);
 });
 
-test('source starter and key NPC art are embedded as valid PNG data', () => {
-  for (const name of ['CYNDAQUIL','TOTODILE','CHIKORITA','ELM','MOM','SCIENTIST','OFFICER','POKE_BALL']) {
+test('source starter art is embedded as valid PNG data', () => {
+  for (const name of ['CYNDAQUIL','TOTODILE','CHIKORITA']) {
     const data = CRYSTAL_EXTRA_SPRITES[name];
     assert.ok(typeof data === 'string' && data.startsWith('iVBORw0KGgo'), name + ' must be embedded PNG data');
   }

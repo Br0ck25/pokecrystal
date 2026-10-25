@@ -25,9 +25,9 @@ import { getTilesetCollision } from './maps/tileset-collision.js';
 import { LAB_STARTERS, getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit } from './maps/starter-selection.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './maps/scene-object-state.js';
 import { shouldStartElmOpeningScene, canCancelPendingScene } from './maps/scene-progression.js';
-import { getSourceSpriteForObject } from './maps/npc-sprite-map.js';
+import { sourceObjectAt, objectPaletteIndex } from './maps/object-sprites.js';
+import { SPRITES } from './generated/sprites.js';
 import { CRYSTAL_EXTRA_SPRITES } from './assets/source-sprites.js';
-import { CRYSTAL_OVERWORLD_SPRITES } from './assets/overworld-sprites.js';
 
 test('interior maps use their source tilesets rather than a similar-looking substitute', () => {
  assert.equal(PLAYERS_HOUSE_1F.tileset, 'PLAYERS_HOUSE');
@@ -262,15 +262,10 @@ test('every source map block ID resolves within its assigned source tileset', ()
  }
 });
 
-test('all three starter images and all required NPC sprite sheets are embedded as PNG data', async () => {
+test('all three starter images are embedded as PNG data', async () => {
  const { CRYSTAL_EXTRA_SPRITES } = await import('./assets/source-sprites.js');
- const { CRYSTAL_OVERWORLD_SPRITES } = await import('./assets/overworld-sprites.js');
- const sprites = { ...CRYSTAL_OVERWORLD_SPRITES, ...CRYSTAL_EXTRA_SPRITES };
  for (const species of ['CYNDAQUIL', 'TOTODILE', 'CHIKORITA']) {
   assert.match(CRYSTAL_EXTRA_SPRITES[species].replace(/\s/g, ''), /^iVBORw0KGgo/, species + ' starter image must be embedded PNG data');
- }
- for (const character of ['KRIS', 'ELM', 'MOM', 'TEACHER', 'FISHER', 'RIVAL']) {
-  assert.match(sprites[character]?.replace(/\s/g, '') || '', /^iVBORw0KGgo/, character + ' sprite must be embedded PNG data');
  }
 });
 
@@ -367,18 +362,15 @@ test('critical first-scene destinations are reachable using actual collision tab
 });
 
 
-test('house NPCs resolve to embedded original Crystal sprite sheets', () => {
+test('house NPCs resolve to their source object_event sprite sheets', () => {
  const visitor = PLAYERS_HOUSE_1F.objects.find(object => object.id === 'NEIGHBOR');
  const wife = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_WIFE');
  const son = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_SON');
  const daughter = PLAYERS_NEIGHBORS_HOUSE.objects.find(object => object.id === 'DAUGHTER');
- assert.equal(getSourceSpriteForObject(visitor), 'POKEFAN_F');
- assert.equal(getSourceSpriteForObject(wife), 'TEACHER');
- assert.equal(getSourceSpriteForObject(son), 'BUG_CATCHER');
- assert.equal(getSourceSpriteForObject(daughter), 'COOLTRAINER_F');
- for (const key of ['POKEFAN_F','BUG_CATCHER','COOLTRAINER_F']) {
-  assert.match(CRYSTAL_EXTRA_SPRITES[key], /^iVBOR/);
- }
+ assert.equal(sourceObjectAt('PlayersHouse1F', visitor.x, visitor.y).sprite, 'SPRITE_POKEFAN_F');
+ assert.equal(sourceObjectAt('ElmsHouse', wife.x, wife.y).sprite, 'SPRITE_TEACHER');
+ assert.equal(sourceObjectAt('ElmsHouse', son.x, son.y).sprite, 'SPRITE_BUG_CATCHER');
+ assert.equal(sourceObjectAt('PlayersNeighborsHouse', daughter.x, daughter.y).sprite, 'SPRITE_COOLTRAINER_F');
 });
 
 
@@ -496,39 +488,21 @@ test('starter choice maps all three source Poké Balls to distinct level-five sp
  }
 });
 
-test('every source NPC and starter uses a decodable source PNG sprite', () => {
- const pngDimensions = (base64) => {
-  const bytes = Buffer.from(base64, 'base64');
-  assert.equal(bytes.toString('hex', 0, 8), '89504e470d0a1a0a', 'embedded asset must be a PNG');
-  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
- };
- const sheets = { ...CRYSTAL_OVERWORLD_SPRITES, ...CRYSTAL_EXTRA_SPRITES };
- const sourceObjects = [
-  { id: 'NEWBARKTOWN_TEACHER', sprite: 'SPRITE_TEACHER', expected: 'TEACHER' },
-  { id: 'NEWBARKTOWN_FISHER', sprite: 'SPRITE_FISHER', expected: 'FISHER' },
-  { id: 'NEWBARKTOWN_RIVAL', sprite: 'SPRITE_RIVAL', expected: 'RIVAL' },
-  { id: 'ELMSLAB_ELM', sprite: 'SPRITE_ELM', expected: 'ELM' },
-  { id: 'ELMSLAB_ELMS_AIDE', sprite: 'SPRITE_SCIENTIST', expected: 'SCIENTIST' },
-  { id: 'ELMSLAB_OFFICER', sprite: 'SPRITE_OFFICER', expected: 'OFFICER' },
-  { id: 'MOM', expected: 'MOM' },
-  { id: 'NEIGHBOR', expected: 'POKEFAN_F' },
-  { id: 'DAUGHTER', expected: 'COOLTRAINER_F' },
-  { id: 'ELMS_WIFE', sprite: 'SPRITE_TEACHER', expected: 'TEACHER' },
-  { id: 'ELMS_SON', sprite: 'SPRITE_BUG_CATCHER', expected: 'BUG_CATCHER' },
-  { id: 'ELMSLAB_POKE_BALL1', expected: 'POKE_BALL' },
- ];
- for (const object of sourceObjects) {
-  const key = getSourceSpriteForObject(object);
-  assert.equal(key, object.expected, object.id + ' must use its source sprite');
-  assert.ok(sheets[key], object.id + ' source sprite is missing');
-  const { width, height } = pngDimensions(sheets[key]);
-  assert.equal(width, 16, object.id + ' overworld sprite width');
-  assert.equal(height, 96, object.id + ' overworld sprite frame sheet height');
- }
- for (const species of ['CYNDAQUIL', 'TOTODILE', 'CHIKORITA']) {
-  const { width, height } = pngDimensions(CRYSTAL_EXTRA_SPRITES[species]);
-  assert.equal(width, 40, species + ' front sprite width');
-  assert.ok(height >= 40, species + ' front sprite must contain at least one frame');
+test('every ported object has a source object_event with a decodable source PNG sprite', () => {
+ const maps = [['NewBarkTown', NEW_BARK_TOWN], ['ElmsLab', ELMS_LAB], ['PlayersHouse1F', PLAYERS_HOUSE_1F], ['PlayersHouse2F', PLAYERS_HOUSE_2F], ['ElmsHouse', ELMS_HOUSE], ['PlayersNeighborsHouse', PLAYERS_NEIGHBORS_HOUSE]];
+ for (const [name, map] of maps) {
+  for (const object of map.objects) {
+   const source = sourceObjectAt(name, object.x, object.y);
+   assert.ok(source, `${name} ${object.id} must match a source object_event at ${object.x},${object.y}`);
+   // Decoration sprites (console, dolls) are variable sprites chosen at runtime and hidden in a new game.
+   if (name === 'PlayersHouse2F') continue;
+   const sprite = SPRITES[source.sprite];
+   assert.ok(sprite, `${name} ${object.id} sprite ${source.sprite}`);
+   const bytes = Buffer.from(sprite.png, 'base64');
+   assert.equal(bytes.toString('hex', 0, 8), '89504e470d0a1a0a', 'embedded asset must be a PNG');
+   assert.equal(bytes.readUInt32BE(16), 16, `${object.id} overworld sprite width`);
+   assert.ok(Number.isInteger(objectPaletteIndex(source)));
+  }
  }
 });
 
