@@ -4,7 +4,7 @@
  * constants/map_constants.asm defines 5 x 6 blocks = 10 x 12 metatiles.
  */
 import { ELMS_LAB } from './elms-lab.js';
-import { getJohtoMetatileCollision } from './johto-collision.js';
+import { getTilesetCollision } from './tileset-collision.js';
 
 export const ELMS_LAB_BLOCK_IDS = Object.freeze([
   23, 8, 9, 4, 4,
@@ -27,5 +27,5 @@ export function getElmsLabBlockAtMetatile(x, y) {
 }
 export function getElmsLabCollisionAtMetatile(x, y) {
   const blockId = getElmsLabBlockAtMetatile(x, y);
-  return blockId === null ? null : getJohtoMetatileCollision(blockId, (y % 2) * 2 + (x % 2));
+  return blockId === null ? null : getTilesetCollision('LAB', blockId, (y % 2) * 2 + (x % 2));
 }
