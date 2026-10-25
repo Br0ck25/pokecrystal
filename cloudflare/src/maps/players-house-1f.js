@@ -11,11 +11,11 @@ export const PLAYERS_HOUSE_1F = Object.freeze({
  {x:0,y:1,kind:'stove',text:"Mom's specialty! CINNABAR VOLCANO BURGER."},
  {x:1,y:1,kind:'sink',text:'The sink is spotless. Mom likes it clean.'},
  {x:2,y:1,kind:'fridge',text:'Fresh water and tasty lemonade!'},
- {x:4,y:1,kind:'tv',text:"A movie is on TV. I'd better get rolling too!"}
+ {x:4,y:1,kind:'tv',text:"There's a movie on TV: Stars dot the sky as two boys ride on a train… I'd better get rolling too!"}
  ]),
  objects:Object.freeze([
  {id:'MOM',x:7,y:4,script:'MomScript',dialogue:['PROF. ELM was looking for you.','Your POKéGEAR is back from the repair shop.']},
- {id:'NEIGHBOR',x:4,y:4,script:'NeighborScript',dialogue:["Hello! I'm visiting!","My daughter wants to become Professor Elm's assistant."]}
+ {id:'NEIGHBOR',x:2,y:2,script:'NeighborScript',dialogue:["Hello! I'm visiting!","My daughter is adamant about becoming PROF. ELM's assistant. She really loves POKéMON!"]}
  ])
 });
 export function playersHouse1fEventsAt(x,y){return eventsAt(PLAYERS_HOUSE_1F,x,y)}
