@@ -1,0 +1,26 @@
+name: Crystal browser port checks
+
+on:
+  push:
+    branches:
+      - crystal-browser-worker
+    paths:
+      - 'cloudflare/**'
+      - '.github/workflows/crystal-browser-port.yml'
+  pull_request:
+    paths:
+      - 'cloudflare/**'
+
+jobs:
+  runtime-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run runtime tests
+        working-directory: cloudflare
+        run: npm test
