@@ -4,7 +4,7 @@ import { ELMS_LAB, elmLabEventsAt } from './src/maps/elms-lab.js';
 import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './src/maps/elms-lab-blocks.js';
 import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
-import { canPreviewEnter } from './src/maps/new-bark-town-movement.js';
+import { canPreviewEnterOrWarp } from './src/maps/new-bark-town-movement.js';
 import { resolvePreviewWarp } from './src/maps/preview-warps.js';
 import { PLAYERS_HOUSE_1F, playersHouse1fEventsAt } from './src/maps/players-house-1f.js';
 import { PLAYERS_HOUSE_1F_BLOCK_IDS, getPlayersHouse1FCollisionAtMetatile } from './src/maps/players-house-1f-blocks.js';
@@ -96,13 +96,9 @@ function draw() {
 function blocked(x, y) {
   const current = activeMap();
   const d = current.metadata.dimensions;
-  // A source-declared warp tile must remain reachable even when the simplified
-  // collision table labels its underlying graphics block as a special tile.
-  // The transition is handled immediately after stepping onto this coordinate.
-  if (current.metadata.warps.some(warp => warp.x === x && warp.y === y)) {
-    return x < 0 || y < 0 || x >= d.metatilesWide || y >= d.metatilesHigh;
-  }
-  return !canPreviewEnter(x, y, d.metatilesWide, d.metatilesHigh, current.collisionAt);
+  return !canPreviewEnterOrWarp(
+    x, y, d.metatilesWide, d.metatilesHigh, current.collisionAt, current.metadata.warps,
+  );
 }
 function eventsAtFacing() {
   const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[state.facing];
