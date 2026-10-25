@@ -173,7 +173,6 @@ test('player room staircase warps connect both floors at the source doorway coor
 
 
 test('source ladder collision labels remain walkable for room transitions', () => {
- const { isPreviewCollisionWalkable } = await import('./maps/new-bark-town-movement.js');
  assert.equal(isPreviewCollisionWalkable('LADDER'), true);
  assert.equal(isPreviewCollisionWalkable('FLOOR'), true);
 });
