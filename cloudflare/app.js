@@ -702,6 +702,15 @@ function step(dx, dy, face) {
     draw();
     return;
   }
+  if (currentMapId === 'ELMS_LAB' && state.labIntroComplete && !state.starter
+      && (nx === 4 || nx === 5) && ny === 6) {
+    // Source coordinate scripts LabTryToLeaveScript run before the door warp.
+    state.x = oldX;
+    state.y = oldY;
+    state.labExitWarningStage = 0;
+    showDialogue('PROF. ELM', "Wait! You can't leave without choosing a POKéMON.");
+    return;
+  }
   if (currentMapId === 'PLAYERS_HOUSE_1F' && (nx === 8 || nx === 9) && ny === 4 && !state.pokegear) {
     // Crystal has two separate coordinate scripts: from the left Mom turns
     // toward the player; from the right she steps one tile toward them.
