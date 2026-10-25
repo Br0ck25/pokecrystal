@@ -154,7 +154,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momDstChoiceYes: true, momPhoneChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', elmX: null, elmY: null, elmFacing: 'right', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momDstChoiceYes: true, momPhoneChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -166,6 +166,7 @@ let dialogueDismissOnA = false;
 
 function activeMap() { return maps[currentMapId]; }
 function objectPosition(object) {
+  if (currentMapId === 'ELMS_LAB' && object.id === 'ELMSLAB_ELM' && Number.isInteger(state.elmX) && Number.isInteger(state.elmY)) return { x: state.elmX, y: state.elmY };
   if (currentMapId === 'PLAYERS_HOUSE_1F' && object.id === 'MOM' && Number.isInteger(state.momX)) return { x: state.momX, y: object.y };
   if (currentMapId === 'NEW_BARK_TOWN' && object.id === 'NEWBARKTOWN_TEACHER' && Number.isInteger(state.townTeacherX)) return { x: state.townTeacherX, y: state.townTeacherY };
   if (currentMapId === 'NEW_BARK_TOWN' && object.id === 'NEWBARKTOWN_RIVAL') return { x: state.rivalX, y: state.rivalY };
@@ -286,7 +287,7 @@ function drawObjects() {
     let facing = object.facing || 'down';
     if (object.id === 'MOM' && state.momIntroActive) facing = 'right';
     if (object.id === 'ELMSLAB_ELM') {
-      facing = state.labIntroComplete ? 'down' : (state.labIntroStage === 3 ? 'down' : 'right');
+      facing = state.elmFacing || (state.labIntroComplete ? 'down' : 'right');
     }
     if (object.id === 'NEWBARKTOWN_TEACHER' && state.townTeacherStage !== null) {
       facing = state.townTeacherStage === 0 ? 'left' : state.townTeacherStage === 1 ? 'right' : 'left';
@@ -574,10 +575,22 @@ function interact() {
         showDialogue('PROF. ELM', "Hey, listen. I have an acquaintance called MR. POKéMON. He keeps finding weird things and raving about his discoveries.\n\nAnyway, I just got an e-mail from him saying that this time it's real. It is intriguing, but we're busy with our POKéMON research…\n\nWait! I know! <PLAYER>, can you go in our place?");
         return;
       }
-      state.pendingStarter = null;
-      state.labIntroStage = 0;
-      state.labIntroComplete = true;
-      showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner, <PLAYER>!\n\nGo on. Pick one!");
+      // Source: ElmsLab_ElmToDefaultPositionMovement1/2. Elm moves up,
+      // then right twice and up once while the player turns to face him.
+      startScriptedMovement([
+        { actor: 'ELM', direction: 'up' },
+        { actor: 'PLAYER', facing: 'up' },
+        { actor: 'ELM', direction: 'right' },
+        { actor: 'ELM', direction: 'right' },
+        { actor: 'ELM', direction: 'up' },
+        { actor: 'ELM', facing: 'down' },
+        { actor: 'PLAYER', facing: 'right' },
+      ], () => {
+        state.pendingStarter = null;
+        state.labIntroStage = 0;
+        state.labIntroComplete = true;
+        showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner, <PLAYER>!\n\nGo on. Pick one!");
+      });
       return;
     }
     if (state.choiceNeedsConfirm) {
@@ -736,13 +749,18 @@ function startScriptedMovement(directions, onComplete) {
 function advanceScriptedMovement(now) {
   if (!scriptedMovement || now - lastStep <= 130) return;
   lastStep = now;
-  const move = scriptedMovement.directions[scriptedMovement.index++];
+  const action = scriptedMovement.directions[scriptedMovement.index++];
+  const actor = typeof action === 'string' ? 'PLAYER' : (action.actor || 'PLAYER');
+  const move = typeof action === 'string' ? action : action.direction;
+  const facing = typeof action === 'string' ? action : action.facing;
   const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[move];
-  if (delta) {
-    state.x += delta[0];
-    state.y += delta[1];
-    state.facing = move;
-    walkFrame = walkFrame === 0 ? 1 : 0;
+  if (actor === 'ELM') {
+    if (delta) { state.elmX += delta[0]; state.elmY += delta[1]; }
+    if (facing) state.elmFacing = facing;
+  } else {
+    if (delta) { state.x += delta[0]; state.y += delta[1]; }
+    if (facing) state.facing = facing;
+    if (delta) walkFrame = walkFrame === 0 ? 1 : 0;
   }
   draw();
   if (scriptedMovement.index >= scriptedMovement.directions.length) {
@@ -760,7 +778,7 @@ function transition(warp) {
   }
   currentMapId = landing.mapId;
   const beginsElmOpening = shouldStartElmOpeningScene({ mapId: currentMapId, previousMapId, starter: state.starter, labIntroComplete: state.labIntroComplete });
-  if (currentMapId === 'ELMS_LAB' && previousMapId !== 'ELMS_LAB' && !state.starter) { state.labIntroComplete = false; state.elmTalked = false; }
+  if (currentMapId === 'ELMS_LAB' && previousMapId !== 'ELMS_LAB' && !state.starter) { state.labIntroComplete = false; state.elmTalked = false; state.elmX = 3; state.elmY = 4; state.elmFacing = 'right'; }
   state.x = landing.x;
   state.y = landing.y;
   state.facing = landing.facing;
