@@ -14,9 +14,10 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps/johto-metatiles.js` — all 128 source Johto metatile definitions, each containing 16 8x8 tile IDs.
 - `src/maps-metatiles.test.js` — checks the imported metatile table.
 - `src/maps-collision.test.js` — verifies collision-table entries and map block references.
-- `src/graphics.js` — JavaScript decoder for the repository's `lzcompress` stream format, Game Boy 2bpp tile decoding, and 32x32 metatile composition.
+- `src/graphics.js` — JavaScript decoder for the repository's `lzcompress` stream format, Game Boy 2bpp tile decoding, and 32x32 metatile and full map-grid pixel composition.
 - `src/graphics.test.js` — tests compressed-stream commands, malformed inputs, and 2bpp bitplane order.
 - `src/graphics-compose.test.js` — tests 16-tile metatile composition.
+- `src/graphics-map.test.js` — tests map-grid composition from source block and metatile data.
 - `PORTING_PLAN.md` — requirements and phased implementation plan.
 - `SOURCE_MAP.md` — source-to-port inventory.
 
@@ -47,7 +48,7 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [x] Imported the 10 × 9 New Bark Town block-ID grid from the original `.blk` file.
 - [x] Imported Johto metatile collision labels from the original collision table.
 - [x] Imported all 128 Johto metatile graphics layouts (16 tile IDs per metatile).
-- [x] Added a 32x32 palette-index metatile compositor and connected New Bark Town map coordinates to collision quadrants.
+- [x] Added 32x32 metatile and full map-grid palette-index compositors; connected New Bark Town map coordinates to collision quadrants.
 - [x] Implement and test the source LZ decompressor and Game Boy 2bpp tile decoder.
 - [ ] Decode the original Johto tile graphics into a browser-renderable asset and apply the source palette map.
 - [ ] Render the town from source map blocks, metatile definitions, and graphics; translate raw collision labels into game-engine movement behavior.
