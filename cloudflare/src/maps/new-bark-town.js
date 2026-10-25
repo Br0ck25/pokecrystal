@@ -42,9 +42,9 @@ export const NEW_BARK_TOWN = Object.freeze({
     Object.freeze({ x: 9, y: 13, kind: 'BGEVENT_READ', script: 'NewBarkTownElmsHouseSign', text: "ELM'S HOUSE" }),
   ]),
   objects: Object.freeze([
-    Object.freeze({ id: 'NEWBARKTOWN_TEACHER', x: 6, y: 8, sprite: 'SPRITE_TEACHER', movement: 'SPRITEMOVEDATA_SPINRANDOM_SLOW', palette: 0, script: 'NewBarkTownTeacherScript', dialogue: ['Wow, your POKéGEAR is impressive!', 'Did your mom get it for you?'] }),
-    Object.freeze({ id: 'NEWBARKTOWN_FISHER', x: 12, y: 9, sprite: 'SPRITE_FISHER', movement: 'SPRITEMOVEDATA_WALK_UP_DOWN', palette: 'PAL_NPC_GREEN', script: 'NewBarkTownFisherScript', dialogue: ['Yo, Trainer!', 'I hear PROF. ELM discovered some new POKéMON.'] }),
-    Object.freeze({ id: 'NEWBARKTOWN_RIVAL', x: 3, y: 2, sprite: 'SPRITE_RIVAL', movement: 'SPRITEMOVEDATA_STANDING_RIGHT', palette: 0, script: 'NewBarkTownRivalScript', appearsWhen: 'EVENT_RIVAL_NEW_BARK_TOWN', dialogue: ['…', 'So this is the famous ELM POKéMON LAB…', '…What are you staring at?'] }),
+    Object.freeze({ id: 'NEWBARKTOWN_TEACHER', x: 6, y: 8, facing: 'down', sprite: 'SPRITE_TEACHER', movement: 'SPRITEMOVEDATA_SPINRANDOM_SLOW', palette: 0, script: 'NewBarkTownTeacherScript', dialogue: ['Wow, your POKéGEAR is impressive!', 'Did your mom get it for you?'] }),
+    Object.freeze({ id: 'NEWBARKTOWN_FISHER', x: 12, y: 9, facing: 'down', sprite: 'SPRITE_FISHER', movement: 'SPRITEMOVEDATA_WALK_UP_DOWN', palette: 'PAL_NPC_GREEN', script: 'NewBarkTownFisherScript', dialogue: ['Yo, Trainer!', 'I hear PROF. ELM discovered some new POKéMON.'] }),
+    Object.freeze({ id: 'NEWBARKTOWN_RIVAL', x: 3, y: 2, facing: 'right', sprite: 'SPRITE_RIVAL', movement: 'SPRITEMOVEDATA_STANDING_RIGHT', palette: 0, script: 'NewBarkTownRivalScript', appearsWhen: 'EVENT_RIVAL_NEW_BARK_TOWN', dialogue: ['…', 'So this is the famous ELM POKéMON LAB…', '…What are you staring at?'] }),
   ]),
 });
 
