@@ -10,9 +10,11 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/runtime.test.js` — tests for state, collision adapter behavior, transitions, and local saves.
 - `src/maps/new-bark-town.js` — source-derived New Bark Town dimensions, warp events, coordinate events, signs, NPC positions, and map callback metadata.
 - `src/maps/elms-lab.js` and `src/maps/elms-lab-blocks.js` — source-derived Elm's Lab events, original 30-byte block grid, collision lookup, rendering, and connected town entrance/exit.
-- `src/maps/players-house-1f.js`, `src/maps/players-house-1f-blocks.js`, `src/maps/players-house-2f.js`, and `src/maps/players-house-2f-blocks.js` — source map grids and entry/exit routes for both floors of the player's house.
+- `src/maps/players-house-1f.js`, `src/maps/players-house-1f-blocks.js`, `src/maps/players-house-2f.js`, and `src/maps/players-house-2f-blocks.js` — source map grids, event metadata, and entry/exit routes for both floors of the player's house.
 - `src/maps/elms-house.js` and `src/maps/elms-house-blocks.js` — source grid and event metadata for Professor Elm's house.
 - `src/maps/players-neighbors-house.js` and `src/maps/players-neighbors-house-blocks.js` — reachable neighbor house with source-derived events; the upstream checkout has no `maps/PlayersNeighborsHouse.blk`, so its interior block grid is explicitly a temporary visual fallback, not source-accurate.
+- `src/maps/preview-warps.js` — resolves entry positions using the destination map's numbered warp metadata when available; the one-tile arrival offset remains preview glue rather than a complete port of the original warp engine.
+- `src/maps/new-bark-town-movement.js` — conservative movement collision rules plus source-warp exceptions so special warp tiles remain reachable without allowing out-of-bounds movement.
 - `src/maps/elms-lab-blocks.js` — the 30 source block IDs from `maps/ElmsLab.blk`, plus block/metatile/collision lookup helpers.
 - `src/maps-elms-lab.test.js` and `src/maps-elms-lab-blocks.test.js` — source-coordinate, warp, block-grid, and bounds tests.
 - `src/maps-elms-lab.test.js` — verifies the imported Elm's Lab event metadata against the source definitions.
