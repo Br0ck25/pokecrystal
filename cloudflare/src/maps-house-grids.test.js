@@ -102,6 +102,6 @@ test('each map records its original source tileset instead of assuming Johto eve
  assert.equal(ELMS_LAB.tileset, 'LAB');
  assert.equal(PLAYERS_HOUSE_1F.tileset, 'PLAYERS_HOUSE');
  assert.equal(PLAYERS_HOUSE_2F.tileset, 'PLAYERS_ROOM');
- assert.equal(ELMS_HOUSE.tileset, 'HOUSE');
+ assert.equal(ELMS_HOUSE.tileset, 'PLAYERS_HOUSE');
  assert.equal(PLAYERS_NEIGHBORS_HOUSE.tileset, 'HOUSE');
 });
