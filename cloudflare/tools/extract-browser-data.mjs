@@ -56,8 +56,8 @@ function maps() {
   const borders = new Map([...text('data/maps/attributes.asm').matchAll(/^\tmap_attributes (\w+), \w+, \$([0-9a-fA-F]{2})/gm)]
     .map((m) => [m[1], parseInt(m[2], 16)]));
   const out = {};
-  for (const m of text('data/maps/maps.asm').matchAll(/^\tmap (\w+), TILESET_(\w+), (\w+),/gm)) {
-    const [, name, tileset, environment] = m;
+  for (const m of text('data/maps/maps.asm').matchAll(/^\tmap (\w+), TILESET_(\w+), (\w+), \w+, [^,]+, \w+, PALETTE_(\w+),/gm)) {
+    const [, name, tileset, environment, palette] = m;
     const size = sizes.get(norm(name));
     if (!size) throw new Error(`no map_const for ${name}`);
     const file = blockFiles.get(`${name}_Blocks`);
@@ -65,7 +65,7 @@ function maps() {
     if (!borders.has(name)) throw new Error(`no border block for ${name}`);
     const blocks = bin(file);
     if (blocks.length !== size.width * size.height) throw new Error(`${name}: ${blocks.length} bytes, expected ${size.width}x${size.height}`);
-    out[size.id] = { name, tileset, environment, group: size.group, number: size.number, width: size.width, height: size.height, border: borders.get(name), source: file, blocks: [...blocks] };
+    out[size.id] = { name, tileset, environment, palette, group: size.group, number: size.number, width: size.width, height: size.height, border: borders.get(name), source: file, blocks: [...blocks] };
   }
   return out;
 }
@@ -366,7 +366,7 @@ export function generate() {
   const tileset = Object.entries(ts).map(([k, v]) =>
     `  ${k}: {\n  metatiles: [\n${rows(v.metatiles)}\n  ],\n  collision: [\n${rows(v.collision)}\n  ],\n},`).join('\n');
   const mp = Object.entries(maps()).map(([k, v]) =>
-    `  ${k}: { name: '${v.name}', tileset: '${v.tileset}', environment: '${v.environment}', group: ${v.group}, number: ${v.number}, width: ${v.width}, height: ${v.height}, border: ${v.border}, source: '${v.source}',\n    blocks: ${JSON.stringify(v.blocks)} },`).join('\n');
+    `  ${k}: { name: '${v.name}', tileset: '${v.tileset}', environment: '${v.environment}', palette: '${v.palette}', group: ${v.group}, number: ${v.number}, width: ${v.width}, height: ${v.height}, border: ${v.border}, source: '${v.source}',\n    blocks: ${JSON.stringify(v.blocks)} },`).join('\n');
   const spriteTable = Object.entries(sprites()).map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
   const eventTable = Object.entries(events()).map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
   return {
