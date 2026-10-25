@@ -156,3 +156,15 @@ test('the upstairs entrance in the player house is reachable from the ground-flo
  }
  assert.ok(visited.has(goal.x + ',' + goal.y), 'the player must be able to walk from the entrance to the upstairs staircase');
 });
+
+
+test('player room staircase warps connect both floors at the source doorway coordinates', () => {
+ const up = resolvePreviewWarp('PLAYERS_HOUSE_1F', PLAYERS_HOUSE_1F.warps[2], {
+  PLAYERS_HOUSE_2F,
+ });
+ assert.deepEqual(up, { mapId: 'PLAYERS_HOUSE_2F', x: 7, y: 1, facing: 'down' });
+ const down = resolvePreviewWarp('PLAYERS_HOUSE_2F', PLAYERS_HOUSE_2F.warps[0], {
+  PLAYERS_HOUSE_1F,
+ });
+ assert.deepEqual(down, { mapId: 'PLAYERS_HOUSE_1F', x: 9, y: 1, facing: 'down' });
+});
