@@ -30,6 +30,7 @@ import { getLabStarter, getLabStarterBallId, mustBlockLabExit } from './src/maps
 import { shouldStartElmOpeningScene, canCancelPendingScene } from './src/maps/scene-progression.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
 import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
+import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -218,14 +219,9 @@ function drawPlayer() {
 }
 function drawNpc(object) {
   const x = object.x * TILE, y = object.y * TILE;
-  const sourceId = String(object.id || '').toUpperCase();
-  if (sourceId.includes('TEACHER') && drawSourceSprite('TEACHER', x, y, 'down')) return;
-  if (sourceId.includes('ELM') && drawSourceSprite('ELM', x, y, 'down')) return;
-  if (sourceId.includes('MOM') && drawSourceSprite('MOM', x, y, 'down')) return;
-  if ((sourceId.includes('AIDE') || sourceId.includes('SCIENTIST')) && drawSourceSprite('SCIENTIST', x, y, 'down')) return;
-  if ((sourceId.includes('OFFICER') || sourceId.includes('COP')) && drawSourceSprite('OFFICER', x, y, 'down')) return;
-  if (sourceId.includes('FISHER') && drawSourceSprite('FISHER', x, y, 'down')) return;
-  if (sourceId.includes('RIVAL') && drawSourceSprite('RIVAL', x, y, 'right', true)) return;
+  const sourceSprite = getSourceSpriteForObject(object);
+  if (sourceSprite === 'RIVAL' && drawSourceSprite(sourceSprite, x, y, 'right', true)) return;
+  if (sourceSprite && drawSourceSprite(sourceSprite, x, y, 'down')) return;
   const id = String(object.id || object.script || '').toUpperCase();
   if (id.includes('CONSOLE')) {
     ctx.fillStyle = '#24242b'; ctx.fillRect(x + 1, y + 4, 14, 9);
