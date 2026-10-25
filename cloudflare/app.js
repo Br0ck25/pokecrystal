@@ -5,6 +5,7 @@ import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './src/maps/el
 import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
 import { canPreviewEnter } from './src/maps/new-bark-town-movement.js';
+import { resolvePreviewWarp } from './src/maps/preview-warps.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -115,18 +116,15 @@ function pressB() {
   else setHint('There is nothing to cancel right now.');
 }
 function transition(warp) {
-  if (warp.destinationMap === 'ELMS_LAB' && currentMapId === 'NEW_BARK_TOWN') {
-    currentMapId = 'ELMS_LAB';
-    // Destination warp 1 is the first of the two lab exit tiles. Spawn one tile inside.
-    state.x = 4; state.y = 10; state.facing = 'up';
-  } else if (warp.destinationMap === 'NEW_BARK_TOWN' && currentMapId === 'ELMS_LAB') {
-    currentMapId = 'NEW_BARK_TOWN';
-    // The exterior landing tile is directly outside the lab entrance warp.
-    state.x = 6; state.y = 4; state.facing = 'down';
-  } else {
-    setHint('This destination has not been ported yet: ' + warp.destinationMap);
+  const landing = resolvePreviewWarp(currentMapId, warp);
+  if (!landing || !maps[landing.mapId]) {
+    setHint('This destination has not been ported yet: ' + (warp?.destinationMap || 'unknown'));
     return;
   }
+  currentMapId = landing.mapId;
+  state.x = landing.x;
+  state.y = landing.y;
+  state.facing = landing.facing;
   resizeCanvasForMap();
   draw();
   setHint('Entered ' + activeMap().title + '. Map transition is implemented; original story scripts are still in progress.');
