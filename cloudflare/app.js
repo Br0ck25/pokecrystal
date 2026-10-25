@@ -146,7 +146,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momX: 7, pokegear: false, townTeacherStage: null, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -154,6 +154,7 @@ let walkFrame = 0;
 function activeMap() { return maps[currentMapId]; }
 function objectPosition(object) {
   if (currentMapId === 'PLAYERS_HOUSE_1F' && object.id === 'MOM' && Number.isInteger(state.momX)) return { x: state.momX, y: object.y };
+  if (currentMapId === 'NEW_BARK_TOWN' && object.id === 'NEWBARKTOWN_TEACHER' && Number.isInteger(state.townTeacherX)) return { x: state.townTeacherX, y: state.townTeacherY };
   return resolveSceneObjectPosition(currentMapId, object, state) || { x: object.x, y: object.y };
 }
 function resizeCanvasForMap() {
@@ -382,17 +383,33 @@ function drawDialogueBox() {
 function interact() {
   if (state.townTeacherStage !== null) {
     if (state.townTeacherStage === 0) {
+      // NewBarkTown_TeacherStopsYouScene1/2: the teacher runs left to the
+      // player before delivering the warning. Keep the source's four/five-step
+      // destination but advance the movement as a deterministic scene beat.
+      state.townTeacherX = state.townTeacherStartY === 8 ? 2 : 1;
+      state.townTeacherY = state.townTeacherStartY;
       state.townTeacherStage = 1;
+      state.facing = 'right';
       showDialogue('TEACHER', "What do you think you're doing?");
       return;
     }
     if (state.townTeacherStage === 1) {
+      // The source script follows the teacher back to its starting column.
+      state.townTeacherX = 6;
+      state.townTeacherY = state.townTeacherStartY;
+      state.x = 5;
+      state.y = state.townTeacherStartY;
+      state.facing = 'left';
       state.townTeacherStage = 2;
       showDialogue('TEACHER', "It's dangerous to go out without a POKéMON! Wild POKéMON jump out of the grass on the way to the next town.");
+      draw();
       return;
     }
     state.townTeacherStage = null;
+    state.townTeacherX = 6;
+    state.townTeacherY = 8;
     setHint('The teacher brought you back. Professor Elm is waiting in his lab.');
+    draw();
     return;
   }
   if (state.labExitWarningStage !== null) {
@@ -617,6 +634,9 @@ function step(dx, dy, face) {
   walkFrame = walkFrame === 0 ? 1 : 0;
   if (currentMapId === 'NEW_BARK_TOWN' && !state.starter && ((nx === 1 && ny === 8) || (nx === 1 && ny === 9))) {
     state.townTeacherStage = 0;
+    state.townTeacherStartY = ny;
+    state.townTeacherX = 6;
+    state.townTeacherY = 8;
     showDialogue('TEACHER', 'Wait, <PLAY_G>!');
     draw();
     return;
