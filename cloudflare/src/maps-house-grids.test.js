@@ -20,13 +20,15 @@ import { PLAYERS_ROOM_METATILE_TILES } from './maps/players-room-metatiles.js';
 import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './maps/tileset-palette-data.js';
 import { isPreviewCollisionWalkable } from './maps/new-bark-town-movement.js';
 import { getTilesetCollision } from './maps/tileset-collision.js';
+import { LAB_STARTERS, getLabStarter, getLabStarterBallId, mustBlockLabExit } from './maps/starter-selection.js';
+import { resolveSceneObjectPosition, isSceneObjectVisible } from './maps/scene-object-state.js';
 
 test('all imported house block grids match their source dimensions', () => {
  assert.equal(PLAYERS_HOUSE_1F_BLOCK_IDS.length, PLAYERS_HOUSE_1F.dimensions.blocksWide * PLAYERS_HOUSE_1F.dimensions.blocksHigh);
  assert.equal(PLAYERS_HOUSE_2F_BLOCK_IDS.length, PLAYERS_HOUSE_2F.dimensions.blocksWide * PLAYERS_HOUSE_2F.dimensions.blocksHigh);
  assert.equal(ELMS_HOUSE_BLOCK_IDS.length, ELMS_HOUSE.dimensions.blocksWide * ELMS_HOUSE.dimensions.blocksHigh);
  assert.equal(PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS.length, PLAYERS_NEIGHBORS_HOUSE.dimensions.blocksWide * PLAYERS_NEIGHBORS_HOUSE.dimensions.blocksHigh);
- assert.deepEqual(PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, [4,30,5,29,15,1,2,15,15,12,13,15,6,11,15,7]);
+ assert.deepEqual(PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, [4,30,79,29,15,1,2,15,15,12,13,15,6,11,15,7]);
  assert.deepEqual(PLAYERS_HOUSE_1F_BLOCK_IDS.slice(0,5),[7,15,17,5,10]);
  assert.deepEqual(PLAYERS_HOUSE_2F_BLOCK_IDS,[4,1,3,2,5,6,5,5,5,5,7,5]);
  assert.deepEqual(ELMS_HOUSE_BLOCK_IDS.slice(0,4),[16,1,17,27]);
@@ -221,4 +223,39 @@ test('New Bark Town has walkable routes from the player-house exit to Elm’s La
   const neighbors=[[object.x,object.y-1],[object.x+1,object.y],[object.x,object.y+1],[object.x-1,object.y]];
   assert.ok(neighbors.some(([x,y])=>reachable.has(x+','+y)),`no reachable interaction tile for ${object.id}`);
  }
+});
+
+
+test('source map event coordinates stay within their map bounds', () => {
+ const maps = [NEW_BARK_TOWN, ELMS_LAB, PLAYERS_HOUSE_1F, PLAYERS_HOUSE_2F, ELMS_HOUSE, PLAYERS_NEIGHBORS_HOUSE];
+ for (const map of maps) {
+  const d = map.dimensions;
+  for (const category of ['warps', 'coordinateEvents', 'backgroundEvents', 'objects']) {
+   for (const event of map[category] || []) {
+    assert.ok(Number.isInteger(event.x) && event.x >= 0 && event.x < d.metatilesWide, `${map.id} ${category} ${event.script || event.id || ''} x out of bounds`);
+    assert.ok(Number.isInteger(event.y) && event.y >= 0 && event.y < d.metatilesHigh, `${map.id} ${category} ${event.script || event.id || ''} y out of bounds`);
+   }
+  }
+ }
+});
+
+test('lab starter-ball identity, species, level, and reverse lookup stay consistent', () => {
+ assert.deepEqual(Object.values(LAB_STARTERS).map(({species, type, level}) => [species, type, level]), [
+  ['CYNDAQUIL', 'FIRE', 5], ['TOTODILE', 'WATER', 5], ['CHIKORITA', 'GRASS', 5],
+ ]);
+ for (const [ballId, starter] of Object.entries(LAB_STARTERS)) {
+  assert.equal(getLabStarter(ballId), starter);
+  assert.equal(getLabStarterBallId(starter.species), ballId);
+ }
+ assert.equal(getLabStarter('NOT_A_BALL'), null);
+ assert.equal(mustBlockLabExit(null), true);
+ assert.equal(mustBlockLabExit('TOTODILE'), false);
+});
+
+test('Elm uses the source first-meeting position and starter objects update visibility', () => {
+ const elm = ELMS_LAB.objects.find(object => object.id === 'ELMSLAB_ELM');
+ assert.deepEqual(resolveSceneObjectPosition('ELMS_LAB', elm, {labIntroComplete: false}), {x: 3, y: 4});
+ assert.deepEqual(resolveSceneObjectPosition('ELMS_LAB', elm, {labIntroComplete: true}), {x: elm.x, y: elm.y});
+ assert.equal(isSceneObjectVisible('ELMS_LAB', ELMS_LAB.objects.find(object => object.id === 'ELMSLAB_POKE_BALL1'), {starterBall: 'ELMSLAB_POKE_BALL1'}), false);
+ assert.equal(isSceneObjectVisible('ELMS_LAB', ELMS_LAB.objects.find(object => object.id === 'ELMSLAB_OFFICER'), {starter: 'CYNDAQUIL'}), false);
 });
