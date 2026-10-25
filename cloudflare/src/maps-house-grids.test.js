@@ -388,3 +388,15 @@ test('Elm household dialogue and research-paper interaction retain source text',
  assert.match(pc.text, /Why has no one ever witnessed a POKéMON's birth/);
  assert.match(pc.text, /dedicate my life to the study of POKéMON/);
 });
+
+
+test('interior NPC coordinates and initial facing match their source object events', () => {
+ const wife = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_WIFE');
+ const son = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_SON');
+ const daughter = PLAYERS_NEIGHBORS_HOUSE.objects.find(object => object.id === 'DAUGHTER');
+ const neighbor = PLAYERS_NEIGHBORS_HOUSE.objects.find(object => object.id === 'NEIGHBOR');
+ assert.deepEqual([wife.x, wife.y, wife.facing], [1, 5, 'up']);
+ assert.deepEqual([son.x, son.y, son.facing], [5, 4, 'up']);
+ assert.deepEqual([daughter.x, daughter.y, daughter.facing], [2, 3, 'right']);
+ assert.deepEqual([neighbor.x, neighbor.y, neighbor.facing], [5, 3, 'left']);
+});
