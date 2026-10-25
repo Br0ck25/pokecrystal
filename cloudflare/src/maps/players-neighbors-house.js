@@ -1,6 +1,6 @@
 /** Event metadata transcribed from maps/PlayersNeighborsHouse.asm. */
 export const PLAYERS_NEIGHBORS_HOUSE=Object.freeze({
- id:'PLAYERS_NEIGHBORS_HOUSE',group:'NEW_BARK',
+ id:'PLAYERS_NEIGHBORS_HOUSE',tileset:'HOUSE',group:'NEW_BARK',
  dimensions:Object.freeze({blocksWide:4,blocksHigh:4,metatilesWide:8,metatilesHigh:8,blockSizeMetatiles:2}),
  warps:Object.freeze([{x:2,y:7,destinationMap:'NEW_BARK_TOWN',destinationWarp:3},{x:3,y:7,destinationMap:'NEW_BARK_TOWN',destinationWarp:3}]),
  coordinateEvents:Object.freeze([]),
