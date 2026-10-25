@@ -10,6 +10,8 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps.test.js` — tests for the New Bark Town source metadata.
 - `src/maps/new-bark-town-blocks.js` — all 90 block IDs from the original `maps/NewBarkTown.blk`, plus coordinate lookup helpers.
 - `src/maps-blocks.test.js` — checks block-grid dimensions and tile-to-block lookup.
+- `src/maps/johto-collision.js` — source collision labels for Johto metatiles `0x00`–`0x77`, with quadrant lookup.
+- `src/maps-collision.test.js` — verifies collision-table entries and map block references.
 - `PORTING_PLAN.md` — requirements and phased implementation plan.
 - `SOURCE_MAP.md` — source-to-port inventory.
 
@@ -38,7 +40,8 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [x] Automated tests and CI workflow added.
 - [x] Transcribed New Bark Town's dimensions and warp/coordinate/background/object events from the disassembly.
 - [x] Imported the 10 × 9 New Bark Town block-ID grid from the original `.blk` file.
-- [ ] Decode tileset graphics and block definitions, then derive collision from the source attributes.
+- [x] Imported Johto metatile collision labels from the original collision table.
+- [ ] Decode and render tileset graphics and metatile definitions; translate raw collision labels into game-engine movement behavior.
 - [ ] Translate source-defined collisions, warps, map connections, object events, and scripts.
 - [ ] Render the real opening sequence and New Bark Town map.
 - [ ] Port dialogue, menus, battles, party, items, progression, and remaining maps.
