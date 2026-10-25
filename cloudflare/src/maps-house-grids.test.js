@@ -513,6 +513,8 @@ test('every source NPC and starter uses a decodable source PNG sprite', () => {
   { id: 'MOM', expected: 'MOM' },
   { id: 'NEIGHBOR', expected: 'POKEFAN_F' },
   { id: 'DAUGHTER', expected: 'COOLTRAINER_F' },
+  { id: 'ELMS_WIFE', sprite: 'SPRITE_TEACHER', expected: 'TEACHER' },
+  { id: 'ELMS_SON', sprite: 'SPRITE_BUG_CATCHER', expected: 'BUG_CATCHER' },
   { id: 'ELMSLAB_POKE_BALL1', expected: 'POKE_BALL' },
  ];
  for (const object of sourceObjects) {
@@ -528,4 +530,15 @@ test('every source NPC and starter uses a decodable source PNG sprite', () => {
   assert.equal(width, 40, species + ' front sprite width');
   assert.ok(height >= 40, species + ' front sprite must contain at least one frame');
  }
+});
+
+test('Elm family dialogue preserves all source lines used in the New Bark Town scene', () => {
+ const wife = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_WIFE');
+ const son = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_SON');
+ assert.deepEqual({ x: wife.x, y: wife.y }, { x: 1, y: 5 });
+ assert.deepEqual({ x: son.x, y: son.y }, { x: 5, y: 4 });
+ assert.match(wife.dialogue.join(' '), /husband's always so busy/);
+ assert.match(wife.dialogue.join(' '), /forgets to eat/);
+ assert.match(son.dialogue.join(' '), /help my dad/);
+ assert.match(son.dialogue.join(' '), /great POKéMON professor/);
 });
