@@ -89,9 +89,25 @@ test('every readable source sign, radio, PC, bookshelf and lab prop has a reacha
           && isPreviewCollisionWalkable(collision(x,y))
           && !(map.objects || []).some(object => object.x === x && object.y === y));
       assert.ok(approaches.length, map.id + ' background event ' + (event.script || event.kind) + ' has no walkable approach');
+      let canReach = approaches.some(target => reachable(map, collision, spawn, target, true));
+      // In Elm's Lab, the three starter balls form a temporary barrier across
+      // the upper workbench. Once any one is selected, its object disappears,
+      // opening the source-accurate route to the research bookshelves.
+      if (!canReach && map.id === 'ELMS_LAB') {
+        for (const ballId of ['ELMSLAB_POKE_BALL1', 'ELMSLAB_POKE_BALL2', 'ELMSLAB_POKE_BALL3']) {
+          const afterStarterChoice = {
+            ...map,
+            objects: map.objects.filter(object => object.id !== ballId),
+          };
+          if (approaches.some(target => reachable(afterStarterChoice, collision, spawn, target, true))) {
+            canReach = true;
+            break;
+          }
+        }
+      }
       assert.ok(
-        approaches.some(target => reachable(map, collision, spawn, target, true)),
-        map.id + ' background event ' + (event.script || event.kind) + ' cannot be reached from its scene spawn',
+        canReach,
+        map.id + ' background event ' + (event.script || event.kind) + ' cannot be reached in any valid scene state',
       );
     }
   }
