@@ -268,7 +268,17 @@ function drawObjects() {
   for (const object of activeMap().metadata.objects || []) {
     if (!isSceneObjectVisible(currentMapId, object, state)) continue;
     const position = objectPosition(object);
-    const facing = object.id === 'MOM' && state.momIntroActive ? 'right' : (object.facing || 'down');
+    let facing = object.facing || 'down';
+    if (object.id === 'MOM' && state.momIntroActive) facing = 'right';
+    if (object.id === 'ELMSLAB_ELM') {
+      facing = state.labIntroComplete ? 'down' : (state.labIntroStage === 3 ? 'down' : 'right');
+    }
+    if (object.id === 'NEWBARKTOWN_TEACHER' && state.townTeacherStage !== null) {
+      facing = state.townTeacherStage === 0 ? 'left' : state.townTeacherStage === 1 ? 'right' : 'left';
+    }
+    if (object.id === 'NEWBARKTOWN_RIVAL' && state.rivalStage > 0) {
+      facing = state.rivalStage === 1 ? 'left' : 'down';
+    }
     drawNpc({ ...object, ...position, facing });
   }
 }
