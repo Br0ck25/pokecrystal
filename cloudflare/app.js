@@ -31,6 +31,7 @@ import { shouldStartElmOpeningScene, canCancelPendingScene } from './src/maps/sc
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
 import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
 import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
+import { formatSourceText } from './src/maps/source-text.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -351,7 +352,7 @@ function eventsAtFacing() {
   return events;
 }
 function showDialogue(speaker, text) {
-  status.textContent = speaker + "\n" + text;
+  status.textContent = formatSourceText(speaker + "\n" + text);
   status.dataset.kind = 'dialogue';
   draw();
 }
@@ -363,7 +364,7 @@ function drawDialogueBox() {
   ctx.strokeStyle = '#18202a'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
   ctx.strokeStyle = '#7a8790'; ctx.lineWidth = 1; ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
   ctx.fillStyle = '#17232a'; ctx.font = '7px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  const raw = status.textContent.split('\n');
+  const raw = formatSourceText(status.textContent).split('\n');
   const speaker = raw.shift() || '';
   ctx.font = 'bold 7px monospace'; ctx.fillText(speaker.slice(0, 28), x + 8, y + 6);
   ctx.font = '7px monospace';
@@ -508,7 +509,7 @@ function interact() {
       state.pendingStarter = 'LAB_INTRO';
       state.labIntroStage = 0;
       state.choiceYes = true;
-      showDialogue('PROF. ELM', "ELM: <PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
+      showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
     } else if (!state.starter) {
       showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner! Go on. Pick one!");
     } else {
