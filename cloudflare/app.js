@@ -26,7 +26,7 @@ import { ELMS_HOUSE, elmsHouseEventsAt } from './src/maps/elms-house.js';
 import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/maps/elms-house-blocks.js';
 import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './src/maps/players-neighbors-house-blocks.js';
-import { getLabStarter, getLabStarterBallId, mustBlockLabExit } from './src/maps/starter-selection.js';
+import { getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit } from './src/maps/starter-selection.js';
 import { shouldStartElmOpeningScene, canCancelPendingScene } from './src/maps/scene-progression.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
 import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
@@ -579,8 +579,7 @@ function interact() {
     state.pendingStarter = starter;
     state.choiceYes = true;
     state.choiceNeedsConfirm = false;
-    const prompts = { CYNDAQUIL: "ELM: You'll take CYNDAQUIL, the FIRE POKéMON?", TOTODILE: "ELM: Do you want TOTODILE, the WATER POKéMON?", CHIKORITA: "ELM: So, you like CHIKORITA, the GRASS POKéMON?" };
-    showDialogue('PROF. ELM', prompts[starter] + '\n\nChoice: YES / NO (left/right, then A)');
+    showDialogue('PROF. ELM', getLabStarterPrompt(starter) + '\n\n▶ YES       NO');
     draw();
     return;
   }
@@ -699,7 +698,7 @@ function step(dx, dy, face) {
     if (dx !== 0) state.choiceYes = dx < 0;
     state.choiceNeedsConfirm = false;
     const starter = state.pendingStarter;
-    showDialogue('PROF. ELM', `${starter}?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
+    showDialogue('PROF. ELM', getLabStarterPrompt(starter) + '\n\n' + (state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'));
     return;
   }
   if (state.momIntroActive) {
