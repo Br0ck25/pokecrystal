@@ -689,6 +689,14 @@ function interact() {
     return;
   }
   if (event.type === 'object') {
+    if (currentMapId === 'PLAYERS_HOUSE_1F' && event.id === 'MOM') {
+      // Source: maps/PlayersHouse1F.asm, MomScript (.GotAPokemon / default).
+      const lines = state.starter
+        ? ["So, what was PROF. ELM's errand?", '…', 'That does sound challenging.', 'But, you should be proud that people rely on you.']
+        : ['PROF. ELM is waiting for you.', 'Hurry up, baby!'];
+      showDialogue('MOM', lines.join('\n'), true);
+      return;
+    }
     showDialogue(event.id || '…', (event.dialogue || [event.script || event.id || '…']).join('\n'), true);
     return;
   }
