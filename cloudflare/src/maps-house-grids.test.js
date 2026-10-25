@@ -376,3 +376,15 @@ test('house NPCs resolve to embedded original Crystal sprite sheets', () => {
   assert.match(CRYSTAL_EXTRA_SPRITES[key], /^iVBOR/);
  }
 });
+
+
+test('Elm household dialogue and research-paper interaction retain source text', () => {
+ const wife = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_WIFE');
+ const son = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_SON');
+ const pc = ELMS_HOUSE.backgroundEvents.find(event => event.kind === 'pc');
+ assert.match(wife.dialogue.join(' '), /Hi, <PLAYER>! My husband's always so busy/);
+ assert.match(wife.dialogue.join(' '), /he even forgets to eat/);
+ assert.match(son.dialogue.join(' '), /I'm going to be a great POKéMON professor/);
+ assert.match(pc.text, /Why has no one ever witnessed a POKéMON's birth/);
+ assert.match(pc.text, /dedicate my life to the study of POKéMON/);
+});
