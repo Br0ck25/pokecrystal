@@ -352,12 +352,9 @@ document.querySelectorAll('[data-move]').forEach(button => {
 });
 window.addEventListener('keyup', e => keys.delete(e.key));
 window.addEventListener('blur', () => keys.clear());
-source.addEventListener('load', () => {
-  resizeCanvasForMap();
-  draw();
-  setHint('Move with arrows / WASD. Face a sign or person, then press A.');
-});
-source.addEventListener('error', () => { status.textContent = 'Could not load the source tileset image.'; });
+// Each source image is embedded in this bundle. There is no single global
+// "source" image: every map chooses its own tileset in drawMap().
 resizeCanvasForMap();
 draw();
+setHint('Move with arrows / WASD. Face a sign or person, then press A.');
 requestAnimationFrame(frame);
