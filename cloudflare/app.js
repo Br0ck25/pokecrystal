@@ -37,6 +37,7 @@ import { createDialoguePages } from './src/maps/dialogue-pages.js';
 import { normalizeKey, getButtonAction } from './src/maps/input-bindings.js';
 import { formatYesNoChoice, moveYesNoChoice } from './src/maps/yes-no-menu.js';
 import { getNewBarkTownObjectDialogue } from './src/maps/new-bark-town-dialogue.js';
+import { storeMomChoice, beginMomPhoneQuestion } from './src/maps/mom-intro-state.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -491,10 +492,7 @@ function interact() {
       return;
     }
     if (state.momIntroStage === 2) {
-      state.momDstChoiceYes = state.momChoiceYes;
-      state.momIntroStage = 3;
-      state.momPhoneChoiceYes = true;
-      state.momChoiceYes = state.momPhoneChoiceYes;
+      beginMomPhoneQuestion(state);
       showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?\n\n" + formatYesNoChoice(state.momPhoneChoiceYes));
       return;
     }
@@ -773,9 +771,7 @@ function step(dx, dy, face) {
     if (dialoguePageIndex < dialoguePages.length - 1) return;
     if (state.momIntroStage === 2 || state.momIntroStage === 3) {
       const choice = state.momIntroStage === 2 ? state.momDstChoiceYes : state.momPhoneChoiceYes;
-      state.momChoiceYes = moveYesNoChoice(choice, dx, dy);
-      if (state.momIntroStage === 2) state.momDstChoiceYes = state.momChoiceYes;
-      else state.momPhoneChoiceYes = state.momChoiceYes;
+      storeMomChoice(state, state.momIntroStage, moveYesNoChoice(choice, dx, dy));
       const options = state.momChoiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false);
       const prompt = state.momIntroStage === 2
         ? 'Is it Daylight Saving Time now?'
