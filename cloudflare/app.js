@@ -33,6 +33,7 @@ import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js
 import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
 import { formatSourceText } from './src/maps/source-text.js';
 import { advanceRadioSequence } from './src/maps/radio-sequence.js';
+import { createDialoguePages } from './src/maps/dialogue-pages.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -153,6 +154,9 @@ const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmT
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
+let dialoguePages = [];
+let dialoguePageIndex = 0;
+let dialogueSpeaker = '';
 
 function activeMap() { return maps[currentMapId]; }
 function objectPosition(object) {
@@ -170,6 +174,9 @@ function resizeCanvasForMap() {
   if (screen) screen.style.aspectRatio = `${GBC_VIEWPORT_WIDTH} / ${GBC_VIEWPORT_HEIGHT}`;
 }
 function setHint(text) {
+  dialoguePages = [];
+  dialoguePageIndex = 0;
+  dialogueSpeaker = '';
   status.textContent = formatSourceText(text);
   status.dataset.kind = 'hint';
   draw();
@@ -366,9 +373,19 @@ function eventsAtFacing() {
   return events;
 }
 function showDialogue(speaker, text) {
-  status.textContent = formatSourceText(speaker + "\n" + text);
+  dialogueSpeaker = formatSourceText(speaker);
+  dialoguePages = createDialoguePages(formatSourceText(text));
+  dialoguePageIndex = 0;
+  status.textContent = dialogueSpeaker + "\n" + dialoguePages[0].join("\n");
   status.dataset.kind = 'dialogue';
   draw();
+}
+function advanceDialoguePage() {
+  if (status.dataset.kind !== 'dialogue' || dialoguePageIndex >= dialoguePages.length - 1) return false;
+  dialoguePageIndex += 1;
+  status.textContent = dialogueSpeaker + "\n" + dialoguePages[dialoguePageIndex].join("\n");
+  draw();
+  return true;
 }
 function drawDialogueBox() {
   if (status.dataset.kind !== 'dialogue') return;
@@ -395,6 +412,7 @@ function drawDialogueBox() {
   ctx.restore();
 }
 function interact() {
+  if (advanceDialoguePage()) return;
   if (state.townTeacherStage !== null) {
     if (state.townTeacherStage === 0) {
       // NewBarkTown_TeacherStopsYouScene1/2: the teacher runs left to the
