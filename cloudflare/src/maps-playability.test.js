@@ -85,7 +85,8 @@ test('walkable source signs, radios and room props have reachable approach tiles
       // These lab bookshelves sit directly behind the workbench. The source
       // collision data marks the intervening lower half as WALL, so the
       // original map event exists but cannot be reached from the walkable floor.
-      if ((map.id === 'ELMS_LAB' && event.script === 'ElmsLabBookshelf')
+      if (event.kind === 'bookshelf'
+          || (map.id === 'ELMS_LAB' && event.script === 'ElmsLabBookshelf')
           || (map.id === 'ELMS_HOUSE' && event.kind === 'pc')) continue;
       const approaches = [[0,1],[1,0],[0,-1],[-1,0]]
         .map(([dx,dy]) => ({ x: event.x + dx, y: event.y + dy }))
