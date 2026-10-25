@@ -147,6 +147,7 @@ let currentMapId = 'PLAYERS_HOUSE_2F';
 const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, pokegear: false, townTeacherStage: null, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
+let walkFrame = 0;
 
 function activeMap() { return maps[currentMapId]; }
 function objectPosition(object) {
@@ -184,12 +185,13 @@ function drawMap() {
     }
   }
 }
-function drawSourceSprite(name, x, y, facing = 'down', flip = false) {
+function drawSourceSprite(name, x, y, facing = 'down', flip = false, animate = false) {
   const image = overworldSpriteImages[name];
   if (!image || image.naturalWidth < 16 || image.naturalHeight < 96) return false;
   // The source sheets are six 16x16 poses: down, up, and side, each with
   // alternating walk frames. Static event sprites use frame zero.
-  const row = facing === 'up' ? 2 : facing === 'left' || facing === 'right' ? 4 : 0;
+  const directionRow = facing === 'up' ? 2 : facing === 'left' || facing === 'right' ? 4 : 0;
+  const row = directionRow + (animate ? walkFrame : 0);
   ctx.save();
   if (flip) {
     ctx.translate(x + TILE, y);
@@ -203,7 +205,7 @@ function drawSourceSprite(name, x, y, facing = 'down', flip = false) {
 }
 function drawPlayer() {
   const x = state.x * TILE, y = state.y * TILE;
-  if (drawSourceSprite('KRIS', x, y, state.facing, state.facing === 'right')) return;
+  if (drawSourceSprite('KRIS', x, y, state.facing, state.facing === 'right', true)) return;
   // Visible fallback if an embedded source sprite fails to decode.
   ctx.fillStyle = '#111827'; ctx.fillRect(x + 3, y + 2, 10, 13);
   ctx.fillStyle = '#f1c7a5'; ctx.fillRect(x + 5, y + 3, 6, 6);
@@ -587,6 +589,7 @@ function step(dx, dy, face) {
     && !(object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter); });
   if (blocked(nx, ny) || occupied) { draw(); return; }
   state.x = nx; state.y = ny;
+  walkFrame = walkFrame === 0 ? 1 : 0;
   if (currentMapId === 'NEW_BARK_TOWN' && !state.starter && ((nx === 1 && ny === 8) || (nx === 1 && ny === 9))) {
     state.townTeacherStage = 0;
     showDialogue('TEACHER', 'Wait, <PLAY_G>!');
@@ -621,7 +624,10 @@ function frame(now) {
     const dy = (keys.has('ArrowDown') || keys.has('s') ? 1 : 0) - (keys.has('ArrowUp') || keys.has('w') ? 1 : 0);
     if (dx || dy) {
       lastStep = now;
-      step(dx, dy, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+      // Crystal movement is four-directional: never advance diagonally when two keys overlap.
+      const moveX = Math.abs(dx) > Math.abs(dy) ? Math.sign(dx) : 0;
+      const moveY = moveX === 0 ? Math.sign(dy) : 0;
+      step(moveX, moveY, moveX ? (moveX > 0 ? 'right' : 'left') : (moveY > 0 ? 'down' : 'up'));
     }
   }
   requestAnimationFrame(frame);
