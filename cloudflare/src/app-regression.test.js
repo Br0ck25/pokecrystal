@@ -35,9 +35,11 @@ test('dialogue is drawn in the Game Boy screen, not only in the page status pane
 });
 
 test('first lab entry plays Elm source movement from the doorway to the meeting position', () => {
-  assert.match(app, /state\.y = Math\.max\(0, landing\.y - 7\)/);
+  assert.match(app, /startScriptedMovement\(ELM_OPENING_MOVEMENT/);
+  assert.match(app, /function advanceScriptedMovement\(now\)/);
   assert.match(app, /state\.facing = 'left'/);
-  assert.match(app, /ElmsLab_WalkUpToElmMovement/);
+  assert.match(app, /ELM_OPENING_MOVEMENT/);
+  assert.doesNotMatch(app, /state\.y = Math\.max\(0, landing\.y - 7\)/);
 });
 
 
