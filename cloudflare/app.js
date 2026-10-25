@@ -28,6 +28,7 @@ import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/ma
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './src/maps/players-neighbors-house-blocks.js';
 import { getLabStarter, getLabStarterBallId, mustBlockLabExit } from './src/maps/starter-selection.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
+import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -190,8 +191,7 @@ function drawSourceSprite(name, x, y, facing = 'down', flip = false, animate = f
   if (!image || image.naturalWidth < 16 || image.naturalHeight < 96) return false;
   // The source sheets are six 16x16 poses: down, up, and side, each with
   // alternating walk frames. Static event sprites use frame zero.
-  const directionRow = facing === 'up' ? 2 : facing === 'left' || facing === 'right' ? 4 : 0;
-  const row = directionRow + (animate ? walkFrame : 0);
+  const row = getSpriteFrameRow(facing, animate ? walkFrame : 0);
   ctx.save();
   if (flip) {
     ctx.translate(x + TILE, y);
@@ -625,9 +625,8 @@ function frame(now) {
     if (dx || dy) {
       lastStep = now;
       // Crystal movement is four-directional: never advance diagonally when two keys overlap.
-      const moveX = Math.abs(dx) > Math.abs(dy) ? Math.sign(dx) : 0;
-      const moveY = moveX === 0 ? Math.sign(dy) : 0;
-      step(moveX, moveY, moveX ? (moveX > 0 ? 'right' : 'left') : (moveY > 0 ? 'down' : 'up'));
+      const movement = getCardinalStep(dx, dy);
+      if (movement) step(movement.dx, movement.dy, movement.facing);
     }
   }
   requestAnimationFrame(frame);
