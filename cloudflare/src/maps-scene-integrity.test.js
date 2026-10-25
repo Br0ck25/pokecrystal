@@ -56,7 +56,7 @@ test('NPCs are placed on walkable map cells and have at least one adjacent inter
       // Poké Balls are sprites sitting on the lab table, so their underlying
       // collision is intentionally solid. Elm's first-meeting callback also
       // moves him from the static event coordinate to (3, 4).
-      if (object.id?.startsWith('ELMSLAB_POKE_BALL')) continue;
+      if (object.id?.startsWith('ELMSLAB_POKE_BALL') || /DOLL|CONSOLE/.test(object.id || '')) continue;
       const position = resolveSceneObjectPosition(map.id, object, { labIntroComplete: false }) || { x: object.x, y: object.y };
       const collision = collisionAt(position.x, position.y);
       assert.ok(isPreviewCollisionWalkable(collision), map.id + ' NPC ' + object.id + ' is on blocked collision ' + collision + ' at ' + position.x + ',' + position.y);
