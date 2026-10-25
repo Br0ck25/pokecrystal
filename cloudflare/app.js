@@ -145,13 +145,14 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, pokegear: false, townTeacherStage: null, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momX: 7, pokegear: false, townTeacherStage: null, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
 
 function activeMap() { return maps[currentMapId]; }
 function objectPosition(object) {
+  if (currentMapId === 'PLAYERS_HOUSE_1F' && object.id === 'MOM' && Number.isInteger(state.momX)) return { x: state.momX, y: object.y };
   return resolveSceneObjectPosition(currentMapId, object, state) || { x: object.x, y: object.y };
 }
 function resizeCanvasForMap() {
@@ -417,6 +418,7 @@ function interact() {
     }
     state.momIntroActive = false;
     state.momIntroStage = 0;
+    state.momX = 7;
     setHint('Mom gave you the POKéGEAR. Professor Elm is waiting at the lab.');
     return;
   }
@@ -596,7 +598,10 @@ function step(dx, dy, face) {
     draw();
     return;
   }
-  if (currentMapId === 'PLAYERS_HOUSE_1F' && nx === 8 && ny === 4 && !state.pokegear) {
+  if (currentMapId === 'PLAYERS_HOUSE_1F' && (nx === 8 || nx === 9) && ny === 4 && !state.pokegear) {
+    // Crystal has two separate coordinate scripts: from the left Mom turns
+    // toward the player; from the right she steps one tile toward them.
+    state.momX = nx === 9 ? 8 : 7;
     state.momIntroActive = true;
     state.momIntroStage = 0;
     showDialogue('MOM', "Oh, <PLAYER>…! Our neighbor, PROF. ELM, was looking for you. He said he wanted you to do something for him.");
