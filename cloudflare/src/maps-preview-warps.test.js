@@ -20,7 +20,7 @@ test('both lab exit warps return to the exterior landing tile', () => {
 });
 
 test('unknown destinations and malformed warps fail closed', () => {
-  assert.equal(resolvePreviewWarp('NEW_BARK_TOWN', { destinationMap: 'PLAYERS_NEIGHBORS_HOUSE' }), null);
+  assert.equal(resolvePreviewWarp('NEW_BARK_TOWN', { destinationMap: 'UNPORTED_MAP' }), null);
   assert.equal(resolvePreviewWarp('UNKNOWN_MAP', { destinationMap: 'ELMS_LAB' }), null);
   assert.equal(resolvePreviewWarp('ELMS_LAB', null), null);
 });
