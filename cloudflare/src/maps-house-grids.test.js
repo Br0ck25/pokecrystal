@@ -95,3 +95,13 @@ test('neighbor house uses the original shared House1 block grid and source dialo
  assert.match(daughter.dialogue.join(' '), /PIKACHU is an evolved POKéMON/);
  assert.match(daughter.dialogue.join(' '), /researcher like him/);
 });
+
+
+test('each map records its original source tileset instead of assuming Johto everywhere', () => {
+ assert.equal(NEW_BARK_TOWN.tileset, 'JOHTO');
+ assert.equal(ELMS_LAB.tileset, 'LAB');
+ assert.equal(PLAYERS_HOUSE_1F.tileset, 'PLAYERS_HOUSE');
+ assert.equal(PLAYERS_HOUSE_2F.tileset, 'PLAYERS_ROOM');
+ assert.equal(ELMS_HOUSE.tileset, 'HOUSE');
+ assert.equal(PLAYERS_NEIGHBORS_HOUSE.tileset, 'HOUSE');
+});
