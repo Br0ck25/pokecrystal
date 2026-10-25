@@ -18,6 +18,7 @@ this folder. Node 22, no packages. Status: any map loads and renders; new game �
 ## Facts worth knowing (measured against the real game)
 - Square = 16px; step 16 frames; turn 8 frames; stand 8 then walk pose 8 frames, mirrored pose alternates per square; sprites draw 4px up; player tile at screen (64,64).
 - Text ≈3 frames/char; box rows 12–17, text rows 14/16; YES/NO box (14,7)-(19,11). Walkable = `LAND_TILE` in the permission table. Door/stairs arrival walks down 1 square.
+- Tile events (warps, coord events) are disabled on map entry and after each check, and re-enabled when a player step ends (arriving on a warp tile does not re-warp).
 - New-game flags come from running `InitializeEventsScript` via the 2F callback; object visible ⇔ its event flag is clear.
 - Time of day is fixed to DAY; the player is Chris; ROM-vs-app diffs also show moving NPCs and animated flowers (not bugs).
 

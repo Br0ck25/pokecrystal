@@ -66,6 +66,7 @@ export class Game {
     this.follow = null;
     this.deferred = null;
     this.runner = null;                                          // a script never survives a map change
+    this.tileEventsEnabled = false;
     this.textboxOpen = false;
     this.emote = null;
     this.loading = false;
@@ -149,6 +150,7 @@ export class Game {
     if (step.kind === 'walk') {
       actor.x = step.toX; actor.y = step.toY;
       actor.parity ^= 1;
+      if (actor === this.player) this.tileEventsEnabled = true;   // events.asm CheckPlayerState: re-enabled when a step ends
     }
     actor.step = null;
     return true;                                                  // finished this frame
@@ -194,6 +196,9 @@ export class Game {
   }
 
   tileEvents() {
+    // EnterMap and every PlayerEvents pass disable tile events (events.asm DisableEvents) until the player finishes a step.
+    if (!this.tileEventsEnabled) return false;
+    this.tileEventsEnabled = false;
     const { x, y } = this.player;
     const collision = this.world.collisionAt(x, y);
     if (warpTile(collision) && !(collision in directionalCarpet)) {
