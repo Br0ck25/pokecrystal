@@ -35,6 +35,7 @@ import { formatSourceText } from './src/maps/source-text.js';
 import { advanceRadioSequence } from './src/maps/radio-sequence.js';
 import { createDialoguePages } from './src/maps/dialogue-pages.js';
 import { normalizeKey, getButtonAction } from './src/maps/input-bindings.js';
+import { formatYesNoChoice, moveYesNoChoice } from './src/maps/yes-no-menu.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -405,13 +406,17 @@ function drawDialogueBox() {
   const speaker = raw.shift() || '';
   ctx.font = 'bold 7px monospace'; ctx.fillText(speaker.slice(0, 28), x + 8, y + 6);
   ctx.font = '7px monospace';
-  const body = raw.join(' ').replace(/\s+/g, ' ').trim();
-  const words = body.split(' '); const lines = []; let line = '';
-  for (const word of words) {
-    const next = line ? line + ' ' + word : word;
-    if (next.length > 33 && line) { lines.push(line); line = word; } else line = next;
+  const lines = [];
+  for (const paragraph of raw) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) continue;
+    let line = '';
+    for (const word of words) {
+      const next = line ? line + ' ' + word : word;
+      if (next.length > 33 && line) { lines.push(line); line = word; } else line = next;
+    }
+    if (line) lines.push(line);
   }
-  if (line) lines.push(line);
   lines.slice(0, 3).forEach((lineText, i) => ctx.fillText(lineText, x + 8, y + 16 + i * 8));
   ctx.restore();
 }
@@ -473,7 +478,7 @@ function interact() {
     if (state.momIntroStage === 2) {
       state.momIntroStage = 3;
       state.momChoiceYes = true;
-      showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?\n\n" + (state.momChoiceYes ? '▶ YES       NO' : '  YES     ▶ NO'));
+      showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?\n\n" + (state.momChoiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false)));
       return;
     }
     if (state.momIntroStage === 3) {
@@ -555,7 +560,7 @@ function interact() {
     }
     if (state.choiceNeedsConfirm) {
       state.choiceNeedsConfirm = false;
-      showDialogue('PROF. ELM', `${state.pendingStarter}?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
+      showDialogue('PROF. ELM', `${state.pendingStarter}?\n\n${state.choiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false)}\nPress A to confirm.`);
       return;
     }
     if (state.choiceYes) {
@@ -614,7 +619,7 @@ function interact() {
     state.pendingStarter = starter;
     state.choiceYes = true;
     state.choiceNeedsConfirm = false;
-    showDialogue('PROF. ELM', getLabStarterPrompt(starter) + '\n\n▶ YES       NO');
+    showDialogue('PROF. ELM', getLabStarterPrompt(starter) + '\n\n' + formatYesNoChoice(true));
     draw();
     return;
   }
@@ -725,8 +730,8 @@ function transition(warp) {
 function step(dx, dy, face) {
   if (state.pendingStarter === 'LAB_INTRO' && state.labIntroStage === 0) {
     if (dialoguePageIndex < dialoguePages.length - 1) return;
-    if (dx !== 0) state.choiceYes = dx < 0;
-    showDialogue('PROF. ELM', `Will you help PROF. ELM?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
+    state.choiceYes = moveYesNoChoice(state.choiceYes, dx, dy);
+    showDialogue('PROF. ELM', `Will you help PROF. ELM?\n\n${state.choiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false)}\nPress A to confirm.`);
     return;
   }
   if (state.pendingStarter === 'LAB_INTRO') return;
@@ -735,14 +740,14 @@ function step(dx, dy, face) {
     if (dx !== 0) state.choiceYes = dx < 0;
     state.choiceNeedsConfirm = false;
     const starter = state.pendingStarter;
-    showDialogue('PROF. ELM', getLabStarterPrompt(starter) + '\n\n' + (state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'));
+    showDialogue('PROF. ELM', getLabStarterPrompt(starter) + '\n\n' + (state.choiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false)));
     return;
   }
   if (state.momIntroActive) {
     if (dialoguePageIndex < dialoguePages.length - 1) return;
     if (state.momIntroStage === 2 || state.momIntroStage === 3) {
-      if (dx !== 0) state.momChoiceYes = dx < 0;
-      const options = state.momChoiceYes ? '▶ YES       NO' : '  YES     ▶ NO';
+      state.momChoiceYes = moveYesNoChoice(state.momChoiceYes, dx, dy);
+      const options = state.momChoiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false);
       const prompt = state.momIntroStage === 2
         ? 'Is it Daylight Saving Time now?'
         : 'Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?';
