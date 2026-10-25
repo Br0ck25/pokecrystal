@@ -5,8 +5,8 @@ import { NEW_BARK_TOWN, eventsAt } from './maps/new-bark-town.js';
 test('New Bark Town dimensions match source map constants', () => {
   assert.equal(NEW_BARK_TOWN.dimensions.blocksWide, 10);
   assert.equal(NEW_BARK_TOWN.dimensions.blocksHigh, 9);
-  assert.equal(NEW_BARK_TOWN.dimensions.tilesWide, 20);
-  assert.equal(NEW_BARK_TOWN.dimensions.tilesHigh, 18);
+  assert.equal(NEW_BARK_TOWN.dimensions.metatilesWide, 20);
+  assert.equal(NEW_BARK_TOWN.dimensions.metatilesHigh, 18);
 });
 
 test('New Bark Town preserves all four source warp events', () => {
