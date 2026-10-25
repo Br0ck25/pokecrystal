@@ -27,6 +27,7 @@ import { resolveSceneObjectPosition, isSceneObjectVisible } from './maps/scene-o
 import { shouldStartElmOpeningScene, canCancelPendingScene } from './maps/scene-progression.js';
 import { getSourceSpriteForObject } from './maps/npc-sprite-map.js';
 import { CRYSTAL_EXTRA_SPRITES } from './assets/source-sprites.js';
+import { CRYSTAL_OVERWORLD_SPRITES } from './assets/overworld-sprites.js';
 
 test('interior maps use their source tilesets rather than a similar-looking substitute', () => {
  assert.equal(PLAYERS_HOUSE_1F.tileset, 'PLAYERS_HOUSE');
@@ -498,7 +499,7 @@ test('every source NPC and starter uses a decodable source PNG sprite', () => {
   assert.equal(bytes.toString('hex', 0, 8), '89504e470d0a1a0a', 'embedded asset must be a PNG');
   return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
  };
- const sheets = { ...CRYSTAL_EXTRA_SPRITES };
+ const sheets = { ...CRYSTAL_OVERWORLD_SPRITES, ...CRYSTAL_EXTRA_SPRITES };
  const sourceObjects = [
   { id: 'NEWBARKTOWN_TEACHER', sprite: 'SPRITE_TEACHER', expected: 'TEACHER' },
   { id: 'NEWBARKTOWN_FISHER', sprite: 'SPRITE_FISHER', expected: 'FISHER' },
