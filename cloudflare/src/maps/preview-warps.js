@@ -1,3 +1,5 @@
+import { isPreviewCollisionWalkable } from './new-bark-town-movement.js';
+
 /**
  * Resolve a source warp using the destination map's numbered warp entry.
  *
@@ -14,7 +16,8 @@ export function resolvePreviewWarp(sourceMapId, warp, maps = null) {
 
   // When source metadata is supplied, honor the actual destination warp number
   // rather than treating every doorway between two maps as interchangeable.
-  const destination = maps?.[warp.destinationMap]?.metadata ?? maps?.[warp.destinationMap];
+  const destinationMap = maps?.[warp.destinationMap];
+  const destination = destinationMap?.metadata ?? destinationMap;
   if (!destination || !Number.isInteger(warp.destinationWarp) || warp.destinationWarp < 1) {
     return { ...fallback };
   }
@@ -43,6 +46,18 @@ export function resolvePreviewWarp(sourceMapId, warp, maps = null) {
     facing = 'down';
   }
   if (x < 0 || y < 0 || x >= d.metatilesWide || y >= d.metatilesHigh) return null;
+
+  // The simple edge offset can land inside a wall on stair/door tiles whose
+  // source warp is embedded in wall graphics (notably the player's downstairs
+  // staircase). Prefer the source-pair landing only when the computed cell is
+  // blocked, and only if the fallback is in-bounds and walkable on that map.
+  if (typeof destinationMap?.collisionAt === 'function'
+      && !isPreviewCollisionWalkable(destinationMap.collisionAt(x, y))) {
+    if (fallback.x < 0 || fallback.y < 0
+        || fallback.x >= d.metatilesWide || fallback.y >= d.metatilesHigh
+        || !isPreviewCollisionWalkable(destinationMap.collisionAt(fallback.x, fallback.y))) return null;
+    return { ...fallback };
+  }
   return { mapId: warp.destinationMap, x, y, facing };
 }
 
@@ -52,7 +67,7 @@ export const PREVIEW_WARP_LANDINGS = Object.freeze({
   'NEW_BARK_TOWN:PLAYERS_HOUSE_1F': Object.freeze({ mapId: 'PLAYERS_HOUSE_1F', x: 6, y: 6, facing: 'up' }),
   'PLAYERS_HOUSE_1F:NEW_BARK_TOWN': Object.freeze({ mapId: 'NEW_BARK_TOWN', x: 13, y: 6, facing: 'down' }),
   'PLAYERS_HOUSE_1F:PLAYERS_HOUSE_2F': Object.freeze({ mapId: 'PLAYERS_HOUSE_2F', x: 7, y: 1, facing: 'up' }),
-  'PLAYERS_HOUSE_2F:PLAYERS_HOUSE_1F': Object.freeze({ mapId: 'PLAYERS_HOUSE_1F', x: 9, y: 1, facing: 'down' }),
+  'PLAYERS_HOUSE_2F:PLAYERS_HOUSE_1F': Object.freeze({ mapId: 'PLAYERS_HOUSE_1F', x: 8, y: 3, facing: 'down' }),
   'NEW_BARK_TOWN:ELMS_HOUSE': Object.freeze({ mapId: 'ELMS_HOUSE', x: 2, y: 6, facing: 'up' }),
   'ELMS_HOUSE:NEW_BARK_TOWN': Object.freeze({ mapId: 'NEW_BARK_TOWN', x: 11, y: 14, facing: 'down' }),
   'NEW_BARK_TOWN:PLAYERS_NEIGHBORS_HOUSE': Object.freeze({ mapId: 'PLAYERS_NEIGHBORS_HOUSE', x: 2, y: 6, facing: 'up' }),
