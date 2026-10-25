@@ -542,3 +542,29 @@ test('Elm family dialogue preserves all source lines used in the New Bark Town s
  assert.match(son.dialogue.join(' '), /help my dad/);
  assert.match(son.dialogue.join(' '), /great POKéMON professor/);
 });
+
+test('all six playable map block grids exactly match the source disassembly', () => {
+ assert.deepEqual(NEW_BARK_TOWN_BLOCK_IDS, [
+  5,5,24,31,25,5,5,5,5,5,
+  5,71,28,119,30,5,24,25,5,5,
+  5,2,1,1,1,71,22,30,5,5,
+  5,1,1,1,1,1,1,1,1,84,
+  1,1,1,1,69,1,1,1,1,88,
+  5,20,21,1,1,1,1,1,98,5,
+  4,1,1,1,71,20,21,1,98,5,
+  5,101,101,1,1,1,1,1,98,5,
+  5,5,5,5,5,5,5,5,5,5,
+ ]);
+ assert.deepEqual(ELMS_LAB_BLOCK_IDS, [
+  23,8,9,4,4,
+  24,12,1,6,7,
+  1,33,1,10,11,
+  4,4,1,4,4,
+  1,1,1,1,1,
+  1,2,1,1,1,
+ ]);
+ assert.deepEqual(PLAYERS_HOUSE_1F_BLOCK_IDS, [7,15,17,5,10,3,22,8,9,3,3,3,12,13,3,3,3,3,6,3]);
+ assert.deepEqual(PLAYERS_HOUSE_2F_BLOCK_IDS, [4,1,3,2,5,6,5,5,5,5,7,5]);
+ assert.deepEqual(ELMS_HOUSE_BLOCK_IDS, [16,1,17,27,25,8,9,3,3,12,13,3,3,6,3,3]);
+ assert.deepEqual(PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, [4,30,5,29,15,1,2,15,15,12,13,15,6,11,15,7]);
+});
