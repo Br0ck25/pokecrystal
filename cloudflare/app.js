@@ -141,7 +141,7 @@ function pressB() {
   else setHint('There is nothing to cancel right now.');
 }
 function transition(warp) {
-  const landing = resolvePreviewWarp(currentMapId, warp);
+  const landing = resolvePreviewWarp(currentMapId, warp, maps);
   if (!landing || !maps[landing.mapId]) {
     setHint('This destination has not been ported yet: ' + (warp?.destinationMap || 'unknown'));
     return;
