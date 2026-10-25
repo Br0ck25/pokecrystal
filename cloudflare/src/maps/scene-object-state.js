@@ -16,6 +16,7 @@ export function resolveSceneObjectPosition(mapId, object, state = {}) {
 
 export function isSceneObjectVisible(mapId, object, state = {}) {
   if (!object) return false;
+  if (mapId === 'NEW_BARK_TOWN' && object.appearsWhen === 'EVENT_RIVAL_NEW_BARK_TOWN' && !state.starter) return false;
   if (mapId === 'ELMS_LAB' && object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starterBall === object.id) return false;
   if (mapId === 'ELMS_LAB' && object.id === 'ELMSLAB_OFFICER' && state.starter) return false;
   if (mapId === 'ELMS_LAB' && object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter) return false;
