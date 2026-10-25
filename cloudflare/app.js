@@ -51,7 +51,8 @@ function interact() {
   const x = state.x + delta[0], y = state.y + delta[1];
   const event = eventsAt(x, y).find(item => item.type === 'background' || item.type === 'object');
   if (!event) {
-    status.textContent = 'Nothing to interact with here.';\n    status.dataset.kind = 'hint';
+    status.textContent = 'Nothing to interact with here.';
+    status.dataset.kind = 'hint';
     return;
   }
   if (event.type === 'background') {
@@ -59,8 +60,18 @@ function interact() {
     status.dataset.kind = 'dialogue';
     return;
   }
-  status.textContent = (event.dialogue || ['…']).join('\n');
+  status.textContent = (event.dialogue || ['…']).join('
+');
   status.dataset.kind = 'dialogue';
+}
+function pressB() {
+  if (status.dataset.kind === 'dialogue') {
+    status.textContent = 'New Bark Town · Press A to interact with signs and people.';
+    status.dataset.kind = 'hint';
+  } else {
+    status.textContent = 'There is nothing to cancel right now.';
+    status.dataset.kind = 'hint';
+  }
 }
 function step(dx,dy,face) {
   state.facing=face;
@@ -79,7 +90,18 @@ function frame(now) {
   }
   requestAnimationFrame(frame);
 }
-window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault(); if ((e.key === ' ' || e.key.toLowerCase() === 'e') && !e.repeat) { interact(); return; } keys.add(e.key);});
+window.addEventListener('keydown', e => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter', 'Backspace'].includes(e.key)) e.preventDefault();
+  if (!e.repeat && [' ', 'Enter', 'z', 'Z', 'e', 'E'].includes(e.key)) { interact(); return; }
+  if (!e.repeat && ['x', 'X', 'Escape', 'Backspace'].includes(e.key)) { pressB(); return; }
+  keys.add(e.key);
+});
+document.querySelectorAll('[data-action]').forEach(button => {
+  button.addEventListener('click', () => {
+    if (button.dataset.action === 'a') interact();
+    if (button.dataset.action === 'b') pressB();
+  });
+});
 document.querySelectorAll('[data-move]').forEach(button => {
   const key = button.dataset.move;
   const down = event => { event.preventDefault(); keys.add(key); };
