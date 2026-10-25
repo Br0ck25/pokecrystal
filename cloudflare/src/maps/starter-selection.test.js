@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getLabStarter, getLabStarterBallId, mustBlockLabExit, LAB_STARTERS } from './maps/starter-selection.js';
+import { getLabStarter, getLabStarterBallId, getLabStarterPrompt, mustBlockLabExit, LAB_STARTERS } from './maps/starter-selection.js';
 
 test('the three lab balls map to the original Johto starters at level 5', () => {
   assert.deepEqual(Object.values(LAB_STARTERS).map(({ species, level }) => [species, level]), [
@@ -23,4 +23,12 @@ test('starter selection is reversible by ball ID and gates lab exit until chosen
   assert.equal(getLabStarterBallId('PIKACHU'), null);
   assert.equal(mustBlockLabExit(null), true);
   assert.equal(mustBlockLabExit('CYNDAQUIL'), false);
+});
+
+
+test('starter yes/no prompts match the original Crystal scripts', () => {
+  assert.equal(getLabStarterPrompt('CYNDAQUIL'), "You'll take CYNDAQUIL, the fire POKéMON?");
+  assert.equal(getLabStarterPrompt('TOTODILE'), 'Do you want TOTODILE, the water POKéMON?');
+  assert.equal(getLabStarterPrompt('CHIKORITA'), 'So, you like CHIKORITA, the grass POKéMON?');
+  assert.equal(getLabStarterPrompt('PIKACHU'), null);
 });
