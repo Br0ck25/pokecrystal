@@ -361,11 +361,11 @@ function drawDialogueBox() {
   ctx.strokeStyle = '#18202a'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
   ctx.strokeStyle = '#7a8790'; ctx.lineWidth = 1; ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
   ctx.fillStyle = '#17232a'; ctx.font = '7px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  const raw = status.textContent.split('\\n');
+  const raw = status.textContent.split('\n');
   const speaker = raw.shift() || '';
   ctx.font = 'bold 7px monospace'; ctx.fillText(speaker.slice(0, 28), x + 8, y + 6);
   ctx.font = '7px monospace';
-  const body = raw.join(' ').replace(/\\s+/g, ' ').trim();
+  const body = raw.join(' ').replace(/\s+/g, ' ').trim();
   const words = body.split(' '); const lines = []; let line = '';
   for (const word of words) {
     const next = line ? line + ' ' + word : word;
