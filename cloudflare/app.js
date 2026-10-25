@@ -25,6 +25,7 @@ import { ELMS_HOUSE, elmsHouseEventsAt } from './src/maps/elms-house.js';
 import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/maps/elms-house-blocks.js';
 import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './src/maps/players-neighbors-house-blocks.js';
+import { getLabStarter, getLabStarterBallId, mustBlockLabExit } from './src/maps/starter-selection.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -316,7 +317,7 @@ function interact() {
     }
     if (state.choiceYes) {
       state.starter = state.pendingStarter;
-      state.starterBall = state.starter === 'CYNDAQUIL' ? 'ELMSLAB_POKE_BALL1' : state.starter === 'TOTODILE' ? 'ELMSLAB_POKE_BALL2' : 'ELMSLAB_POKE_BALL3';
+      state.starterBall = getLabStarterBallId(state.starter);
       state.pendingStarter = null;
       showDialogue('PROF. ELM', `ELM: I think that's a great POKéMON too!\n\nYou received ${state.starter} at level 5 holding a BERRY.\n\nThe browser preview records your partner; battles and the full party system are not implemented yet.`);
       draw();
@@ -347,7 +348,9 @@ function interact() {
   if (currentMapId === 'ELMS_LAB' && event.type === 'object' && event.id?.startsWith('ELMSLAB_POKE_BALL')) {
     if (!state.labIntroComplete) { showDialogue('PROF. ELM', 'ELM: Talk to me first. I need to explain your errand.'); return; }
     if (state.starter) { showDialogue('POKé BALL', 'It contains a POKéMON caught by PROF. ELM. You already chose ' + state.starter + '.'); return; }
-    const starter = event.id.endsWith('1') ? 'CYNDAQUIL' : event.id.endsWith('2') ? 'TOTODILE' : 'CHIKORITA';
+    const starterData = getLabStarter(event.id);
+    if (!starterData) { showDialogue('POKé BALL', 'The contents of this BALL are unknown.'); return; }
+    const starter = starterData.species;
     state.pendingStarter = starter;
     state.choiceYes = true;
     const prompts = { CYNDAQUIL: "ELM: You'll take CYNDAQUIL, the FIRE POKéMON?", TOTODILE: "ELM: Do you want TOTODILE, the WATER POKéMON?", CHIKORITA: "ELM: So, you like CHIKORITA, the GRASS POKéMON?" };
@@ -435,7 +438,7 @@ function step(dx, dy, face) {
   state.x = nx; state.y = ny;
   const warp = activeMap().metadata.warps.find(w => w.x === nx && w.y === ny);
   if (warp) {
-    if (currentMapId === 'ELMS_LAB' && !state.starter) {
+    if (currentMapId === 'ELMS_LAB' && mustBlockLabExit(state.starter)) {
       showDialogue('PROF. ELM', "Wait! You can't leave without choosing a POKéMON.");
       draw();
       return;
