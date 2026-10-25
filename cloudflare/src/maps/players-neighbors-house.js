@@ -6,7 +6,7 @@ export const PLAYERS_NEIGHBORS_HOUSE=Object.freeze({
  coordinateEvents:Object.freeze([]),
  backgroundEvents:Object.freeze([{x:0,y:1,kind:'bookshelf',text:'A bookshelf full of magazines.'},{x:1,y:1,kind:'bookshelf',text:'A bookshelf full of magazines.'},{x:7,y:1,kind:'radio',text:'POKéMON CHANNEL…'}]),
  objects:Object.freeze([
- {id:'DAUGHTER',x:2,y:3,facing:'right',sprite:'SPRITE_COOLTRAINER_F',script:'PlayersNeighborsDaughterScript',dialogue:['PIKACHU is an evolved POKéMON.','I was amazed by PROF. ELM’s findings.','He’s so famous for his research on POKéMON evolution.','…sigh…','I wish I could be a researcher like him…']},
+ {id:'DAUGHTER',x:2,y:3,facing:'right',sprite:'SPRITE_COOLTRAINER_F',script:'PlayersNeighborsDaughterScript',dialogue:['PIKACHU is an evolved POKéMON.','I was amazed by PROF. ELM’s findings.','He’s so famous for his research on POKéMON evolution.','…sigh…','…sigh…','I wish I could be a researcher like him…']},
  {id:'NEIGHBOR',x:5,y:3,facing:'left',sprite:'SPRITE_POKEFAN_F',script:'PlayersNeighborScript',dialogue:['My daughter is adamant about becoming PROF. ELM’s assistant.','She really loves POKéMON!','But then, so do I!']}
  ])
 });
