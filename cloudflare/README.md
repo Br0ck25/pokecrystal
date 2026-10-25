@@ -6,6 +6,8 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 
 - `src/runtime.js` — renderer sizing and runtime state primitives.
 - `src/runtime.test.js` — tests for state, collision adapter behavior, transitions, and local saves.
+- `src/maps/new-bark-town.js` — source-derived New Bark Town dimensions, warp events, coordinate events, signs, NPC positions, and map callback metadata.
+- `src/maps.test.js` — tests for the New Bark Town source metadata.
 - `PORTING_PLAN.md` — requirements and phased implementation plan.
 - `SOURCE_MAP.md` — source-to-port inventory.
 
@@ -32,7 +34,8 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [x] Port scope and source inventory documented.
 - [x] Minimal runtime state contract and save/load primitives.
 - [x] Automated tests and CI workflow added.
-- [ ] Parse real map block data and map attributes into a browser data format.
+- [x] Transcribed New Bark Town's dimensions and warp/coordinate/background/object events from the disassembly.
+- [ ] Decode the actual New Bark Town block file and tileset into a browser data format.
 - [ ] Translate source-defined collisions, warps, map connections, object events, and scripts.
 - [ ] Render the real opening sequence and New Bark Town map.
 - [ ] Port dialogue, menus, battles, party, items, progression, and remaining maps.
