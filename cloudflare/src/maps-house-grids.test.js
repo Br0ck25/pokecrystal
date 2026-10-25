@@ -440,3 +440,27 @@ test('scene audit: each first-scene map has reachable exits and face-to-interact
   }
  }
 });
+
+
+test('scene audit: every source doorway lands on walkable floor with a route back out', () => {
+ const maps = {
+  NEW_BARK_TOWN: {metadata:NEW_BARK_TOWN,collisionAt:getNewBarkTownCollisionAtMetatile},
+  ELMS_LAB: {metadata:ELMS_LAB,collisionAt:labCollision},
+  PLAYERS_HOUSE_1F: {metadata:PLAYERS_HOUSE_1F,collisionAt:downstairsCollision},
+  PLAYERS_HOUSE_2F: {metadata:PLAYERS_HOUSE_2F,collisionAt:roomCollision},
+  ELMS_HOUSE: {metadata:ELMS_HOUSE,collisionAt:getElmsHouseCollisionAtMetatile},
+  PLAYERS_NEIGHBORS_HOUSE: {metadata:PLAYERS_NEIGHBORS_HOUSE,collisionAt:getPlayersNeighborsHouseCollisionAtMetatile},
+ };
+ for(const [sourceId, source] of Object.entries(maps)) {
+  for(const warp of source.metadata.warps) {
+   const arrival=resolvePreviewWarp(sourceId,warp,maps);
+   assert.ok(arrival, sourceId+' -> '+warp.destinationMap+' must resolve');
+   const destination=maps[arrival.mapId];
+   assert.ok(isPreviewCollisionWalkable(destination.collisionAt(arrival.x,arrival.y)),
+     sourceId+' -> '+warp.destinationMap+' arrival '+arrival.x+','+arrival.y+' must be walkable');
+   const reachable=sceneReachable(destination.metadata,destination.collisionAt,arrival);
+   assert.ok(destination.metadata.warps.some(exit=>reachable.has(exit.x+','+exit.y)),
+     sourceId+' -> '+warp.destinationMap+' arrival must connect to an exit');
+  }
+ }
+});
