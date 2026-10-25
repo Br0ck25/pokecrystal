@@ -143,7 +143,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'NEW_BARK_TOWN';
-const state = { x: 9, y: 8, facing: 'down', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, choiceYes: true };
+const state = { x: 9, y: 8, facing: 'down', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true };
 const keys = new Set();
 let lastStep = 0;
 
@@ -273,8 +273,9 @@ function drawObjects() {
   }
 }
 function drawStarterPreview() {
-  if (!state.pendingStarter || state.pendingStarter === 'LAB_INTRO') return;
-  const image = starterImages[state.pendingStarter];
+  const previewSpecies = state.pendingStarter && state.pendingStarter !== 'LAB_INTRO' ? state.pendingStarter : state.starterReveal;
+  if (!previewSpecies) return;
+  const image = starterImages[previewSpecies];
   ctx.save();
   ctx.fillStyle = '#f5f4e9';
   ctx.fillRect(38, 26, 84, 76);
@@ -284,7 +285,7 @@ function drawStarterPreview() {
   ctx.fillStyle = '#263e4b';
   ctx.font = 'bold 8px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(state.pendingStarter, 80, 37);
+  ctx.fillText(previewSpecies, 80, 37);
   if (image && image.naturalWidth >= 40 && image.naturalHeight >= 40) {
     // Crystal front sprites are 40px wide, with animation frames stacked vertically.
     ctx.imageSmoothingEnabled = false;
@@ -342,24 +343,47 @@ function showDialogue(speaker, text) {
 function interact() {
   if (state.pendingStarter) {
     if (state.pendingStarter === 'LAB_INTRO') {
-      if (state.choiceYes) {
-        state.pendingStarter = null;
-        state.labIntroComplete = true;
-        showDialogue('PROF. ELM', "Thanks! I got an e-mail from MR. POKéMON about a discovery. Could you go in my place?\n\nRaise one of the POKéMON in these BALLS. Go on. Pick one!");
-      } else {
-        showDialogue('PROF. ELM', "ELM: But… Please, I need your help!\n\nChoice: YES / NO (left/right, then A)");
+      if (state.labIntroStage === 0) {
+        if (!state.choiceYes) {
+          showDialogue('PROF. ELM', "But… Please, I need your help!\\n\\n▶ YES       NO");
+          return;
+        }
+        state.labIntroStage = 1;
+        showDialogue('PROF. ELM', "Thanks, <PLAYER>!\\n\\nYou're a great help!");
+        return;
       }
+      if (state.labIntroStage === 1) {
+        state.labIntroStage = 2;
+        showDialogue('PROF. ELM', "When I announce my findings, I'm sure we'll delve a bit deeper into the many mysteries of POKéMON.\\n\\nYou can count on it!");
+        return;
+      }
+      if (state.labIntroStage === 2) {
+        state.labIntroStage = 3;
+        showDialogue('PROF. ELM', "Oh, hey! I got an e-mail!\\n\\n<……><……><……>\\nHm… Uh-huh…\\n\\nOkay…");
+        return;
+      }
+      if (state.labIntroStage === 3) {
+        state.labIntroStage = 4;
+        showDialogue('PROF. ELM', "Hey, listen. I have an acquaintance called MR. POKéMON. He keeps finding weird things and raving about his discoveries.\\n\\nAnyway, I just got an e-mail from him saying that this time it's real. It is intriguing, but we're busy with our POKéMON research…\\n\\nWait! I know! <PLAYER>, can you go in our place?");
+        return;
+      }
+      state.pendingStarter = null;
+      state.labIntroStage = 0;
+      state.labIntroComplete = true;
+      showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner, <PLAYER>!\\n\\nGo on. Pick one!");
       return;
     }
     if (state.choiceYes) {
       state.starter = state.pendingStarter;
+      state.starterReveal = state.starter;
       state.starterBall = getLabStarterBallId(state.starter);
       state.pendingStarter = null;
-      showDialogue('PROF. ELM', `ELM: I think that's a great POKéMON too!\n\nYou received ${state.starter} at level 5 holding a BERRY.\n\nThe browser preview records your partner; battles and the full party system are not implemented yet.`);
+      showDialogue('PROF. ELM', "I think that's a great POKéMON too!\\n\\n<PLAYER> received " + state.starter + "!");
       draw();
     } else {
       state.pendingStarter = null;
-      showDialogue('PROF. ELM', 'ELM: Think it over carefully. Your partner is important.');
+      showDialogue('PROF. ELM', "Think it over carefully.\\n\\nYour partner is important.");
+      draw();
     }
     return;
   }
@@ -432,6 +456,7 @@ function interact() {
   status.dataset.kind = 'dialogue';
 }
 function pressB() {
+  if (state.starterReveal) { state.starterReveal = null; draw(); }
   if (state.pendingStarter) { state.pendingStarter = null; setHint('Choice cancelled. Face a character or object and press A.'); return; }
   if (status.dataset.kind === 'dialogue') setHint(activeMap().title + ' · Press A to interact; B closes this text.');
   else setHint('There is nothing to cancel right now.');
@@ -453,11 +478,12 @@ function transition(warp) {
   setHint('Entered ' + activeMap().title + '. Talk to characters and inspect objects with A.');
 }
 function step(dx, dy, face) {
-  if (state.pendingStarter === 'LAB_INTRO') {
+  if (state.pendingStarter === 'LAB_INTRO' && state.labIntroStage === 0) {
     if (dx !== 0) state.choiceYes = dx < 0;
     showDialogue('PROF. ELM', `Will you help PROF. ELM?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
     return;
   }
+  if (state.pendingStarter === 'LAB_INTRO') return;
   if (state.pendingStarter) {
     if (dx !== 0) state.choiceYes = dx < 0;
     const starter = state.pendingStarter;
