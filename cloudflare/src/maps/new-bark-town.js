@@ -35,10 +35,10 @@ export const NEW_BARK_TOWN = Object.freeze({
     Object.freeze({ x: 1, y: 9, scene: 'SCENE_NEWBARKTOWN_TEACHER_STOPS_YOU', script: 'NewBarkTown_TeacherStopsYouScene2' }),
   ]),
   backgroundEvents: Object.freeze([
-    Object.freeze({ x: 8, y: 8, kind: 'BGEVENT_READ', script: 'NewBarkTownSign', text: 'NEW BARK TOWN\\nThe Town Where the Winds of a New Beginning Blow' }),
-    Object.freeze({ x: 11, y: 5, kind: 'BGEVENT_READ', script: 'NewBarkTownPlayersHouseSign', text: \"Player's House\" }),
+    Object.freeze({ x: 8, y: 8, kind: 'BGEVENT_READ', script: 'NewBarkTownSign', text: 'NEW BARK TOWN\nThe Town Where the Winds of a New Beginning Blow' }),
+    Object.freeze({ x: 11, y: 5, kind: 'BGEVENT_READ', script: 'NewBarkTownPlayersHouseSign', text: "Player's House" }),
     Object.freeze({ x: 3, y: 3, kind: 'BGEVENT_READ', script: 'NewBarkTownElmsLabSign', text: 'ELM POKEMON LAB' }),
-    Object.freeze({ x: 9, y: 13, kind: 'BGEVENT_READ', script: 'NewBarkTownElmsHouseSign', text: \"ELM'S HOUSE\" }),
+    Object.freeze({ x: 9, y: 13, kind: 'BGEVENT_READ', script: 'NewBarkTownElmsHouseSign', text: "ELM'S HOUSE" }),
   ]),
   objects: Object.freeze([
     Object.freeze({ id: 'NEWBARKTOWN_TEACHER', x: 6, y: 8, sprite: 'SPRITE_TEACHER', movement: 'SPRITEMOVEDATA_SPINRANDOM_SLOW', palette: 0, script: 'NewBarkTownTeacherScript', dialogue: ['Wow, your POKéGEAR is impressive!', 'Did your mom get it for you?'] }),
