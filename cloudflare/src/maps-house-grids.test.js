@@ -25,6 +25,8 @@ import { getTilesetCollision } from './maps/tileset-collision.js';
 import { LAB_STARTERS, getLabStarter, getLabStarterBallId, mustBlockLabExit } from './maps/starter-selection.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './maps/scene-object-state.js';
 import { shouldStartElmOpeningScene, canCancelPendingScene } from './maps/scene-progression.js';
+import { getSourceSpriteForObject } from './maps/npc-sprite-map.js';
+import { CRYSTAL_EXTRA_SPRITES } from './assets/source-sprites.js';
 
 test('all imported house block grids match their source dimensions', () => {
  assert.equal(PLAYERS_HOUSE_1F_BLOCK_IDS.length, PLAYERS_HOUSE_1F.dimensions.blocksWide * PLAYERS_HOUSE_1F.dimensions.blocksHigh);
@@ -351,4 +353,19 @@ test('critical first-scene destinations are reachable using actual collision tab
  assert.equal(reachable(PLAYERS_HOUSE_2F, roomCollision, {x:3,y:3}, {x:7,y:0}), true, 'bedroom spawn must reach the stairs');
  assert.equal(reachable(PLAYERS_HOUSE_1F, downstairsCollision, {x:6,y:6}, {x:9,y:0}), true, 'downstairs landing must reach the bedroom stairs');
  assert.ok([[5,3],[7,3],[6,2],[6,4]].some(([x,y]) => reachable(ELMS_LAB, labCollision, {x:4,y:10}, {x,y})), 'lab entrance must reach a tile adjacent to the starter table');
+});
+
+
+test('house NPCs resolve to embedded original Crystal sprite sheets', () => {
+ const visitor = PLAYERS_HOUSE_1F.objects.find(object => object.id === 'NEIGHBOR');
+ const wife = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_WIFE');
+ const son = ELMS_HOUSE.objects.find(object => object.id === 'ELMS_SON');
+ const daughter = PLAYERS_NEIGHBORS_HOUSE.objects.find(object => object.id === 'DAUGHTER');
+ assert.equal(getSourceSpriteForObject(visitor), 'POKEFAN_F');
+ assert.equal(getSourceSpriteForObject(wife), 'TEACHER');
+ assert.equal(getSourceSpriteForObject(son), 'BUG_CATCHER');
+ assert.equal(getSourceSpriteForObject(daughter), 'COOLTRAINER_F');
+ for (const key of ['POKEFAN_F','BUG_CATCHER','COOLTRAINER_F']) {
+  assert.match(CRYSTAL_EXTRA_SPRITES[key], /^iVBOR/);
+ }
 });
