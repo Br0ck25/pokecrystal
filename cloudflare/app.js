@@ -158,6 +158,7 @@ const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmT
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
+let scriptedMovement = null;
 let dialoguePages = [];
 let dialoguePageIndex = 0;
 let dialogueSpeaker = '';
@@ -725,6 +726,29 @@ function pressB() {
   if (status.dataset.kind === 'dialogue') setHint(activeMap().title + ' · Press A to interact; B closes this text.');
   else setHint('There is nothing to cancel right now.');
 }
+function startScriptedMovement(directions, onComplete) {
+  scriptedMovement = { directions: [...directions], index: 0, onComplete };
+  keys.clear();
+  lastStep = 0;
+}
+function advanceScriptedMovement(now) {
+  if (!scriptedMovement || now - lastStep <= 130) return;
+  lastStep = now;
+  const move = scriptedMovement.directions[scriptedMovement.index++];
+  const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[move];
+  if (delta) {
+    state.x += delta[0];
+    state.y += delta[1];
+    state.facing = move;
+    walkFrame = walkFrame === 0 ? 1 : 0;
+  }
+  draw();
+  if (scriptedMovement.index >= scriptedMovement.directions.length) {
+    const complete = scriptedMovement.onComplete;
+    scriptedMovement = null;
+    if (typeof complete === 'function') complete();
+  }
+}
 function transition(warp) {
   const previousMapId = currentMapId;
   const landing = resolvePreviewWarp(currentMapId, warp, maps);
@@ -738,20 +762,18 @@ function transition(warp) {
   state.x = landing.x;
   state.y = landing.y;
   state.facing = landing.facing;
-  if (beginsElmOpening) {
-    // ElmsLab_WalkUpToElmMovement in maps/ElmsLab.asm is seven steps UP, then a left turn.
-    state.y = Math.max(0, landing.y - 7);
-    state.facing = 'left';
-  }
   resizeCanvasForMap();
   draw();
   if (beginsElmOpening) {
-    // ElmsLabMeetElmScene is a deferred source scene: it begins on map entry,
-    // walks the player up to Elm, and requires a YES answer.
+    // Source: ElmsLab_WalkUpToElmMovement is seven UP steps, then turn left.
+    // Keep the player at the real warp landing and animate the source movement.
     state.pendingStarter = 'LAB_INTRO';
     state.labIntroStage = 0;
     state.choiceYes = true;
-    showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES\n  NO");
+    startScriptedMovement(Array(7).fill('up'), () => {
+      state.facing = 'left';
+      showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES\n  NO");
+    });
     return;
   }
   setHint('Entered ' + activeMap().title + '. Talk to characters and inspect objects with A.');
@@ -842,6 +864,11 @@ function step(dx, dy, face) {
   setHint(activeMap().title + ' · ' + (nx + 1) + ', ' + (ny + 1) + ' · Press A to interact');
 }
 function frame(now) {
+  if (scriptedMovement) {
+    advanceScriptedMovement(now);
+    requestAnimationFrame(frame);
+    return;
+  }
   if (now - lastStep > 130) {
     const dx = (keys.has('ArrowRight') || keys.has('d') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('a') ? 1 : 0);
     const dy = (keys.has('ArrowDown') || keys.has('s') ? 1 : 0) - (keys.has('ArrowUp') || keys.has('w') ? 1 : 0);
