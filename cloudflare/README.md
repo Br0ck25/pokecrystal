@@ -12,6 +12,7 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps-blocks.test.js` — checks source block-grid lookup and collision quadrant resolution.
 - `src/maps/johto-collision.js` — source collision labels for Johto metatiles `0x00`–`0x77`, with quadrant lookup.
 - `src/maps/johto-metatiles.js` — all 128 source Johto metatile definitions, each containing 16 8x8 tile IDs.
+- `src/maps/johto-palette-map.js` — source palette-name assignments for both Johto `tilepal` groups, including the reserved `$ff` gap.
 - `src/maps-metatiles.test.js` — checks the imported metatile table.
 - `src/maps-collision.test.js` — verifies collision-table entries and map block references.
 - `src/graphics.js` — JavaScript decoder for the repository's `lzcompress` stream format, Game Boy 2bpp tile decoding, and 32x32 metatile and full map-grid pixel composition.
@@ -48,6 +49,7 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [x] Imported the 10 × 9 New Bark Town block-ID grid from the original `.blk` file.
 - [x] Imported Johto metatile collision labels from the original collision table.
 - [x] Imported all 128 Johto metatile graphics layouts (16 tile IDs per metatile).
+- [x] Imported Johto tile palette assignments and preserved the source padding gap.
 - [x] Added 32x32 metatile and full map-grid palette-index compositors; connected New Bark Town map coordinates to collision quadrants.
 - [x] Implement and test the source LZ decompressor and Game Boy 2bpp tile decoder.
 - [ ] Decode the original Johto tile graphics into a browser-renderable asset and apply the source palette map.
