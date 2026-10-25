@@ -33,3 +33,9 @@ test('dialogue is drawn in the Game Boy screen, not only in the page status pane
   assert.match(app, /function drawDialogueBox\(\)/);
   assert.match(app, /drawDialogueBox\(\)/);
 });
+
+test('first lab entry plays Elm source movement from the doorway to the meeting position', () => {
+  assert.match(app, /state\.y = Math\.max\(0, landing\.y - 7\)/);
+  assert.match(app, /state\.facing = 'left'/);
+  assert.match(app, /ElmsLab_WalkUpToElmMovement/);
+});
