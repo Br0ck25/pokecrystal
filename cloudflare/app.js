@@ -144,7 +144,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, pokegear: false };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, pokegear: false, townTeacherStage: null, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 
@@ -376,6 +376,26 @@ function drawDialogueBox() {
   ctx.restore();
 }
 function interact() {
+  if (state.townTeacherStage !== null) {
+    if (state.townTeacherStage === 0) {
+      state.townTeacherStage = 1;
+      showDialogue('TEACHER', "What do you think you're doing?");
+      return;
+    }
+    if (state.townTeacherStage === 1) {
+      state.townTeacherStage = 2;
+      showDialogue('TEACHER', "It's dangerous to go out without a POKéMON! Wild POKéMON jump out of the grass on the way to the next town.");
+      return;
+    }
+    state.townTeacherStage = null;
+    setHint('The teacher brought you back. Professor Elm is waiting in his lab.');
+    return;
+  }
+  if (state.labExitWarningStage !== null) {
+    state.labExitWarningStage = null;
+    setHint('Choose one of the three POKéMON on the table first.');
+    return;
+  }
   if (state.momIntroActive) {
     if (state.momIntroStage === 0) {
       state.momIntroStage = 1;
@@ -558,6 +578,8 @@ function step(dx, dy, face) {
     return;
   }
   state.facing = face;
+  if (state.townTeacherStage !== null || state.labExitWarningStage !== null) return;
+  const oldX = state.x, oldY = state.y;
   const nx = state.x + dx, ny = state.y + dy;
   const occupied = (activeMap().metadata.objects || []).some(object => { const position = objectPosition(object); return position.x === nx && position.y === ny
     && !(object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starter)
@@ -565,6 +587,12 @@ function step(dx, dy, face) {
     && !(object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter); });
   if (blocked(nx, ny) || occupied) { draw(); return; }
   state.x = nx; state.y = ny;
+  if (currentMapId === 'NEW_BARK_TOWN' && !state.starter && ((nx === 1 && ny === 8) || (nx === 1 && ny === 9))) {
+    state.townTeacherStage = 0;
+    showDialogue('TEACHER', 'Wait, <PLAY_G>!');
+    draw();
+    return;
+  }
   if (currentMapId === 'PLAYERS_HOUSE_1F' && nx === 8 && ny === 4 && !state.pokegear) {
     state.momIntroActive = true;
     state.momIntroStage = 0;
@@ -575,6 +603,8 @@ function step(dx, dy, face) {
   const warp = activeMap().metadata.warps.find(w => w.x === nx && w.y === ny);
   if (warp) {
     if (currentMapId === 'ELMS_LAB' && mustBlockLabExit(state.starter)) {
+      state.x = oldX; state.y = oldY;
+      state.labExitWarningStage = 0;
       showDialogue('PROF. ELM', "Wait! You can't leave without choosing a POKéMON.");
       draw();
       return;
