@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT, getCameraTransform } from './viewport.js';
+import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT, getCameraTransform, integerRenderScale } from './viewport.js';
 
 test('uses the original fixed 160x144 Game Boy Color viewport', () => {
   assert.equal(GBC_VIEWPORT_WIDTH, 160);
@@ -34,4 +34,14 @@ test('small rooms stay centered in the viewport and do not jitter at edges', () 
 
 test('invalid map dimensions fail clearly', () => {
   assert.throws(() => getCameraTransform(0, 18, 0, 0), TypeError);
+});
+
+test('integerRenderScale picks the largest whole multiple of the 160px screen', () => {
+  assert.equal(integerRenderScale(320, 1), 2);
+  assert.equal(integerRenderScale(359, 1), 2);
+  assert.equal(integerRenderScale(360, 2), 4);
+  assert.equal(integerRenderScale(100, 1), 1);
+  assert.equal(integerRenderScale(0, 1), 1);
+  assert.equal(integerRenderScale(NaN, 1), 1);
+  assert.equal(integerRenderScale(480, 0), 3);
 });

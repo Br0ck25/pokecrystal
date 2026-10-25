@@ -20,3 +20,14 @@ export function getCameraTransform(mapWidth, mapHeight, playerX, playerY, viewpo
     worldWidth, worldHeight,
   });
 }
+
+/**
+ * Backing-store multiplier for the game canvas: the largest whole multiple of the
+ * 160x144 Game Boy screen that fits the on-screen size in device pixels, so every
+ * source pixel is drawn as an exact square block instead of being stretched unevenly.
+ */
+export function integerRenderScale(cssWidth, devicePixelRatio = 1, logicalWidth = GBC_VIEWPORT_WIDTH) {
+  const devicePixels = cssWidth * (Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1);
+  if (!Number.isFinite(devicePixels)) return 1;
+  return Math.max(1, Math.floor(devicePixels / logicalWidth));
+}

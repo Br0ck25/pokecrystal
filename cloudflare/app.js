@@ -16,7 +16,7 @@ import { PLAYERS_HOUSE_TILESET_PNG_BASE64 } from './src/assets/players_house-til
 import { PLAYERS_ROOM_TILESET_PNG_BASE64 } from './src/assets/players_room-tileset.js';
 import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './src/maps/tileset-palette-data.js';
 import { canPreviewEnterOrWarp } from './src/maps/new-bark-town-movement.js';
-import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT, getCameraTransform } from './src/maps/viewport.js';
+import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT, getCameraTransform, integerRenderScale } from './src/maps/viewport.js';
 import { resolvePreviewWarp } from './src/maps/preview-warps.js';
 import { PLAYERS_HOUSE_1F, playersHouse1fEventsAt } from './src/maps/players-house-1f.js';
 import { PLAYERS_HOUSE_1F_BLOCK_IDS, getPlayersHouse1FCollisionAtMetatile } from './src/maps/players-house-1f-blocks.js';
@@ -135,6 +135,7 @@ const metatilesByTileset = {
   PLAYERS_HOUSE: PLAYERS_HOUSE_METATILE_TILES,
   PLAYERS_ROOM: PLAYERS_ROOM_METATILE_TILES,
 };
+let renderScale = 1;
 const TILE = 16;
 const maps = {
   NEW_BARK_TOWN: {
@@ -178,9 +179,17 @@ function objectPosition(object) {
 function resizeCanvasForMap() {
   // Crystal's Game Boy Color display is 160x144 pixels. Keep this viewport fixed
   // on every map and scroll the world behind it instead of shrinking maps to fit.
-  canvas.width = GBC_VIEWPORT_WIDTH;
-  canvas.height = GBC_VIEWPORT_HEIGHT;
+  // Game logic stays in those logical pixels; the backing store is an exact integer
+  // multiple so tiles stay crisp and text is rasterized at screen resolution.
   const screen = document.querySelector('.screen');
+  renderScale = integerRenderScale(screen ? screen.clientWidth : 0, window.devicePixelRatio);
+  canvas.width = GBC_VIEWPORT_WIDTH * renderScale;
+  canvas.height = GBC_VIEWPORT_HEIGHT * renderScale;
+  // Show the canvas at exactly renderScale device pixels per source pixel.
+  const dpr = window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+  canvas.style.width = `${canvas.width / dpr}px`;
+  canvas.style.height = `${canvas.height / dpr}px`;
+  ctx.imageSmoothingEnabled = false;
   if (screen) screen.style.aspectRatio = `${GBC_VIEWPORT_WIDTH} / ${GBC_VIEWPORT_HEIGHT}`;
 }
 function setHint(text) {
@@ -351,12 +360,12 @@ function drawStarterPreview() {
 }
 function draw() {
   if (!ctx || !activeMap()) return;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
   ctx.fillStyle = '#202020';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT);
   if (!renderedTilesets[activeMap().metadata.tileset]) {
     ctx.fillStyle = '#e8e8e8';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT);
     ctx.fillStyle = '#202020';
     ctx.font = '12px sans-serif';
     ctx.fillText('Loading map graphics…', 12, 24);
@@ -428,7 +437,7 @@ function advanceDialoguePage() {
 }
 function drawDialogueBox() {
   if (status.dataset.kind !== 'dialogue') return;
-  const x = 3, y = 96, w = canvas.width - 6, h = 45;
+  const x = 3, y = 96, w = GBC_VIEWPORT_WIDTH - 6, h = 45;
   ctx.save();
   ctx.fillStyle = '#f8f8f0'; ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = '#18202a'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
@@ -954,6 +963,7 @@ window.addEventListener('blur', () => keys.clear());
 // Each source image is embedded in this bundle. There is no single global
 // "source" image: every map chooses its own tileset in drawMap().
 resizeCanvasForMap();
+new ResizeObserver(() => { resizeCanvasForMap(); draw(); }).observe(document.querySelector('.screen'));
 draw();
 setHint('Your Room · 2F — walk to the stairs and go downstairs.');
 requestAnimationFrame(frame);
