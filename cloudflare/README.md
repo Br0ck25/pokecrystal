@@ -66,7 +66,7 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [x] Added 32x32 metatile and full map-grid palette-index compositors; connected New Bark Town map coordinates to collision quadrants.
 - [x] Implement and test the source LZ decompressor and Game Boy 2bpp tile decoder.
 - [x] Load the source Johto tileset preview in the browser and render the New Bark Town map from its source block/metatile tables (palette colors not yet applied).
-- [ ] Decode the original Johto tile graphics into their native 2bpp asset form and apply the source palette map.
+- [ ] Decode the original Johto tile graphics into their native 2bpp asset form and apply each map's source palette assignments (current preview does not apply palettes, so interiors will not yet match original colors).
 - [ ] Render the town from source map blocks, metatile definitions, and graphics; translate raw collision labels into game-engine movement behavior.
 - [x] Connect the New Bark Town ↔ Elm's Lab entrance/exit warps using source-defined warp coordinates and tested block-grid collision lookups.
 - [ ] Translate the full original movement engine, map connections, scene conditions, object event state, and scripts.
@@ -77,5 +77,7 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [ ] Verify the full browser game and deployment.
 
 ## Rights
+
+The Neighbor's House uses the shared `maps/House1.blk` grid specified by `data/maps/blocks.asm`; it is no longer filled with Elm's House as a fallback. Interior appearance is still incomplete: the current preview does not apply source palette colors or render all map objects/decorations as the original game does. The player's upstairs room also uses the base map blocks, while the original toggles decorations through map callbacks, so the console/dolls/poster need state-aware rendering.
 
 The source disassembly does not automatically grant rights to distribute Nintendo's original assets or a full recreation. Review permissions before publishing source-derived graphics, music, dialogue, or other protected content.
