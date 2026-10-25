@@ -10,7 +10,8 @@ export const PLAYERS_HOUSE_2F = Object.freeze({
  objects:Object.freeze([
  {id:'CONSOLE',x:4,y:2,script:'PlayersHouseGameConsoleScript',dialogue:['A game console.']},
  {id:'DOLL_1',x:4,y:4,script:'PlayersHouseDoll1Script',dialogue:['A doll.']},
- {id:'DOLL_2',x:5,y:4,script:'PlayersHouseDoll2Script',dialogue:['A doll.']}
+ {id:'DOLL_2',x:5,y:4,script:'PlayersHouseDoll2Script',dialogue:['A doll.']},
+ {id:'BIG_DOLL',x:0,y:1,script:'PlayersHouseBigDollScript',dialogue:['A big doll.']}
  ])
 });
 export function playersHouse2fEventsAt(x,y){return eventsAt(PLAYERS_HOUSE_2F,x,y)}
