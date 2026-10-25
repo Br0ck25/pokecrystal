@@ -1,7 +1,7 @@
 # Pokémon Crystal browser port — agent guide
 
 Browser-native JS port of the disassembly in this repo. Rules: `../AGENTS.md` (mandatory) and `../CLAUDE.md`. No build step; Pages serves
-this folder. Node 22, no packages. Status: any map loads and renders; new game → room → Mom → town → Elm's Lab runs on the real scripts.
+this folder. Node 22, no packages. Status: title screen → main menu → new game → room → Mom → town → Elm's Lab runs on the real scripts; START menu with SAVE; save/export/import.
 
 ## Commands (run in `cloudflare/`)
 - `npm test` — quiet (dots; failures print). `npm run extract` — regenerate `src/generated/` (a test fails if stale).
@@ -12,10 +12,12 @@ this folder. Node 22, no packages. Status: any map loads and renders; new game �
 - `tools/extract-browser-data.mjs` — the only place source files are parsed. Add data here, not by hand.
 - `src/generated/` — maps, tilesets(+images, roofs), events, scenes, scripts/<Map>.js (+`_std`, `_text`), sprites, palettes, collision, decorations, font.
 - `src/game/world.js` — load a map (blocks, collision, events). `src/game/engine.js` — frame loop: movement, map entry + callbacks, warps, coord events, scene scripts, interaction, script runner (`Game.update({dir,a,b,aHeld,bHeld})`, `game.unported` lists unimplemented specials/effects).
-- `src/script/` — `interpreter.js` (generator; yields text/yesorno/movement/effect/special requests), `text.js` (18-col boxes), `context.js`.
-- `src/render/scene.js` (what to draw, pure) / `canvas.js` (browser drawing). `src/maps/` — sprite palettes+frames, map palettes, camera constants, key bindings. `app.js` — input + 60 Hz loop.
+- `src/game/intro.js` (title screen + main menu), `src/game/menu.js` (start menu, save flow, cursor), `src/game/save.js` (browser save file: JSON, not the ROM's SRAM). `src/script/` — `interpreter.js` (generator; yields text/yesorno/movement/effect/special requests), `text.js` (18-col boxes), `context.js`.
+- `src/render/scene.js` (what to draw, pure) / `title-frame.js` (title picture, software-composed) / `canvas.js` (browser drawing). `src/maps/` — sprite palettes+frames, map palettes, camera constants, key bindings. `app.js` — input + 60 Hz loop.
 
 ## Facts worth knowing (measured against the real game)
+- Keys: A = Z/E/Space, B = X/Esc/Backspace, START = Enter, SELECT = Shift (does nothing yet; the game uses it only for a registered item). Saves: START → SAVE writes localStorage; Export/Import buttons move the file. `?manual=1`/`?map=`/`?name=` skip the title (`?intro=1` keeps it).
+- Title/menu timings were checked frame by frame against the ROM (`python3 tools/reference/title.py`); the first 3 title frames differ slightly (palette load order).
 - Square = 16px; step 16 frames; turn 8 frames; stand 8 then walk pose 8 frames, mirrored pose alternates per square; sprites draw 4px up; player tile at screen (64,64).
 - Text ≈3 frames/char; box rows 12–17, text rows 14/16; YES/NO box (14,7)-(19,11). Walkable = `LAND_TILE` in the permission table. Door/stairs arrival walks down 1 square.
 - Tile events (warps, coord events) are disabled on map entry and after each check, and re-enabled when a player step ends (arriving on a warp tile does not re-warp).
@@ -23,4 +25,4 @@ this folder. Node 22, no packages. Status: any map loads and renders; new game �
 - Time of day is fixed to DAY; the player is Chris; ROM-vs-app diffs also show moving NPCs and animated flowers (not bugs).
 
 ## Not ported
-Audio, intro/naming, menus (party/bag/PC/dex), battles, encounters, trainers, item balls, map connections, tile animation, NPC wandering, saves, specials in `Game.unported`.
+Audio, copyright/Game Freak/intro-movie screens, naming (NEW GAME skips the introduction), OPTION, START-menu entries other than SAVE/EXIT (party/pack/dex/gear/status), the title's secret key combinations, battles, encounters, trainers, item balls, tile animation, NPC wandering, specials in `Game.unported`.

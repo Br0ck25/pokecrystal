@@ -82,7 +82,7 @@ At the time these rules were written:
 - Sign and NPC interactions include source-derived text, but original scripts, autonomous scene movement, event flags, and state-dependent behavior are not fully implemented. Yes/no prompts and keyboard aliases are still being refined and must be tested against the disassembly.
 - A basic New Bark Town ↔ Elm's Lab warp transition is implemented using the imported source block grids and warp coordinates. Arrival offsets are currently preview-level behavior; the full original map loader, scene state, scripts, and general warp engine are not implemented.
 - The original opening sequence, party, starter choice, battles, inventory, save compatibility, and full world progression are not yet implemented.
-- Local prototype save helpers do not establish compatibility with the original game's save format.
+- Saving: START → SAVE and the export/import buttons use a browser-only JSON save file; it is not compatible with the original game's save format. The title screen and main menu are ported (CONTINUE, NEW GAME); the copyright/intro-movie screens, naming, OPTION, the other START-menu entries and the title's secret key combinations are not.
 
 Update this list when implementation changes. Do not remove a limitation until it is demonstrably fixed and tested.
 

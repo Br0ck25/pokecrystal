@@ -19,3 +19,9 @@ A case may set RAM before warping, e.g. `"ram": {"wElmsLabSceneID": 2}` to skip 
 `audit.py` starts a new game in the emulator, warps it into each case in `cases.json` (map + warp number) exactly as a door does, reads the game's own arrival
 coordinates, screenshots the same map/position in the app (`?map=&x=&y=&facing=`), and writes
 side-by-side images plus a per-8x8-tile difference report.
+
+Other checks (same build; `play.sh`/`play.py` replay button scripts in `scripts/*.json`, e.g. `menu.json` for START → SAVE):
+
+    python3 tools/reference/title.py --build DIR --out OUT [--frames 1,2,...] [--ram save.ram]   # title frames vs the app, main menu shots
+    python3 tools/reference/make_save.py --build DIR      # saves a new game in the ROM (leaves DIR/pokecrystal.gbc.ram) for --ram
+    node tools/reference/title_app_menu.cjs out.png http://localhost:8765 DOWNS [save.json] [A]   # the app's main menu / CONTINUE box

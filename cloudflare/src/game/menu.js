@@ -13,6 +13,30 @@ const DESCRIPTIONS = {
   SAVE: ['Save your', 'progress'], OPTION: ['Change', 'settings'], EXIT: ['Close this', 'menu'], POKEGEAR: ["Trainer's", 'key device'],
 };
 
+/**
+ * Cursor movement of a vertical wrapping menu (JoyTextDelay with hInMenu): moves on the press, again after 15 frames
+ * held, then every 5. `held` is { lastDir, repeat }, kept between frames; returns the new cursor.
+ */
+export function moveCursor(held, dir, cursor, count) {
+  const d = dir === 'up' || dir === 'down' ? dir : null;
+  let next = cursor;
+  if (d && (d !== held.lastDir || --held.repeat <= 0)) {
+    held.repeat = d !== held.lastDir ? 15 : 5;
+    next = (cursor + (d === 'up' ? -1 : 1) + count) % count;
+  }
+  held.lastDir = d;
+  return next;
+}
+
+/** MainMenu: menu_coords 0,0,16,7 with the bottom moved to fit the items (2 rows each, plus 1). */
+export function mainMenuView(items, cursor) {
+  return {
+    box: [0, 0, 16, items.length * 2 + 1],
+    texts: items.map((item, i) => [2, 2 + 2 * i, item]),
+    cursor: [1, 2 + 2 * cursor, '▶'],
+  };
+}
+
 /** .SetUpMenuItems: dex once obtained, party once it has a POKéMON, pack, gear once obtained, then status/save/option/exit. */
 export function startMenuItems(state) {
   const items = [];
@@ -41,13 +65,13 @@ export function startMenuView(state, cursor, hollow = false) {
 export const badgeCount = (state) => [...state.engineFlags].filter((f) => /^ENGINE_\w+BADGE$/.test(f)).length;
 
 /** DisplaySaveInfoOnSave: menu_coords 0,0,15,9 moved 4 columns right; PLAYER, BADGES, #DEX (blank if none) and TIME. */
-export function saveInfoView(state) {
+export function saveInfoView(state, top = 0) {
   const frames = state.playFrames ?? 0;
   const hours = Math.min(999, Math.floor(frames / 216000)), minutes = Math.floor(frames / 3600) % 60;
   const dex = state.engineFlags.has('ENGINE_POKEDEX');
   const num = (n, width) => String(n).padStart(width, ' ');
-  return {
-    box: [4, 0, 19, 9],
+  const view = {
+    box: [4, top, 19, top + 9],
     texts: [
       [5, 2, dex ? 'PLAYER' : `PLAYER ${state.playerName}`], [5, 4, 'BADGES'], ...(dex ? [[5, 6, 'POKéDEX']] : []), [5, 8, 'TIME'],
       [12, 2, state.playerName],
@@ -56,6 +80,8 @@ export function saveInfoView(state) {
       [13, 8, `${num(hours, 3)}<COLON>${String(minutes).padStart(2, '0')}`],
     ],
   };
+  view.texts = view.texts.map(([x, y, text]) => [x, y + top, text]);       // Continue shows the same box 8 rows down
+  return view;
 }
 
 /**

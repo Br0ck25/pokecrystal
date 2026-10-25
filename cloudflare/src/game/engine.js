@@ -7,7 +7,7 @@ import { loadWorld } from './world.js';
 import { createScriptContext } from '../script/context.js';
 import { runScript, createScriptState } from '../script/interpreter.js';
 import { tileLength } from '../script/text.js';
-import { startMenuItems, saveFlow } from './menu.js';
+import { startMenuItems, saveFlow, moveCursor } from './menu.js';
 import { serializeSave, parseSave } from './save.js';
 import { COLLISION_PERMISSIONS, COLLISION_VALUES } from '../generated/collision.js';
 import { SCENES, CALLBACKS } from '../generated/scenes.js';
@@ -394,13 +394,7 @@ export class Game {
   updateMenu(input) {
     const m = this.menu;
     const items = startMenuItems(this.state);
-    // JoyTextDelay in a menu: the cursor moves on the press, again after 15 frames held, then every 5.
-    const dir = input.dir === 'up' || input.dir === 'down' ? input.dir : null;
-    if (dir && (dir !== m.lastDir || --m.repeat <= 0)) {
-      m.repeat = dir !== m.lastDir ? 15 : 5;
-      m.cursor = (m.cursor + (dir === 'up' ? -1 : 1) + items.length) % items.length;
-    }
-    m.lastDir = dir;
+    m.cursor = moveCursor(m, input.dir, m.cursor, items.length);
     this.menuCursor = m.cursor;
     if (input.b || input.start) { this.menu = null; return; }
     if (!input.a) return;

@@ -8,6 +8,7 @@ import { objectPaletteColors, recolorSprite } from '../maps/object-sprites.js';
 import { GBC_VIEWPORT_WIDTH as W, GBC_VIEWPORT_HEIGHT as H } from '../maps/viewport.js';
 import { describeScene } from './scene.js';
 import { tiles } from '../script/text.js';
+import { titleFrame } from './title-frame.js';
 
 const to8 = (c) => Math.round((c * 255) / 31);
 const textColors = TEXT_PALETTE.map((rgb) => rgb.map(to8));
@@ -164,6 +165,33 @@ export class Renderer {
     tile(0, left, top); tile(2, right, top); tile(4, left, bottom); tile(5, right, bottom);
   }
 
+  /** Boxes of text (menus, save info) as scene.js and intro.js describe them. */
+  drawPanels(panels) {
+    const c = this.ctx;
+    for (const panel of panels) {
+      if (panel.clear) { const [x, y, w, h] = panel.clear; c.fillStyle = `rgb(${textColors[0]})`; c.fillRect(x * 8, y * 8, w * 8, h * 8); }
+      this.drawBox(...panel.box);
+      for (const [x, y, text] of panel.texts) this.drawText(text, x, y);
+      if (panel.cursor) this.drawText(panel.cursor[2], panel.cursor[0], panel.cursor[1]);
+    }
+  }
+
+  /** The title screen (software-composed, see title-frame.js) or the white main-menu screen. */
+  drawIntro(intro, now = new Date()) {
+    const c = this.ctx;
+    c.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    if (intro.stage === 'title') {
+      this.titleCanvas ??= makeCanvas(W, H);
+      const image = new ImageData(titleFrame(intro.titleState()), W, H);
+      this.titleCanvas.getContext('2d').putImageData(image, 0, 0);
+      c.drawImage(this.titleCanvas, 0, 0);
+      return;
+    }
+    c.fillStyle = `rgb(${textColors[0]})`;
+    c.fillRect(0, 0, W, H);
+    this.drawPanels(intro.menuPanels(now));
+  }
+
   draw(game) {
     const scene = describeScene(game);
     const c = this.ctx;
@@ -188,12 +216,7 @@ export class Renderer {
       else c.drawImage(sheet, 0, s.row * 16, 16, 16, x, y, 16, 16);
       c.restore();
     }
-    for (const panel of scene.panels) {
-      if (panel.clear) { const [x, y, w, h] = panel.clear; this.ctx.fillStyle = `rgb(${textColors[0]})`; this.ctx.fillRect(x * 8, y * 8, w * 8, h * 8); }
-      this.drawBox(...panel.box);
-      for (const [x, y, text] of panel.texts) this.drawText(text, x, y);
-      if (panel.cursor) this.drawText(panel.cursor[2], panel.cursor[0], panel.cursor[1]);
-    }
+    this.drawPanels(scene.panels);
     if (scene.textbox) {
       this.drawBox(0, 12, 19, 17);
       this.drawText(scene.textbox.lines[0], 1, 14);

@@ -1,6 +1,7 @@
 // Browser shell: input, the 60 Hz loop and drawing. The game itself lives in src/game; see src/render for drawing.
 import { Game } from './src/game/engine.js';
 import { browserSaveStore, parseSave } from './src/game/save.js';
+import { Intro } from './src/game/intro.js';
 import { Renderer } from './src/render/canvas.js';
 import { integerRenderScale } from './src/maps/viewport.js';
 import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT } from './src/maps/viewport.js';
@@ -37,7 +38,8 @@ const held = new Set();
 const pressed = { a: false, b: false, start: false, select: false };
 const buttons = { a: false, b: false, start: false, select: false };
 const DIRECTION_FOR_KEY = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
-const heldDirection = () => ['down', 'up', 'left', 'right'].find((d) => [...held].some((k) => DIRECTION_FOR_KEY[k] === d)) ?? null;
+const tapped = new Set();               // directions pressed since the last frame, so a tap shorter than a frame still counts
+const heldDirection = () => ['down', 'up', 'left', 'right'].find((d) => [...held, ...tapped].some((k) => DIRECTION_FOR_KEY[k] === d)) ?? null;
 
 window.addEventListener('keydown', (e) => {
   const key = normalizeKey(e.key);
@@ -45,6 +47,7 @@ window.addEventListener('keydown', (e) => {
   const action = getButtonAction(key);
   if (action) { if (!e.repeat) pressed[action] = true; buttons[action] = true; return; }
   held.add(key);
+  tapped.add(key);
 });
 window.addEventListener('keyup', (e) => {
   const key = normalizeKey(e.key);
@@ -59,7 +62,7 @@ document.querySelectorAll('[data-action]').forEach((button) => {
 });
 document.querySelectorAll('[data-move]').forEach((button) => {
   const key = button.dataset.move;
-  button.addEventListener('pointerdown', (e) => { e.preventDefault(); held.add(key); });
+  button.addEventListener('pointerdown', (e) => { e.preventDefault(); held.add(key); tapped.add(key); });
   for (const type of ['pointerup', 'pointercancel', 'pointerleave']) button.addEventListener(type, (e) => { e.preventDefault(); held.delete(key); });
 });
 
@@ -68,12 +71,42 @@ document.querySelectorAll('[data-move]').forEach((button) => {
 // ?map=ELMS_LAB&x=4&y=6&facing=up&scene=ElmsLab:2 opens a map at a position (after the new-game setup) with scenes set.
 const query = new URLSearchParams(window.location.search);
 const saveStore = browserSaveStore();
-let game = new Game({ mapId: 'PLAYERS_HOUSE_2F', x: 3, y: 3, facing: 'down', saveStore });
-game.state.playerId = Math.floor(Math.random() * 0x10000);   // wPlayerID: told apart from another save file when saving
-window.game = game;                     // for tools and debugging
-if (query.get('name')) game.state.playerName = query.get('name').toUpperCase().slice(0, 7);   // naming screen is not ported
+// The title screen and main menu come first; the tools' hooks (?map, ?manual, ?name) go straight into a new game unless ?intro is given.
+let intro = query.has('intro') || !['map', 'manual', 'name'].some((k) => query.has(k)) ? new Intro({ saveStore }) : null;
+let game = null;
+let starting = false;
+const HINT = 'Move with the arrow keys or WASD. A: Z, E or Space. B: X or Escape. START: Enter (menu, save). SELECT: Shift.';
+
+function newGame() {
+  const g = new Game({ mapId: 'PLAYERS_HOUSE_2F', x: 3, y: 3, facing: 'down', saveStore });
+  g.state.playerId = Math.floor(Math.random() * 0x10000);   // wPlayerID: told apart from another save file when saving
+  if (query.get('name')) g.state.playerName = query.get('name').toUpperCase().slice(0, 7);   // naming screen is not ported
+  return g;
+}
+
+/** Leave the main menu: `{ start: 'new' }` or `{ start: 'continue', save }` from intro.update. */
+async function beginGame(choice) {
+  starting = true;
+  game = choice.start === 'continue' ? Game.fromSave(choice.save, { saveStore }) : newGame();
+  window.game = game;                     // for tools and debugging
+  await game.ready;
+  await renderer.prepare(game.world);
+  intro = null;
+  starting = false;
+  status.textContent = HINT;
+  status.dataset.kind = 'hint';
+}
 
 async function start() {
+  await renderer.fontReady;
+  if (intro) {
+    status.textContent = 'Press START (Enter) or A to begin.';
+    status.dataset.kind = 'hint';
+    requestAnimationFrame(loop);
+    return;
+  }
+  game = newGame();
+  window.game = game;
   await game.ready;
   const map = query.get('map');
   if (map && MAPS[map]) {
@@ -85,7 +118,7 @@ async function start() {
     if (Number.isInteger(x) && Number.isInteger(y)) await game.enterMap(map, x, y, query.get('facing') ?? 'down');
   }
   await renderer.prepare(game.world);
-  status.textContent = 'Move with the arrow keys or WASD. A: Z, E or Space. B: X or Escape. START: Enter (menu, save). SELECT: Shift.';
+  status.textContent = HINT;
   status.dataset.kind = 'hint';
   requestAnimationFrame(loop);
 }
@@ -110,11 +143,13 @@ importFile.addEventListener('change', async () => {
     const text = await file.text();
     parseSave(text);                                              // refuse anything that is not a valid save before replacing the game
     saveStore.write(text);
-    game = Game.fromSave(text, { saveStore });
-    window.game = game;
-    await game.ready;
-    await renderer.prepare(game.world);
-    status.textContent = `Loaded the save of ${game.state.playerName}.`;
+    if (!intro) {
+      game = Game.fromSave(text, { saveStore });
+      window.game = game;
+      await game.ready;
+      await renderer.prepare(game.world);
+    }
+    status.textContent = intro ? 'Save imported: choose CONTINUE.' : `Loaded the save of ${game.state.playerName}.`;
     status.dataset.kind = 'hint';
   } catch (e) { showError(e.message); }
 });
@@ -122,8 +157,9 @@ importFile.addEventListener('change', async () => {
 // ?manual=1: tools/reference/play drives game.update itself, so the real-time loop must not also advance it.
 let manual = query.get('manual') === '1';
 window.__manual = (on) => { manual = on; };
+window.__intro = () => intro;
 // Sprites decode on first use, so draw twice with a pause (tools screenshot a single frame).
-window.__draw = async () => { await renderer.prepare(game.world); renderer.draw(game); await new Promise((r) => setTimeout(r, 80)); renderer.draw(game); };
+window.__draw = async () => { if (intro) { renderer.drawIntro(intro); return; } await renderer.prepare(game.world); renderer.draw(game); await new Promise((r) => setTimeout(r, 80)); renderer.draw(game); };
 let lastTime = 0;
 let accumulator = 0;
 let preparedMap = null;
@@ -132,9 +168,21 @@ function loop(now) {
   lastTime = now;
   while (!manual && accumulator >= 1000 / 60) {
     accumulator -= 1000 / 60;
+    if (intro) {
+      if (!starting) {
+        const choice = intro.update({ dir: heldDirection(), a: pressed.a, b: pressed.b, start: pressed.start });
+        if (choice) beginGame(choice).catch((e) => showError(e.message));
+      }
+      for (const name in pressed) pressed[name] = false;
+      tapped.clear();
+      continue;
+    }
     game.update({ dir: heldDirection(), a: pressed.a, b: pressed.b, start: pressed.start, aHeld: buttons.a, bHeld: buttons.b });
     for (const name in pressed) pressed[name] = false;
+    tapped.clear();
   }
+  if (intro) { renderer.drawIntro(intro); requestAnimationFrame(loop); return; }
+  if (!game) { requestAnimationFrame(loop); return; }
   if (!game.loading && game.world.id !== preparedMap) {
     preparedMap = game.world.id;
     renderer.prepare(game.world).catch((e) => showError(e.message));
