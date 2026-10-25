@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canPreviewEnter, isPreviewCollisionWalkable } from './new-bark-town-movement.js';
+import { canPreviewEnter, canPreviewEnterOrWarp, isPreviewCollisionWalkable } from './new-bark-town-movement.js';
 
 test('only explicitly supported ground collision classes are walkable', () => {
   for (const collision of ['FLOOR', 'TALL_GRASS', 'DOOR', 'WARP_CARPET_LEFT', 'WARP_CARPET_RIGHT', 'WARP_CARPET_DOWN']) {
