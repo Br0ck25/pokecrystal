@@ -8,8 +8,10 @@ import { ELMS_HOUSE } from './maps/elms-house.js';
 import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './maps/elms-house-blocks.js';
 import { resolvePreviewWarp, PREVIEW_WARP_LANDINGS } from './maps/preview-warps.js';
 import { NEW_BARK_TOWN } from './maps/new-bark-town.js';
+import { NEW_BARK_TOWN_BLOCK_IDS } from './maps/new-bark-town-blocks.js';
 import { getNewBarkTownCollisionAtMetatile } from './maps/new-bark-town-blocks.js';
 import { ELMS_LAB } from './maps/elms-lab.js';
+import { ELMS_LAB_BLOCK_IDS } from './maps/elms-lab-blocks.js';
 import { PLAYERS_NEIGHBORS_HOUSE } from './maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './maps/players-neighbors-house-blocks.js';
 import { JOHTO_METATILE_TILES } from './maps/johto-metatiles.js';
@@ -225,6 +227,36 @@ test('New Bark Town has walkable routes from the player-house exit to Elm’s La
  }
 });
 
+
+test('every source map block ID resolves within its assigned source tileset', () => {
+ const cases = [
+  { map: NEW_BARK_TOWN, blocks: NEW_BARK_TOWN_BLOCK_IDS, tiles: JOHTO_METATILE_TILES },
+  { map: ELMS_LAB, blocks: ELMS_LAB_BLOCK_IDS, tiles: LAB_METATILE_TILES },
+  { map: PLAYERS_HOUSE_1F, blocks: PLAYERS_HOUSE_1F_BLOCK_IDS, tiles: PLAYERS_HOUSE_METATILE_TILES },
+  { map: PLAYERS_HOUSE_2F, blocks: PLAYERS_HOUSE_2F_BLOCK_IDS, tiles: PLAYERS_ROOM_METATILE_TILES },
+  { map: ELMS_HOUSE, blocks: ELMS_HOUSE_BLOCK_IDS, tiles: PLAYERS_HOUSE_METATILE_TILES },
+  { map: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, tiles: HOUSE_METATILE_TILES },
+ ];
+ for (const {map, blocks, tiles} of cases) {
+  assert.equal(blocks.length, map.dimensions.blocksWide * map.dimensions.blocksHigh, map.id + ' source block count');
+  for (let index = 0; index < blocks.length; index++) {
+   assert.ok(Number.isInteger(blocks[index]) && blocks[index] >= 0 && blocks[index] < tiles.length,
+    map.id + ' block ' + index + ' references missing metatile ' + blocks[index] + ' in ' + map.tileset);
+   assert.equal(tiles[blocks[index]].length, 16, map.id + ' block ' + index + ' must have 16 tile IDs');
+  }
+ }
+});
+
+test('all three starter images and all required NPC sprite sheets are embedded as PNG data', async () => {
+ const { CRYSTAL_EXTRA_SPRITES } = await import('./assets/source-sprites.js');
+ const { CRYSTAL_OVERWORLD_SPRITES } = await import('./assets/overworld-sprites.js');
+ for (const species of ['CYNDAQUIL', 'TOTODILE', 'CHIKORITA']) {
+  assert.match(CRYSTAL_EXTRA_SPRITES[species], /^iVBORw0KGgo/, species + ' starter image must be embedded PNG data');
+ }
+ for (const character of ['KRIS', 'ELM', 'MOM', 'TEACHER', 'FISHER', 'RIVAL']) {
+  assert.match(CRYSTAL_OVERWORLD_SPRITES[character], /^iVBORw0KGgo/, character + ' sprite must be embedded PNG data');
+ }
+});
 
 test('source map event coordinates stay within their map bounds', () => {
  const maps = [NEW_BARK_TOWN, ELMS_LAB, PLAYERS_HOUSE_1F, PLAYERS_HOUSE_2F, ELMS_HOUSE, PLAYERS_NEIGHBORS_HOUSE];
