@@ -8,6 +8,13 @@ import { ELMS_HOUSE } from './maps/elms-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE } from './maps/players-neighbors-house.js';
 import { LAB_STARTERS, getLabStarter, getLabStarterBallId, mustBlockLabExit } from './maps/starter-selection.js';
 import { CRYSTAL_EXTRA_SPRITES } from './assets/source-sprites.js';
+import { NEW_BARK_TOWN_BLOCK_IDS, getNewBarkTownCollisionAtMetatile } from './maps/new-bark-town-blocks.js';
+import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './maps/elms-lab-blocks.js';
+import { PLAYERS_HOUSE_1F_BLOCK_IDS, getPlayersHouse1FCollisionAtMetatile } from './maps/players-house-1f-blocks.js';
+import { PLAYERS_HOUSE_2F_BLOCK_IDS, getPlayersHouse2FCollisionAtMetatile } from './maps/players-house-2f-blocks.js';
+import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './maps/elms-house-blocks.js';
+import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './maps/players-neighbors-house-blocks.js';
+import { isPreviewCollisionWalkable, canPreviewEnterOrWarp } from './maps/new-bark-town-movement.js';
 
 const MAPS = [NEW_BARK_TOWN, ELMS_LAB, PLAYERS_HOUSE_1F, PLAYERS_HOUSE_2F, ELMS_HOUSE, PLAYERS_NEIGHBORS_HOUSE];
 
@@ -67,4 +74,51 @@ test('the player bedroom has source interaction coordinates for PC, radio, conso
   assert.deepEqual(PLAYERS_HOUSE_2F.objects.map(o => [o.id,o.x,o.y]), [
     ['CONSOLE',4,2],['DOLL_1',4,4],['DOLL_2',5,4],['BIG_DOLL',0,1],
   ]);
+});
+
+
+function reachableWarpCoordinates(map, collisionAt, start) {
+  const { metatilesWide: width, metatilesHigh: height } = map.dimensions;
+  const queue = [start];
+  const seen = new Set([start.join(',')]);
+  for (let i = 0; i < queue.length; i++) {
+    const [x, y] = queue[i];
+    for (const [dx, dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+      const nx = x + dx, ny = y + dy, key = nx + ',' + ny;
+      if (seen.has(key) || !canPreviewEnterOrWarp(nx, ny, width, height, collisionAt, map.warps)) continue;
+      seen.add(key);
+      queue.push([nx, ny]);
+    }
+  }
+  return { seen, missing: map.warps.filter(warp => !seen.has(warp.x + ',' + warp.y)) };
+}
+
+test('all building exits and stairs can be reached from their normal arrival points', () => {
+  const cases = [
+    [NEW_BARK_TOWN, getNewBarkTownCollisionAtMetatile, [6,4]],
+    [ELMS_LAB, getElmsLabCollisionAtMetatile, [5,10]],
+    [PLAYERS_HOUSE_1F, getPlayersHouse1FCollisionAtMetatile, [6,6]],
+    [PLAYERS_HOUSE_2F, getPlayersHouse2FCollisionAtMetatile, [3,3]],
+    [ELMS_HOUSE, getElmsHouseCollisionAtMetatile, [4,6]],
+    [PLAYERS_NEIGHBORS_HOUSE, getPlayersNeighborsHouseCollisionAtMetatile, [3,6]],
+  ];
+  for (const [map, collisionAt, start] of cases) {
+    const result = reachableWarpCoordinates(map, collisionAt, start);
+    assert.deepEqual(result.missing, [], map.id + ' unreachable warp(s) from ' + start.join(','));
+  }
+});
+
+test('all map block grids have exact dimensions and all source metatile IDs are defined', () => {
+  const grids = [
+    [NEW_BARK_TOWN, NEW_BARK_TOWN_BLOCK_IDS],
+    [ELMS_LAB, ELMS_LAB_BLOCK_IDS],
+    [PLAYERS_HOUSE_1F, PLAYERS_HOUSE_1F_BLOCK_IDS],
+    [PLAYERS_HOUSE_2F, PLAYERS_HOUSE_2F_BLOCK_IDS],
+    [ELMS_HOUSE, ELMS_HOUSE_BLOCK_IDS],
+    [PLAYERS_NEIGHBORS_HOUSE, PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS],
+  ];
+  for (const [map, blocks] of grids) {
+    assert.equal(blocks.length, map.dimensions.blocksWide * map.dimensions.blocksHigh, map.id + ' block grid length');
+    assert.ok(blocks.every(id => Number.isInteger(id) && id >= 0 && id < 128), map.id + ' invalid metatile ID');
+  }
 });
