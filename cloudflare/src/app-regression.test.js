@@ -39,3 +39,13 @@ test('first lab entry plays Elm source movement from the doorway to the meeting 
   assert.match(app, /state\.facing = 'left'/);
   assert.match(app, /ElmsLab_WalkUpToElmMovement/);
 });
+
+
+test('long source dialogue paginates, blocks movement, and does not skip the starter receipt', () => {
+  assert.match(app, /createDialoguePages\(formatSourceText\(text\)\)/);
+  assert.match(app, /if \(advanceDialoguePage\(\)\) return/);
+  assert.match(app, /if \(status\.dataset\.kind === 'dialogue'\) return/);
+  assert.match(app, /state\.starterLevel = getLabStarter\(state\.starterBall\)/);
+  assert.match(app, /state\.starterHeldItem = 'BERRY'/);
+  assert.match(app, /MR\. POKéMON lives a little bit beyond CHERRYGROVE/);
+});
