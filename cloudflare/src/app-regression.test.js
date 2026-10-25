@@ -22,8 +22,8 @@ test('the teacher blocks the no-starter route and the lab blocks leaving without
   assert.match(app, /state\.x = oldX; state\.y = oldY/);
 });
 
-test('starter selection requires a confirmation step and displays a source starter image', () => {
-  assert.match(app, /state\.choiceNeedsConfirm = true/);
+test('starter selection presents a direct YES/NO prompt and displays the chosen source starter image', () => {
+  assert.match(app, /state\.choiceNeedsConfirm = false/);
   assert.match(app, /if \(state\.choiceNeedsConfirm\)/);
   assert.match(app, /state\.starterReveal = state\.starter/);
   assert.match(app, /function drawStarterPreview\(\)/);
