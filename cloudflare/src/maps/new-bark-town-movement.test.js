@@ -32,3 +32,18 @@ test('map collision callback decides whether an in-bounds cell is enterable', ()
   assert.equal(canPreviewEnter(1, 0, 2, 2, getCollision), false);
   assert.equal(canPreviewEnter(1, 1, 2, 2, getCollision), false);
 });
+
+
+test('source warp tiles are enterable even when simplified collision is special', () => {
+  const collisionAt = () => 'LADDER';
+  const warps = [{ x: 2, y: 7 }, { x: 3, y: 7 }];
+  assert.equal(canPreviewEnterOrWarp(2, 7, 8, 8, collisionAt, warps), true);
+  assert.equal(canPreviewEnterOrWarp(3, 7, 8, 8, collisionAt, warps), true);
+  assert.equal(canPreviewEnterOrWarp(1, 7, 8, 8, collisionAt, warps), false);
+});
+
+test('warp overrides never permit leaving map bounds', () => {
+  const warps = [{ x: 8, y: 7 }];
+  assert.equal(canPreviewEnterOrWarp(8, 7, 8, 8, () => 'WALL', warps), false);
+  assert.equal(canPreviewEnterOrWarp(-1, 7, 8, 8, () => 'FLOOR', warps), false);
+});
