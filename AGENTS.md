@@ -6,7 +6,7 @@ These rules are mandatory for every person, coding agent, and AI assistant that 
 
 The goal is to recreate the original Pokémon Crystal game as a browser-native JavaScript game, using this repository's disassembly as the behavioral and data reference. The browser version should become a crisp, high-resolution recreation of the same game, not a new game inspired by it.
 
-The current browser port is an early prototype. It currently renders a source-derived New Bark Town map in grayscale, supports prototype grid movement and A/B interactions, and has automated tests. It is **not yet a complete or fully playable Pokémon Crystal game**.
+The current browser port is an early prototype. It currently renders source-derived New Bark Town and Elm's Lab maps in grayscale, supports prototype grid movement, A/B interactions, a basic connection between those two maps, and automated tests. It is **not yet a complete or fully playable Pokémon Crystal game**.
 
 ### Why this project exists
 
@@ -83,7 +83,7 @@ At the time these rules were written:
 - Movement is a conservative prototype; collision classes and game-specific movement rules still need full verification.
 - A/B buttons and keyboard aliases are basic interaction controls, not a complete original input/menu system.
 - Sign and NPC interactions show source-derived text, but original scripts and state-dependent behavior are not fully implemented.
-- Warps identify destinations, but destination interiors and real map transitions are not yet implemented.
+- A basic New Bark Town ↔ Elm's Lab warp transition is implemented using the imported source block grids and warp coordinates. Arrival offsets are currently preview-level behavior; the full original map loader, scene state, scripts, and general warp engine are not implemented.
 - The original opening sequence, party, starter choice, battles, inventory, save compatibility, and full world progression are not yet implemented.
 - Local prototype save helpers do not establish compatibility with the original game's save format.
 
