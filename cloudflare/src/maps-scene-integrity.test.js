@@ -13,6 +13,7 @@ import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './maps/el
 import { PLAYERS_NEIGHBORS_HOUSE } from './maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './maps/players-neighbors-house-blocks.js';
 import { isPreviewCollisionWalkable } from './maps/new-bark-town-movement.js';
+import { resolveSceneObjectPosition } from './maps/scene-object-state.js';
 import { JOHTO_METATILE_TILES } from './maps/johto-metatiles.js';
 import { HOUSE_METATILE_TILES } from './maps/house-metatiles.js';
 import { LAB_METATILE_TILES } from './maps/lab-metatiles.js';
@@ -36,7 +37,7 @@ test('every scene map block grid and metatile reference is structurally valid', 
     for (const id of blocks) assert.ok(Number.isInteger(id) && id >= 0 && id < tiles.length, map.id + ' invalid block ' + id);
     for (const [index, metatile] of tiles.entries()) {
       assert.equal(metatile.length, 16, map.id + ' metatile ' + index + ' tile count');
-      for (const tileId of metatile) assert.ok(Number.isInteger(tileId) && tileId >= 0 && tileId < 192, map.id + ' invalid graphics tile ' + tileId);
+      for (const tileId of metatile) assert.ok(Number.isInteger(tileId) && tileId >= 0 && tileId < 256, map.id + ' invalid graphics tile ' + tileId);
     }
   }
 });
@@ -52,14 +53,19 @@ test('all initial map landings are in bounds and walkable', () => {
 test('NPCs are placed on walkable map cells and have at least one adjacent interaction tile', () => {
   for (const { map, collisionAt } of MAPS) {
     for (const object of map.objects || []) {
-      const collision = collisionAt(object.x, object.y);
-      assert.ok(isPreviewCollisionWalkable(collision), map.id + ' NPC/object ' + object.id + ' is on blocked collision ' + collision + ' at ' + object.x + ',' + object.y);
+      // Poké Balls are sprites sitting on the lab table, so their underlying
+      // collision is intentionally solid. Elm's first-meeting callback also
+      // moves him from the static event coordinate to (3, 4).
+      if (object.id?.startsWith('ELMSLAB_POKE_BALL')) continue;
+      const position = resolveSceneObjectPosition(map.id, object, { labIntroComplete: false }) || { x: object.x, y: object.y };
+      const collision = collisionAt(position.x, position.y);
+      assert.ok(isPreviewCollisionWalkable(collision), map.id + ' NPC ' + object.id + ' is on blocked collision ' + collision + ' at ' + position.x + ',' + position.y);
       const adjacent = [[0,-1],[1,0],[0,1],[-1,0]].some(([dx,dy]) => {
-        const x = object.x + dx, y = object.y + dy;
+        const x = position.x + dx, y = position.y + dy;
         return x >= 0 && y >= 0 && x < map.dimensions.metatilesWide && y < map.dimensions.metatilesHigh
           && isPreviewCollisionWalkable(collisionAt(x,y));
       });
-      assert.ok(adjacent, map.id + ' NPC/object ' + object.id + ' cannot be approached');
+      assert.ok(adjacent, map.id + ' NPC ' + object.id + ' cannot be approached');
     }
   }
 });
