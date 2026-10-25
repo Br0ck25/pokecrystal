@@ -13,6 +13,10 @@ export const PREVIEW_WALKABLE_COLLISIONS = Object.freeze(new Set([
   'WARP_CARPET_RIGHT',
   'WARP_CARPET_DOWN',
   'STAIRCASE',
+  // The original collision table names climbable room tiles LADDER; the
+  // upstairs transition uses these cells, so treating them as unknown walls
+  // makes the player's bedroom staircase impossible to reach.
+  'LADDER',
 ]));
 
 /** Unknown and special collision labels are blocked until explicitly handled. */
