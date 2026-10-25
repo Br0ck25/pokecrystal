@@ -27,3 +27,14 @@ export function canPreviewEnter(x, y, width, height, getCollision) {
       || typeof getCollision !== 'function') return false;
   return isPreviewCollisionWalkable(getCollision(x, y));
 }
+
+
+/** Warp coordinates override simplified collision labels but never map bounds. */
+export function canPreviewEnterOrWarp(x, y, width, height, getCollision, warps = []) {
+  if (![x, y, width, height].every(Number.isInteger)
+      || width <= 0 || height <= 0
+      || x < 0 || y < 0 || x >= width || y >= height) return false;
+  if (Array.isArray(warps) && warps.some(warp => warp.x === x && warp.y === y)) return true;
+  return typeof getCollision === 'function'
+    && isPreviewCollisionWalkable(getCollision(x, y));
+}
