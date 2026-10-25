@@ -472,7 +472,7 @@ function interact() {
     if (state.momIntroStage === 1) {
       state.momIntroStage = 2;
       state.momChoiceYes = true;
-      showDialogue('MOM', "Is it Daylight Saving Time now?\n\n▶ YES       NO");
+      showDialogue('MOM', "Is it Daylight Saving Time now?\n\n" + formatYesNoChoice(true));
       return;
     }
     if (state.momIntroStage === 2) {
@@ -530,7 +530,7 @@ function interact() {
     if (!canCancelPendingScene(state.pendingStarter) && state.pendingStarter === 'LAB_INTRO') {
       if (state.labIntroStage === 0) {
         if (!state.choiceYes) {
-          showDialogue('PROF. ELM', "But… Please, I need your help!\n\n▶ YES       NO");
+          showDialogue('PROF. ELM', "But… Please, I need your help!\n\n" + formatYesNoChoice(true));
           return;
         }
         state.labIntroStage = 1;
@@ -602,7 +602,7 @@ function interact() {
       state.pendingStarter = 'LAB_INTRO';
       state.labIntroStage = 0;
       state.choiceYes = true;
-      showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
+      showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES\n  NO");
     } else if (!state.starter) {
       showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner! Go on. Pick one!");
     } else {
@@ -689,7 +689,7 @@ function pressB() {
     // Source ElmsLab.asm loops until the player agrees; B cannot skip the opening scene.
     state.choiceYes = true;
     state.labIntroStage = 0;
-    showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
+    showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES\n  NO");
     return;
   }
   if (state.pendingStarter) { state.pendingStarter = null; state.choiceNeedsConfirm = false; setHint('Choice cancelled. Face a character or object and press A.'); return; }
@@ -722,7 +722,7 @@ function transition(warp) {
     state.pendingStarter = 'LAB_INTRO';
     state.labIntroStage = 0;
     state.choiceYes = true;
-    showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
+    showDialogue('PROF. ELM', "<PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nYou see… I'm writing a paper that I want to present at a conference. But there are some things I don't quite understand yet. So!\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES\n  NO");
     return;
   }
   setHint('Entered ' + activeMap().title + '. Talk to characters and inspect objects with A.');
@@ -737,7 +737,7 @@ function step(dx, dy, face) {
   if (state.pendingStarter === 'LAB_INTRO') return;
   if (state.pendingStarter) {
     if (dialoguePageIndex < dialoguePages.length - 1) return;
-    if (dx !== 0) state.choiceYes = dx < 0;
+    state.choiceYes = moveYesNoChoice(state.choiceYes, dx, dy);
     state.choiceNeedsConfirm = false;
     const starter = state.pendingStarter;
     showDialogue('PROF. ELM', getLabStarterPrompt(starter) + '\n\n' + (state.choiceYes ? formatYesNoChoice(true) : formatYesNoChoice(false)));
