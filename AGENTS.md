@@ -6,7 +6,7 @@ These rules are mandatory for every person, coding agent, and AI assistant that 
 
 The goal is to recreate the original Pokémon Crystal game as a browser-native JavaScript game, using this repository's disassembly as the behavioral and data reference. The browser version should become a crisp, high-resolution recreation of the same game, not a new game inspired by it.
 
-The current browser port is an early prototype. It currently renders source-derived New Bark Town and Elm's Lab maps in grayscale, supports prototype grid movement, A/B interactions, a basic connection between those two maps, and automated tests. It is **not yet a complete or fully playable Pokémon Crystal game**.
+The current browser port is still an incomplete prototype. It renders source-derived New Bark Town, Elm's Lab, and several house interiors with embedded tile/sprite assets, grid movement, basic dialogue and starter selection, and automated tests. Its map/script coverage and runtime mechanics remain incomplete; it is **not yet a complete Pokémon Crystal game**.
 
 ### Why this project exists
 
@@ -78,11 +78,11 @@ Do not copy source data into multiple competing versions. Choose one canonical J
 ## 7. Current preview limitations that must not be mistaken for finished features
 
 At the time these rules were written:
-- New Bark Town uses the source block grid and metatile table, but the preview is grayscale and does not yet apply the full original color palette.
+- New Bark Town uses source block/metatile data and embedded tileset palette processing; exact source palette fidelity and all map-specific rendering details still need visual verification.
 - The player is a temporary geometric marker, not the source player sprite or full sprite animation.
 - Movement is a conservative prototype; collision classes and game-specific movement rules still need full verification.
 - A/B buttons and keyboard aliases are basic interaction controls, not a complete original input/menu system.
-- Sign and NPC interactions show source-derived text, but original scripts and state-dependent behavior are not fully implemented.
+- Sign and NPC interactions include source-derived text, but original scripts, autonomous scene movement, event flags, and state-dependent behavior are not fully implemented. Yes/no prompts and keyboard aliases are still being refined and must be tested against the disassembly.
 - A basic New Bark Town ↔ Elm's Lab warp transition is implemented using the imported source block grids and warp coordinates. Arrival offsets are currently preview-level behavior; the full original map loader, scene state, scripts, and general warp engine are not implemented.
 - The original opening sequence, party, starter choice, battles, inventory, save compatibility, and full world progression are not yet implemented.
 - Local prototype save helpers do not establish compatibility with the original game's save format.
