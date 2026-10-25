@@ -51,14 +51,16 @@ function interact() {
   const x = state.x + delta[0], y = state.y + delta[1];
   const event = eventsAt(x, y).find(item => item.type === 'background' || item.type === 'object');
   if (!event) {
-    status.textContent = 'Nothing to interact with here.';
+    status.textContent = 'Nothing to interact with here.';\n    status.dataset.kind = 'hint';
     return;
   }
   if (event.type === 'background') {
     status.textContent = event.text || 'A sign.';
+    status.dataset.kind = 'dialogue';
     return;
   }
-  status.textContent = (event.dialogue || ['…']).join(' ');
+  status.textContent = (event.dialogue || ['…']).join('\n');
+  status.dataset.kind = 'dialogue';
 }
 function step(dx,dy,face) {
   state.facing=face;
@@ -66,8 +68,8 @@ function step(dx,dy,face) {
   if(blocked(nx,ny)) { draw(); return; }
   state.x=nx; state.y=ny; draw();
   const warp=NEW_BARK_TOWN.warps.find(w=>w.x===nx&&w.y===ny);
-  if(warp) status.textContent='Door found: '+warp.destinationMap+' (map transition not implemented yet).';
-  else status.textContent='New Bark Town · '+(nx+1)+', '+(ny+1)+' · Arrow keys / WASD to move';
+  if(warp) { status.textContent='Door found: '+warp.destinationMap+' (interior map is not ported yet).'; status.dataset.kind='hint'; }
+  else { status.textContent='New Bark Town · '+(nx+1)+', '+(ny+1)+' · Press E or Space to interact'; status.dataset.kind='hint'; }
 }
 function frame(now) {
   if(now-lastStep>130) {
@@ -87,6 +89,6 @@ document.querySelectorAll('[data-move]').forEach(button => {
 });
 window.addEventListener('keyup',e=>keys.delete(e.key));
 window.addEventListener('blur',()=>keys.clear());
-source.addEventListener('load',()=>{draw();status.textContent='Preview loaded · Arrow keys / WASD to move. Movement and collision are preliminary.';});
+source.addEventListener('load',()=>{draw();status.textContent='Move with arrows / WASD. Face a sign or person, then press E or Space.';status.dataset.kind='hint';});
 source.addEventListener('error',()=>status.textContent='Could not load the source tileset image.');
 draw(); requestAnimationFrame(frame);
