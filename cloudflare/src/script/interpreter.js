@@ -132,7 +132,8 @@ export function* runScript(ctx, startLabel) {
       case 'setscene': state.scenes[ctx.mapName] = sceneId(ctx.mapName, args[0]); break;
       case 'setmapscene': {
         const mapName = ctx.mapNameOf(args[0]);
-        state.scenes[mapName] = sceneId(mapName, args[1]);
+        // Maps without a scene variable (Route 43) take a plain number that nothing reads.
+        state.scenes[mapName] = isNumber(args[1]) ? toNumber(args[1]) : sceneId(mapName, args[1]);
         break;
       }
       case 'checktime': state.scriptVar = (timeMask(args[0]) & TIMES[state.timeOfDay]) ? 1 : 0; break;
@@ -199,7 +200,7 @@ export function* runScript(ctx, startLabel) {
       case 'faceplayer': case 'turnobject': case 'showemote': case 'pause': case 'playmusic': case 'playsound':
       case 'waitsfx': case 'musicfadeout': case 'follow': case 'stopfollow': case 'reanchormap': case 'moveobject':
       case 'pokepic': case 'closepokepic': case 'cry': case 'warp': case 'addcellnum': case 'sdefer':
-      case 'itemnotify': case 'fix_facing': case 'remove_fixed_facing':
+      case 'itemnotify': case 'changeblock': case 'specialphonecall': case 'fix_facing': case 'remove_fixed_facing':
         yield { type: 'effect', name, args }; break;
       default:
         throw new Error(`unsupported script command ${name} in ${pos.key}`);

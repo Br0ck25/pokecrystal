@@ -305,7 +305,7 @@ function parseBlocks(path) {
   for (const raw of text(path).split('\n')) {
     const noComment = raw.replace(/^((?:[^";]|"[^"]*")*);.*$/, '$1').replace(/\s+$/, '');
     if (!noComment.trim()) continue;
-    const label = noComment.match(/^(\.?\w+)::?\s*(.*)$/);
+    const label = noComment.match(/^(\w+)::?\s*(.*)$/) ?? noComment.match(/^(\.\w+)(?::{1,2})?\s*(.*)$/);   // local labels may omit the colon
     let body = noComment;
     if (label) {
       if (label[1].startsWith('.')) current = `${global}${label[1]}`; else { global = label[1]; current = global; }

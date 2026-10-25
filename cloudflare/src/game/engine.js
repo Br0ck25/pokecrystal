@@ -65,6 +65,9 @@ export class Game {
     }));
     this.follow = null;
     this.deferred = null;
+    this.runner = null;                                          // a script never survives a map change
+    this.textboxOpen = false;
+    this.emote = null;
     this.loading = false;
     // MAPCALLBACK_NEWMAP, then OBJECTS and TILES (home/map.asm LoadMapAttributes / HandleNewMap order).
     for (const type of ['MAPCALLBACK_NEWMAP', 'MAPCALLBACK_OBJECTS', 'MAPCALLBACK_TILES']) {
@@ -79,6 +82,10 @@ export class Game {
 
   /** Run a callback or scene script to completion in this frame, resolving effects at once. */
   runInstant(label) {
+    try { this.runInstantUnsafe(label); } catch (e) { this.unported.add(`${label}: ${e.message}`); }
+  }
+
+  runInstantUnsafe(label) {
     const gen = runScript({ ...this.ctx, caller: null }, label);
     let r = gen.next();
     let guard = 0;
@@ -210,7 +217,8 @@ export class Game {
     const entry = list[this.state.scenes[this.world.name] ?? 0];
     if (!entry || !entry[0]) return false;
     this.deferred = null;
-    this.runInstant(entry[0]);
+    this.startScript(entry[0], { caller: null });               // most scene scripts are just `end`; some talk or move
+    if (this.runner) return true;
     if (this.deferred) { const label = this.deferred; this.deferred = null; this.startScript(label, { caller: null }); return true; }
     return false;
   }
@@ -284,11 +292,18 @@ export class Game {
 
   startScript(label, { caller = null, conditionalKind = null } = {}) {
     const gen = runScript({ ...this.ctx, caller, conditionalKind }, label);
-    this.runner = { gen, wait: null, caller };
+    this.runner = { gen, wait: null, caller, label };
     this.advanceRunner(undefined);
   }
 
   advanceRunner(value) {
+    try { this.advanceRunnerUnsafe(value); } catch (e) {
+      this.unported.add(`${this.runner?.label}: ${e.message}`);
+      this.runner = null;                                         // abandon a script that needs something not ported
+    }
+  }
+
+  advanceRunnerUnsafe(value) {
     const runner = this.runner;
     let answer = value;
     for (let guard = 0; guard < 100000; guard++) {
@@ -406,6 +421,7 @@ export class Game {
       }
       case 'readvar': return this.readVar(args[0]);
       case 'sdefer': this.deferred = args[0]; return undefined;
+      case 'changeblock': this.world.setBlockAt(Number(args[0]), Number(args[1]), Number(args[2].replace('$', '0x'))); return undefined;
       case 'follow': this.follow = { leader: args[0], follower: args[1] }; return undefined;
       case 'stopfollow': this.follow = null; return undefined;
       case 'warp': this.unported.add('warp'); return undefined;
