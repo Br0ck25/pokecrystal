@@ -290,10 +290,20 @@ function showDialogue(speaker, text) {
 }
 function interact() {
   if (state.pendingStarter) {
+    if (state.pendingStarter === 'LAB_INTRO') {
+      if (state.choiceYes) {
+        state.pendingStarter = null;
+        state.labIntroComplete = true;
+        showDialogue('PROF. ELM', "Thanks! I got an e-mail from MR. POKéMON about a discovery. Could you go in my place?\n\nRaise one of the POKéMON in these BALLS. Go on. Pick one!");
+      } else {
+        showDialogue('PROF. ELM', "ELM: But… Please, I need your help!\n\nChoice: YES / NO (left/right, then A)");
+      }
+      return;
+    }
     if (state.choiceYes) {
       state.starter = state.pendingStarter;
       state.pendingStarter = null;
-      showDialogue('PROF. ELM', `ELM: I think that's a great POKéMON too!\n\n${state.starter} joined your team at level 5 holding a BERRY.\n\nThis preview tracks your first partner; full battle, stats, and item systems are not ported yet.`);
+      showDialogue('PROF. ELM', `ELM: I think that's a great POKéMON too!\n\nYou received ${state.starter} at level 5 holding a BERRY.\n\nThe browser preview records your partner; battles and the full party system are not implemented yet.`);
       draw();
     } else {
       state.pendingStarter = null;
