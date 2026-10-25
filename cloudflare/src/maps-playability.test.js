@@ -19,7 +19,7 @@ const MAPS = [
   { map: ELMS_LAB, collision: getElmsLabCollisionAtMetatile, spawn: [4, 10] },
   { map: PLAYERS_HOUSE_1F, collision: getPlayersHouse1FCollisionAtMetatile, spawn: [6, 6] },
   { map: PLAYERS_HOUSE_2F, collision: getPlayersHouse2FCollisionAtMetatile, spawn: [3, 3] },
-  { map: ELMS_HOUSE, collision: getElmsHouseCollisionAtMetatile, spawn: [2, 6] },
+  { map: ELMS_HOUSE, collision: getElmsHouseCollisionAtMetatile, spawn: [3, 6] },
   { map: PLAYERS_NEIGHBORS_HOUSE, collision: getPlayersNeighborsHouseCollisionAtMetatile, spawn: [2, 6] },
 ];
 
