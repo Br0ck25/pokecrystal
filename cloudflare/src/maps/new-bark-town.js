@@ -8,6 +8,7 @@
  */
 export const NEW_BARK_TOWN = Object.freeze({
   id: 'NEW_BARK_TOWN',
+  tileset: 'JOHTO',
   group: 'NEW_BARK',
   dimensions: Object.freeze({
     blocksWide: 10,
