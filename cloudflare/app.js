@@ -170,8 +170,9 @@ function resizeCanvasForMap() {
   if (screen) screen.style.aspectRatio = `${GBC_VIEWPORT_WIDTH} / ${GBC_VIEWPORT_HEIGHT}`;
 }
 function setHint(text) {
-  status.textContent = text;
+  status.textContent = formatSourceText(text);
   status.dataset.kind = 'hint';
+  draw();
 }
 function drawMap() {
   const current = activeMap();
@@ -587,12 +588,10 @@ function interact() {
   }
   if (currentMapId === 'NEW_BARK_TOWN') {
     if (event.type === 'background') {
-      status.textContent = event.text || 'A sign.';
-      status.dataset.kind = 'dialogue';
+      showDialogue('SIGN', event.text || 'A sign.');
       return;
     }
-    status.textContent = (event.dialogue || ['…']).join('\n');
-    status.dataset.kind = 'dialogue';
+    showDialogue(event.id || '…', (event.dialogue || ['…']).join('\n'));
     return;
   }
   if (event.type === 'background') {
@@ -608,19 +607,16 @@ function interact() {
       ElmsLabPC: 'The PC is turned on. There are emails from researchers.',
     };
     const message = event.text || sourceTexts[event.script] || 'There is something here.';
-    status.textContent = message;
-    status.dataset.kind = 'dialogue';
+    showDialogue(event.kind === 'pc' ? 'PC' : 'OBJECT', message);
     return;
   }
   if (event.type === 'object') {
-    status.textContent = (event.dialogue || [event.script || event.id || '…']).join('\n');
-    status.dataset.kind = 'dialogue';
+    showDialogue(event.id || '…', (event.dialogue || [event.script || event.id || '…']).join('\n'));
     return;
   }
   // Keep unported lab scripts explicit instead of inventing their stateful behavior.
   const label = event.label || event.script || 'Object';
-  status.textContent = label + '\nOriginal script not yet implemented: ' + event.script;
-  status.dataset.kind = 'dialogue';
+  showDialogue(label, 'Original script not yet implemented: ' + event.script);
 }
 function pressB() {
   if (state.starterReveal) { state.starterReveal = null; draw(); }
