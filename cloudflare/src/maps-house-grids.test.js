@@ -10,11 +10,14 @@ import { resolvePreviewWarp, PREVIEW_WARP_LANDINGS } from './maps/preview-warps.
 import { NEW_BARK_TOWN } from './maps/new-bark-town.js';
 import { ELMS_LAB } from './maps/elms-lab.js';
 import { PLAYERS_NEIGHBORS_HOUSE } from './maps/players-neighbors-house.js';
+import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './maps/players-neighbors-house-blocks.js';
 
 test('all imported house block grids match their source dimensions', () => {
  assert.equal(PLAYERS_HOUSE_1F_BLOCK_IDS.length, PLAYERS_HOUSE_1F.dimensions.blocksWide * PLAYERS_HOUSE_1F.dimensions.blocksHigh);
  assert.equal(PLAYERS_HOUSE_2F_BLOCK_IDS.length, PLAYERS_HOUSE_2F.dimensions.blocksWide * PLAYERS_HOUSE_2F.dimensions.blocksHigh);
  assert.equal(ELMS_HOUSE_BLOCK_IDS.length, ELMS_HOUSE.dimensions.blocksWide * ELMS_HOUSE.dimensions.blocksHigh);
+ assert.equal(PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS.length, PLAYERS_NEIGHBORS_HOUSE.dimensions.blocksWide * PLAYERS_NEIGHBORS_HOUSE.dimensions.blocksHigh);
+ assert.deepEqual(PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, [4,30,79,29,15,1,2,15,15,12,13,15,6,11,15,7]);
  assert.deepEqual(PLAYERS_HOUSE_1F_BLOCK_IDS.slice(0,5),[7,15,17,5,10]);
  assert.deepEqual(PLAYERS_HOUSE_2F_BLOCK_IDS,[4,1,3,2,5,6,5,5,5,5,7,5]);
  assert.deepEqual(ELMS_HOUSE_BLOCK_IDS.slice(0,4),[16,1,17,27]);
@@ -23,6 +26,7 @@ test('house collision lookups fail closed outside map bounds',()=>{
  assert.equal(getPlayersHouse1FCollisionAtMetatile(-1,0),null);
  assert.equal(getPlayersHouse2FCollisionAtMetatile(8,0),null);
  assert.equal(getElmsHouseCollisionAtMetatile(0,8),null);
+ assert.equal(getPlayersNeighborsHouseCollisionAtMetatile(-1,0),null);
 });
 test('all imported house entrance and upstairs routes resolve',()=>{
  assert.equal(resolvePreviewWarp('NEW_BARK_TOWN',{destinationMap:'PLAYERS_HOUSE_1F'}).mapId,'PLAYERS_HOUSE_1F');
@@ -82,4 +86,12 @@ test('player house interaction metadata keeps source NPC coordinates and dialogu
  assert.deepEqual({ x: neighbor.x, y: neighbor.y }, { x: 2, y: 2 });
  assert.match(neighbor.dialogue.join(' '), /adamant about becoming PROF\. ELM's assistant/);
  assert.equal(PLAYERS_HOUSE_1F.objects.find(object => object.id === 'MOM').x, 7);
+});
+
+
+test('neighbor house uses the original shared House1 block grid and source dialogue', () => {
+ assert.deepEqual(PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, [4,30,79,29,15,1,2,15,15,12,13,15,6,11,15,7]);
+ const daughter = PLAYERS_NEIGHBORS_HOUSE.objects.find(object => object.id === 'DAUGHTER');
+ assert.match(daughter.dialogue.join(' '), /PIKACHU is an evolved POKéMON/);
+ assert.match(daughter.dialogue.join(' '), /researcher like him/);
 });
