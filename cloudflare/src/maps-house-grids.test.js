@@ -325,3 +325,29 @@ test('New Bark Town teacher stop scene preserves both source trigger rows and te
  assert.equal(teacher.movement, 'SPRITEMOVEDATA_SPINRANDOM_SLOW');
  assert.match(teacher.dialogue.join(' '), /Wow, your POKéGEAR is impressive/);
 });
+
+import { getPlayersHouse2FCollisionAtMetatile as roomCollision } from './maps/players-house-2f-blocks.js';
+import { getPlayersHouse1FCollisionAtMetatile as downstairsCollision } from './maps/players-house-1f-blocks.js';
+import { getElmsLabCollisionAtMetatile as labCollision } from './maps/elms-lab-blocks.js';
+import { canPreviewEnterOrWarp } from './maps/new-bark-town-movement.js';
+
+function reachable(map, collisionAt, start, target) {
+ const w = map.dimensions.metatilesWide, h = map.dimensions.metatilesHigh;
+ const queue = [start], seen = new Set([start.x + ',' + start.y]);
+ while (queue.length) {
+  const p = queue.shift();
+  if (p.x === target.x && p.y === target.y) return true;
+  for (const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+   const x=p.x+dx,y=p.y+dy,key=x+','+y;
+   if (seen.has(key) || !canPreviewEnterOrWarp(x,y,w,h,collisionAt,map.warps)) continue;
+   seen.add(key); queue.push({x,y});
+  }
+ }
+ return false;
+}
+
+test('critical first-scene destinations are reachable using actual collision tables', () => {
+ assert.equal(reachable(PLAYERS_HOUSE_2F, roomCollision, {x:3,y:3}, {x:7,y:0}), true, 'bedroom spawn must reach the stairs');
+ assert.equal(reachable(PLAYERS_HOUSE_1F, downstairsCollision, {x:6,y:6}, {x:9,y:0}), true, 'downstairs landing must reach the bedroom stairs');
+ assert.equal(reachable(ELMS_LAB, labCollision, {x:4,y:10}, {x:6,y:3}), true, 'lab entrance must reach the starter table');
+});
