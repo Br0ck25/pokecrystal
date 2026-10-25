@@ -176,3 +176,38 @@ test('source ladder collision labels remain walkable for room transitions', () =
  assert.equal(isPreviewCollisionWalkable('LADDER'), true);
  assert.equal(isPreviewCollisionWalkable('FLOOR'), true);
 });
+
+
+function reachableTiles(map, collisionAt, start) {
+ const width=map.dimensions.metatilesWide, height=map.dimensions.metatilesHigh;
+ const queue=[start], visited=new Set([start.x+','+start.y]);
+ for(let i=0;i<queue.length;i++){
+  const p=queue[i];
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+   const x=p.x+dx,y=p.y+dy,key=x+','+y;
+   if(visited.has(key)||x<0||y<0||x>=width||y>=height)continue;
+   const isWarp=map.warps.some(w=>w.x===x&&w.y===y);
+   if(!isWarp&&!isPreviewCollisionWalkable(collisionAt(x,y)))continue;
+   visited.add(key);queue.push({x,y});
+  }
+ }
+ return visited;
+}
+
+test('player bedroom staircase and every source object have reachable interaction tiles',()=>{
+ const reachable=reachableTiles(PLAYERS_HOUSE_2F,getPlayersHouse2FCollisionAtMetatile,{x:3,y:3});
+ const objects=PLAYERS_HOUSE_2F.objects;
+ for(const object of objects){
+  const neighbors=[[object.x,object.y-1],[object.x+1,object.y],[object.x,object.y+1],[object.x-1,object.y]];
+  assert.ok(neighbors.some(([x,y])=>reachable.has(x+','+y)),`no reachable interaction tile for ${object.id}`);
+ }
+ assert.ok(reachable.has('7,0'),'bedroom staircase tile must be reachable');
+});
+
+test('every ground-floor room object has a reachable interaction tile from the front door',()=>{
+ const reachable=reachableTiles(PLAYERS_HOUSE_1F,getPlayersHouse1FCollisionAtMetatile,{x:6,y:6});
+ for(const object of PLAYERS_HOUSE_1F.objects){
+  const neighbors=[[object.x,object.y-1],[object.x+1,object.y],[object.x,object.y+1],[object.x-1,object.y]];
+  assert.ok(neighbors.some(([x,y])=>reachable.has(x+','+y),),`no reachable interaction tile for ${object.id}`);
+ }
+});
