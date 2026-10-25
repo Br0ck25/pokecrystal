@@ -148,7 +148,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -157,6 +157,7 @@ function activeMap() { return maps[currentMapId]; }
 function objectPosition(object) {
   if (currentMapId === 'PLAYERS_HOUSE_1F' && object.id === 'MOM' && Number.isInteger(state.momX)) return { x: state.momX, y: object.y };
   if (currentMapId === 'NEW_BARK_TOWN' && object.id === 'NEWBARKTOWN_TEACHER' && Number.isInteger(state.townTeacherX)) return { x: state.townTeacherX, y: state.townTeacherY };
+  if (currentMapId === 'NEW_BARK_TOWN' && object.id === 'NEWBARKTOWN_RIVAL') return { x: state.rivalX, y: state.rivalY };
   return resolveSceneObjectPosition(currentMapId, object, state) || { x: object.x, y: object.y };
 }
 function resizeCanvasForMap() {
@@ -531,6 +532,33 @@ function interact() {
     state.choiceNeedsConfirm = false;
     const prompts = { CYNDAQUIL: "ELM: You'll take CYNDAQUIL, the FIRE POKéMON?", TOTODILE: "ELM: Do you want TOTODILE, the WATER POKéMON?", CHIKORITA: "ELM: So, you like CHIKORITA, the GRASS POKéMON?" };
     showDialogue('PROF. ELM', prompts[starter] + '\n\nChoice: YES / NO (left/right, then A)');
+    draw();
+    return;
+  }
+  if (currentMapId === 'NEW_BARK_TOWN' && event.type === 'object' && event.id === 'NEWBARKTOWN_RIVAL') {
+    if (!state.starter) {
+      setHint('The rival has not appeared yet.');
+      return;
+    }
+    if (state.rivalStage === 0) {
+      state.rivalStage = 1;
+      showDialogue('RIVAL', '…\n\nSo this is the famous ELM POKéMON LAB…');
+      return;
+    }
+    if (state.rivalStage === 1) {
+      state.rivalStage = 2;
+      showDialogue('RIVAL', '…What are you staring at?');
+      return;
+    }
+    // Source script: shove the player one step down, then have the rival
+    // move one step right. Use collision data so the scripted movement cannot
+    // place the player inside a wall.
+    const pushedY = state.y + 1;
+    if (!blocked(state.x, pushedY)) state.y = pushedY;
+    state.rivalX = Math.min(NEW_BARK_TOWN.dimensions.metatilesWide - 1, state.rivalX + 1);
+    state.rivalStage = 0;
+    state.facing = 'up';
+    setHint('The rival shoves past you and slips back into the shadows.');
     draw();
     return;
   }
