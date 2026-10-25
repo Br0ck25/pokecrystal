@@ -9,7 +9,9 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/runtime.js` — renderer sizing and runtime state primitives.
 - `src/runtime.test.js` — tests for state, collision adapter behavior, transitions, and local saves.
 - `src/maps/new-bark-town.js` — source-derived New Bark Town dimensions, warp events, coordinate events, signs, NPC positions, and map callback metadata.
-- `src/maps/elms-lab.js` — source-derived Elm's Lab dimensions, both exit warps, scene-gated coordinate events, background events, and object event coordinates. This is metadata only; the map renderer and scripts are not yet ported.
+- `src/maps/elms-lab.js` — source-derived Elm's Lab dimensions, warps, scene-gated coordinate events, background events, and object event coordinates. Stateful original scripts are not yet ported.
+- `src/maps/elms-lab-blocks.js` — the 30 source block IDs from `maps/ElmsLab.blk`, plus block/metatile/collision lookup helpers.
+- `src/maps-elms-lab.test.js` and `src/maps-elms-lab-blocks.test.js` — source-coordinate, warp, block-grid, and bounds tests.
 - `src/maps-elms-lab.test.js` — verifies the imported Elm's Lab event metadata against the source definitions.
 - `src/maps.test.js` — tests for the New Bark Town source metadata.
 - `src/maps/new-bark-town-blocks.js` — all 90 block IDs from the original `maps/NewBarkTown.blk`, plus metatile-coordinate lookup helpers.
@@ -18,7 +20,7 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps/johto-metatiles.js` — all 128 source Johto metatile definitions, each containing 16 8x8 tile IDs.
 - `src/maps/johto-palette-map.js` — source palette-name assignments for both Johto `tilepal` groups, including the reserved `$ff` gap.
 - `src/assets/johto-tileset.js` — embedded 128×96 source tileset preview image used by the browser map renderer.
-- `index.html` / `app.js` — no-build browser map preview with keyboard and touch movement prototype over the source-derived New Bark Town map.
+- `index.html` / `app.js` — no-build browser preview that renders New Bark Town and Elm's Lab from source block/metatile data and connects their entrance/exit warps. Player/NPC sprites, palettes, full collision semantics, and original scripts remain incomplete.
 - `src/maps-metatiles.test.js` — checks the imported metatile table.
 - `src/maps-collision.test.js` — verifies collision-table entries and map block references.
 - `src/graphics.js` — JavaScript decoder for the repository's `lzcompress` stream format, Game Boy 2bpp tile decoding, and 32x32 metatile and full map-grid pixel composition.
@@ -61,10 +63,11 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [x] Load the source Johto tileset preview in the browser and render the New Bark Town map from its source block/metatile tables (palette colors not yet applied).
 - [ ] Decode the original Johto tile graphics into their native 2bpp asset form and apply the source palette map.
 - [ ] Render the town from source map blocks, metatile definitions, and graphics; translate raw collision labels into game-engine movement behavior.
-- [ ] Translate source-defined collisions, warps, map connections, object events, and scripts.
+- [x] Connect the New Bark Town ↔ Elm's Lab entrance/exit warps using source-defined warp coordinates and tested block-grid collision lookups.
+- [ ] Translate the full original movement engine, map connections, scene conditions, object event state, and scripts.
 - [x] Render a source-data New Bark Town map preview in the browser.
 - [x] Add temporary keyboard and touch movement controls to test map coordinates on desktop and mobile.\n- [x] Fail closed on unknown collision labels instead of treating them as walkable.
-- [ ] Render the real opening sequence with player sprite, palette colors, movement, and source events.
+- [ ] Render the real opening sequence with the original player sprite, source palette colors, scripted movement, and stateful source events.
 - [ ] Port dialogue, menus, battles, party, items, progression, and remaining maps.
 - [ ] Verify the full browser game and deployment.
 
