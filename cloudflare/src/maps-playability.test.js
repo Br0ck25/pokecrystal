@@ -23,7 +23,7 @@ const MAPS = [
   { map: PLAYERS_NEIGHBORS_HOUSE, collision: getPlayersNeighborsHouseCollisionAtMetatile, spawn: [2, 6] },
 ];
 
-function reachable(map, collision, start, target) {
+function reachable(map, collision, start, target, blockObjects = true) {
   const { metatilesWide: width, metatilesHigh: height } = map.dimensions;
   const queue = [start];
   const seen = new Set([start.join(',')]);
@@ -36,7 +36,8 @@ function reachable(map, collision, start, target) {
       const key = nx + ',' + ny;
       if (seen.has(key)) continue;
       const isWarp = map.warps.some(warp => warp.x === nx && warp.y === ny);
-      if (!isWarp && !isPreviewCollisionWalkable(collision(nx, ny))) continue;
+      const occupiedByObject = blockObjects && (map.objects || []).some(object => object.x === nx && object.y === ny);
+      if (occupiedByObject || (!isWarp && !isPreviewCollisionWalkable(collision(nx, ny)))) continue;
       seen.add(key);
       queue.push([nx, ny]);
     }
@@ -62,6 +63,18 @@ test('room object interaction tiles have at least one adjacent walkable approach
           && isPreviewCollisionWalkable(collision(x,y));
       });
       assert.ok(adjacent, map.id + ' object ' + object.id + ' has no walkable interaction tile');
+    }
+  }
+});
+
+
+test('doorways remain reachable when source object sprites block movement', () => {
+  for (const { map, collision, spawn } of MAPS) {
+    for (const warp of map.warps) {
+      assert.ok(
+        reachable(map, collision, spawn, warp, true),
+        map.id + ' doorway (' + warp.x + ',' + warp.y + ') is unreachable when NPC/furniture object tiles block movement',
+      );
     }
   }
 });
