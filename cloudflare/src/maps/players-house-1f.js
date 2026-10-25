@@ -1,5 +1,5 @@
 export const PLAYERS_HOUSE_1F = Object.freeze({
- id:'PLAYERS_HOUSE_1F', group:'NEW_BARK',
+ id:'PLAYERS_HOUSE_1F',tileset:'PLAYERS_HOUSE', group:'NEW_BARK',
  dimensions:Object.freeze({blocksWide:5,blocksHigh:4,metatilesWide:10,metatilesHigh:8,blockSizeMetatiles:2}),
  warps:Object.freeze([
  {x:6,y:7,destinationMap:'NEW_BARK_TOWN',destinationWarp:2},
