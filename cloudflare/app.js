@@ -60,8 +60,7 @@ function interact() {
     status.dataset.kind = 'dialogue';
     return;
   }
-  status.textContent = (event.dialogue || ['…']).join('
-');
+  status.textContent = (event.dialogue || ['…']).join('\\n');
   status.dataset.kind = 'dialogue';
 }
 function pressB() {
