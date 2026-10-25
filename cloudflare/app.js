@@ -144,7 +144,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, pokegear: false };
 const keys = new Set();
 let lastStep = 0;
 
@@ -352,6 +352,28 @@ function showDialogue(speaker, text) {
   status.dataset.kind = 'dialogue';
 }
 function interact() {
+  if (state.momIntroActive) {
+    if (state.momIntroStage === 0) {
+      state.momIntroStage = 1;
+      state.pokegear = true;
+      showDialogue('MOM', "Oh! I almost forgot! Your POKéMON GEAR is back from the repair shop. Here you go!");
+      return;
+    }
+    if (state.momIntroStage === 1) {
+      state.momIntroStage = 2;
+      showDialogue('MOM', "POKéMON GEAR, or just POKéGEAR. It's essential if you want to be a good trainer. Oh, the day of the week isn't set. You mustn't forget that!");
+      return;
+    }
+    if (state.momIntroStage === 2) {
+      state.momIntroStage = 3;
+      showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE? Turn the POKéGEAR on and select the PHONE icon.");
+      return;
+    }
+    state.momIntroActive = false;
+    state.momIntroStage = 0;
+    setHint('Mom gave you the POKéGEAR. Professor Elm is waiting at the lab.');
+    return;
+  }
   if (state.starterReveal) { state.starterReveal = null; draw(); }
   if (state.pendingStarter) {
     if (state.pendingStarter === 'LAB_INTRO') {
@@ -476,6 +498,7 @@ function interact() {
 }
 function pressB() {
   if (state.starterReveal) { state.starterReveal = null; draw(); }
+  if (state.momIntroActive) { state.momIntroActive = false; state.momIntroStage = 0; setHint('Talk to Mom again if you need to.'); return; }
   if (state.pendingStarter) { state.pendingStarter = null; state.choiceNeedsConfirm = false; setHint('Choice cancelled. Face a character or object and press A.'); return; }
   if (status.dataset.kind === 'dialogue') setHint(activeMap().title + ' · Press A to interact; B closes this text.');
   else setHint('There is nothing to cancel right now.');
@@ -518,6 +541,13 @@ function step(dx, dy, face) {
     && !(object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter); });
   if (blocked(nx, ny) || occupied) { draw(); return; }
   state.x = nx; state.y = ny;
+  if (currentMapId === 'PLAYERS_HOUSE_1F' && nx === 8 && ny === 4 && !state.pokegear) {
+    state.momIntroActive = true;
+    state.momIntroStage = 0;
+    showDialogue('MOM', "Oh, <PLAYER>…! Our neighbor, PROF. ELM, was looking for you. He said he wanted you to do something for him.");
+    draw();
+    return;
+  }
   const warp = activeMap().metadata.warps.find(w => w.x === nx && w.y === ny);
   if (warp) {
     if (currentMapId === 'ELMS_LAB' && mustBlockLabExit(state.starter)) {
