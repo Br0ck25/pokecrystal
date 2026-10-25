@@ -561,7 +561,7 @@ test('all six playable map block grids exactly match the source disassembly', ()
   1,33,1,10,11,
   4,4,1,4,4,
   1,1,1,1,1,
-  1,2,1,1,1,
+  1,1,2,1,1,
  ]);
  assert.deepEqual(PLAYERS_HOUSE_1F_BLOCK_IDS, [7,15,17,5,10,3,22,8,9,3,3,3,12,13,3,3,3,3,6,3]);
  assert.deepEqual(PLAYERS_HOUSE_2F_BLOCK_IDS, [4,1,3,2,5,6,5,5,5,5,7,5]);

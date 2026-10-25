@@ -6,6 +6,7 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 
 ## Files
 
+- `tools/extract-browser-data.mjs` — dev-time generator (`npm run extract`). Reads the disassembly's `maps/*.blk`, `data/tilesets/*_metatiles.bin`, `*_collision.asm` and map/tileset tables and writes `src/generated/maps.js` (all 388 maps) and `src/generated/tilesets.js` (all tilesets). Generated files are committed and checked for staleness by `src/generated.test.js`; never edit them by hand.
 - `src/runtime.js` — renderer sizing and runtime state primitives.
 - `src/runtime.test.js` — tests for state, collision adapter behavior, transitions, and local saves.
 - `src/maps/new-bark-town.js` — source-derived New Bark Town dimensions, warp events, coordinate events, signs, NPC positions, and map callback metadata.

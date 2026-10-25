@@ -1,7 +1,8 @@
 /** Source .blk block IDs from upstream pokecrystal; blob SHA verified against GitHub. */
+import { MAPS } from '../generated/maps.js';
 import { PLAYERS_HOUSE_1F } from './players-house-1f.js';
 import { getTilesetCollision } from './tileset-collision.js';
-export const PLAYERS_HOUSE_1F_BLOCK_IDS=Object.freeze([7,15,17,5,10,3,22,8,9,3,3,3,12,13,3,3,3,3,6,3]);
+export const PLAYERS_HOUSE_1F_BLOCK_IDS = MAPS.PLAYERS_HOUSE_1F.blocks;
 export function getPlayersHouse1fBlockAtMetatile(x,y){
  const d=PLAYERS_HOUSE_1F.dimensions;
  if(!Number.isInteger(x)||!Number.isInteger(y)||x<0||y<0||x>=d.metatilesWide||y>=d.metatilesHigh)return null;

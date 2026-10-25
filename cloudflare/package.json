@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "extract": "node tools/extract-browser-data.mjs",
     "test": "node --check app.js && node --test src/*.test.js"
   }
 }

@@ -3,17 +3,11 @@
  * Upstream blob SHA: e3916185d258ac12731616fd99f94f61b87a4e0e.
  * constants/map_constants.asm defines 5 x 6 blocks = 10 x 12 metatiles.
  */
+import { MAPS } from '../generated/maps.js';
 import { ELMS_LAB } from './elms-lab.js';
 import { getTilesetCollision } from './tileset-collision.js';
 
-export const ELMS_LAB_BLOCK_IDS = Object.freeze([
-  23, 8, 9, 4, 4,
-  24, 12, 1, 6, 7,
-  1, 33, 1, 10, 11,
-  4, 4, 1, 4, 4,
-  1, 1, 1, 1, 1,
-  1, 2, 1, 1, 1,
-]);
+export const ELMS_LAB_BLOCK_IDS = MAPS.ELMS_LAB.blocks;
 
 export function getElmsLabBlock(blockX, blockY) {
   const d = ELMS_LAB.dimensions;

@@ -6,7 +6,7 @@ import { ELMS_LAB_BLOCK_IDS, getElmsLabBlock, getElmsLabBlockAtMetatile, getElms
 test('Elm lab block grid has exactly 5 by 6 source blocks', () => {
   assert.equal(ELMS_LAB_BLOCK_IDS.length, ELMS_LAB.dimensions.blocksWide * ELMS_LAB.dimensions.blocksHigh);
   assert.deepEqual(ELMS_LAB_BLOCK_IDS.slice(0, 5), [23, 8, 9, 4, 4]);
-  assert.deepEqual(ELMS_LAB_BLOCK_IDS.slice(-5), [1, 2, 1, 1, 1]);
+  assert.deepEqual(ELMS_LAB_BLOCK_IDS.slice(-5), [1, 1, 2, 1, 1]);
 });
 test('Elm lab block and metatile lookup rejects out-of-range coordinates', () => {
   assert.equal(getElmsLabBlock(0, 0), 23);

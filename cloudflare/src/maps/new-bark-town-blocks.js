@@ -6,20 +6,11 @@
  * 32x32 metatile made from 16 8x8 graphics tiles; collision is defined by
  * four 16x16 quadrants in the separate source collision table.
  */
+import { MAPS } from '../generated/maps.js';
 import { NEW_BARK_TOWN } from './new-bark-town.js';
 import { getJohtoMetatileCollision } from './johto-collision.js';
 
-export const NEW_BARK_TOWN_BLOCK_IDS = Object.freeze([
-  5, 5, 24, 31, 25, 5, 5, 5, 5, 5,
-  5, 71, 28, 119, 30, 5, 24, 25, 5, 5,
-  5, 2, 1, 1, 1, 71, 22, 30, 5, 5,
-  5, 1, 1, 1, 1, 1, 1, 1, 1, 84,
-  1, 1, 1, 1, 69, 1, 1, 1, 1, 88,
-  5, 20, 21, 1, 1, 1, 1, 1, 98, 5,
-  4, 1, 1, 1, 71, 20, 21, 1, 98, 5,
-  5, 101, 101, 1, 1, 1, 1, 1, 98, 5,
-  5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-]);
+export const NEW_BARK_TOWN_BLOCK_IDS = MAPS.NEW_BARK_TOWN.blocks;
 
 /** Get the source block ID at a block coordinate, or null outside the map. */
 export function getNewBarkTownBlock(blockX, blockY) {
