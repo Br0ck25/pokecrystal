@@ -12,6 +12,7 @@ import { HOUSE_TILESET_PNG_BASE64 } from './src/assets/house-tileset.js';
 import { LAB_TILESET_PNG_BASE64 } from './src/assets/lab-tileset.js';
 import { PLAYERS_HOUSE_TILESET_PNG_BASE64 } from './src/assets/players-house-tileset.js';
 import { PLAYERS_ROOM_TILESET_PNG_BASE64 } from './src/assets/players-room-tileset.js';
+import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './src/maps/tileset-palette-data.js';
 import { canPreviewEnterOrWarp } from './src/maps/new-bark-town-movement.js';
 import { resolvePreviewWarp } from './src/maps/preview-warps.js';
 import { PLAYERS_HOUSE_1F, playersHouse1fEventsAt } from './src/maps/players-house-1f.js';
@@ -28,6 +29,36 @@ const ctx = canvas.getContext('2d', { alpha: false });
 ctx.imageSmoothingEnabled = false;
 const status = document.querySelector('#status');
 const tileSources = {};
+const renderedTilesets = {};
+const paletteMapKey = { JOHTO: 'johto', HOUSE: 'house', LAB: 'lab', PLAYERS_HOUSE: 'players_house', PLAYERS_ROOM: 'players_room' };
+function colorizeTileset(image, tileset) {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const paletteKey = paletteMapKey[tileset];
+  const tilePalettes = TILESET_PALETTE_LABELS[paletteKey];
+  const paletteSet = tileset === 'JOHTO' ? CRYSTAL_PALETTES.day : CRYSTAL_PALETTES.indoor;
+  if (!tilePalettes || !paletteSet) return image;
+  const colorCtx = canvas.getContext('2d', { willReadFrequently: true });
+  colorCtx.drawImage(image, 0, 0);
+  const frame = colorCtx.getImageData(0, 0, canvas.width, canvas.height);
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      const i = (y * canvas.width + x) * 4;
+      if (frame.data[i + 3] === 0) continue;
+      const tileIndex = Math.floor(y / 8) * 16 + Math.floor(x / 8);
+      const bank = tileIndex >= 96 ? 1 : 0;
+      const paletteName = tilePalettes[bank]?.[tileIndex % 96] || 'GRAY';
+      const shades = paletteSet[paletteName] || paletteSet.GRAY;
+      const luminance = (frame.data[i] + frame.data[i + 1] + frame.data[i + 2]) / 3;
+      const shade = Math.max(0, Math.min(3, Math.round((255 - luminance) / 85)));
+      const rgb = shades[shade];
+      frame.data[i] = rgb[0]; frame.data[i + 1] = rgb[1]; frame.data[i + 2] = rgb[2];
+    }
+  }
+  colorCtx.putImageData(frame, 0, 0);
+  return canvas;
+}
 for (const [tileset, base64] of Object.entries({
   JOHTO: JOHTO_TILESET_PNG_BASE64,
   HOUSE: HOUSE_TILESET_PNG_BASE64,
@@ -37,7 +68,7 @@ for (const [tileset, base64] of Object.entries({
 })) {
   const image = new Image();
   image.src = 'data:image/png;base64,' + base64;
-  image.onload = draw;
+  image.onload = () => { renderedTilesets[tileset] = colorizeTileset(image, tileset); draw(); };
   tileSources[tileset] = image;
 }
 const metatilesByTileset = {
@@ -87,9 +118,9 @@ function drawMap() {
   const current = activeMap();
   const d = current.metadata.dimensions;
   const tileset = current.metadata.tileset;
-  const source = tileSources[tileset];
+  const source = renderedTilesets[tileset];
   const metatiles = metatilesByTileset[tileset];
-  if (!source || !source.complete || !source.naturalWidth || !metatiles) return;
+  if (!source || !metatiles) return;
   ctx.fillStyle = '#202020';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   for (let by = 0; by < d.blocksHigh; by++) {
@@ -119,7 +150,7 @@ function drawPlayer() {
   else ctx.fillRect(x + 6, y + 3, 4, 1);
 }
 function draw() {
-  if (!tileSources[activeMap().metadata.tileset]?.complete || !tileSources[activeMap().metadata.tileset]?.naturalWidth) return;
+  if (!renderedTilesets[activeMap().metadata.tileset]) return;
   drawMap();
   drawPlayer();
 }
