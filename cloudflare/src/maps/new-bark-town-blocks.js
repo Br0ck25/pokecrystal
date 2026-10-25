@@ -7,6 +7,7 @@
  * tileset block attributes and must not be inferred from block IDs alone.
  */
 import { NEW_BARK_TOWN } from './new-bark-town.js';
+import { getJohtoMetatileCollision } from './johto-collision.js';
 
 export const NEW_BARK_TOWN_BLOCK_IDS = Object.freeze([
   5, 5, 24, 31, 25, 5, 5, 5, 5, 5,
@@ -37,4 +38,19 @@ export function getNewBarkTownBlockAtTile(tileX, tileY) {
       || tileX >= NEW_BARK_TOWN.dimensions.tilesWide
       || tileY >= NEW_BARK_TOWN.dimensions.tilesHigh) return null;
   return getNewBarkTownBlock(Math.floor(tileX / 2), Math.floor(tileY / 2));
+}
+
+/**
+ * Read the original collision label for a map tile. This returns the raw
+ * source class (for example FLOOR, WALL, DOOR, or TALL_GRASS), not a guessed
+ * boolean passability result.
+ */
+export function getNewBarkTownCollisionAtTile(tileX, tileY) {
+  if (!Number.isInteger(tileX) || !Number.isInteger(tileY)
+      || tileX < 0 || tileY < 0
+      || tileX >= NEW_BARK_TOWN.dimensions.tilesWide
+      || tileY >= NEW_BARK_TOWN.dimensions.tilesHigh) return null;
+  const blockId = getNewBarkTownBlockAtTile(tileX, tileY);
+  const quadrant = (tileY % 2) * 2 + (tileX % 2);
+  return getJohtoMetatileCollision(blockId, quadrant);
 }
