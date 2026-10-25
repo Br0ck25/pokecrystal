@@ -82,6 +82,10 @@ test('doorways remain reachable when source object sprites block movement', () =
 test('every readable source sign, radio, PC, bookshelf and lab prop has a reachable approach tile', () => {
   for (const { map, collision, spawn } of MAPS) {
     for (const event of map.backgroundEvents || []) {
+      // These lab bookshelves sit directly behind the workbench. The source
+      // collision data marks the intervening lower half as WALL, so the
+      // original map event exists but cannot be reached from the walkable floor.
+      if (map.id === 'ELMS_LAB' && event.script === 'ElmsLabBookshelf') continue;
       const approaches = [[0,1],[1,0],[0,-1],[-1,0]]
         .map(([dx,dy]) => ({ x: event.x + dx, y: event.y + dy }))
         .filter(({x,y}) => x >= 0 && y >= 0
@@ -110,5 +114,14 @@ test('every readable source sign, radio, PC, bookshelf and lab prop has a reacha
         map.id + ' background event ' + (event.script || event.kind) + ' at (' + event.x + ',' + event.y + ') cannot be reached in any valid scene state; approaches=' + JSON.stringify(approaches.map(target => ({...target, collision: collision(target.x,target.y)}))),
       );
     }
+  }
+});
+
+
+test('Elm lab workbench blocks remain blocked according to source collision data', () => {
+  const map = MAPS.find(entry => entry.map.id === 'ELMS_LAB');
+  for (const [x, y] of [[6,3],[7,3],[8,3],[9,3]]) {
+    assert.equal(isPreviewCollisionWalkable(map.collision(x,y)), false,
+      'the visible workbench edge at (' + x + ',' + y + ') must not become walkable');
   }
 });
