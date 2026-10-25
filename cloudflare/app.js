@@ -10,8 +10,8 @@ import { PLAYERS_HOUSE_METATILE_TILES } from './src/maps/players-house-metatiles
 import { PLAYERS_ROOM_METATILE_TILES } from './src/maps/players-room-metatiles.js';
 import { HOUSE_TILESET_PNG_BASE64 } from './src/assets/house-tileset.js';
 import { LAB_TILESET_PNG_BASE64 } from './src/assets/lab-tileset.js';
-import { PLAYERS_HOUSE_TILESET_PNG_BASE64 } from './src/assets/players-house-tileset.js';
-import { PLAYERS_ROOM_TILESET_PNG_BASE64 } from './src/assets/players-room-tileset.js';
+import { PLAYERS_HOUSE_TILESET_PNG_BASE64 } from './src/assets/players_house-tileset.js';
+import { PLAYERS_ROOM_TILESET_PNG_BASE64 } from './src/assets/players_room-tileset.js';
 import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './src/maps/tileset-palette-data.js';
 import { canPreviewEnterOrWarp } from './src/maps/new-bark-town-movement.js';
 import { resolvePreviewWarp } from './src/maps/preview-warps.js';
