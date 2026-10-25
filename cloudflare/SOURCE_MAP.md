@@ -18,7 +18,7 @@ This file maps major responsibilities to the existing disassembly so implementat
 
 ## First vertical slice
 
-Start from the real New Bark Town opening, not a newly invented meadow. Before implementation, confirm the exact opening map file names, block data format, map attributes, event scripts, player starting coordinates, and title/intro state from the current source. The first browser milestone should support starting the game, walking on that real map, collision, facing/interacting with a real object, and saving/restoring the player position. Elm's Lab metadata, source block grid, conservative collision lookup, rendering, and a basic New Bark Town ↔ lab warp connection are implemented and tested. This does not implement the lab's original opening scene or stateful scripts.
+Start from the real New Bark Town opening, not a newly invented meadow. Before implementation, confirm the exact opening map file names, block data format, map attributes, event scripts, player starting coordinates, and title/intro state from the current source. The first browser milestone should support starting the game, walking on that real map, collision, facing/interacting with a real object, and saving/restoring the player position. Elm's Lab metadata, source block grid, conservative collision lookup, rendering, and a basic New Bark Town ↔ lab warp connection are implemented and tested. The opening scene now animates the seven source-defined UP steps on lab entry and blocks input during that movement; the required YES/NO request is present. The full source scene still needs fidelity work for emotes, music, exact text-control timing, Elm's subsequent movement, map scene flags, and the full script/event engine.
 
 ## Verification rule
 
