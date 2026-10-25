@@ -18,7 +18,7 @@ export const PLAYERS_HOUSE_1F = Object.freeze({
  ]),
  objects:Object.freeze([
  {id:'MOM',x:7,y:4,facing:'left',script:'MomScript',dialogue:['PROF. ELM was looking for you.','Your POKéGEAR is back from the repair shop.']},
- {id:'NEIGHBOR',x:4,y:4,sprite:'SPRITE_POKEFAN_F',script:'NeighborScript',dialogue:['Hello! I\'m visiting!','Have you heard? My daughter is adamant about becoming PROF. ELM\'s assistant. She really loves POKéMON!']}
+ {id:'NEIGHBOR',x:4,y:4,sprite:'SPRITE_POKEFAN_F',script:'NeighborScript',dialogue:['Hello, <PLAY_G>! I\'m visiting!','<PLAY_G>, have you heard? My daughter is adamant about becoming PROF. ELM\'s assistant. She really loves POKéMON!']}
  ])
 });
 export function playersHouse1fEventsAt(x,y){return eventsAt(PLAYERS_HOUSE_1F,x,y)}
