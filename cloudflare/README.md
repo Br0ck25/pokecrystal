@@ -14,7 +14,7 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps/johto-metatiles.js` — all 128 source Johto metatile definitions, each containing 16 8x8 tile IDs.
 - `src/maps/johto-palette-map.js` — source palette-name assignments for both Johto `tilepal` groups, including the reserved `$ff` gap.
 - `src/assets/johto-tileset.js` — embedded 128×96 source tileset preview image used by the browser map renderer.
-- `index.html` / `app.js` — no-build browser map preview with keyboard movement prototype over the source-derived New Bark Town map.
+- `index.html` / `app.js` — no-build browser map preview with keyboard and touch movement prototype over the source-derived New Bark Town map.
 - `src/maps-metatiles.test.js` — checks the imported metatile table.
 - `src/maps-collision.test.js` — verifies collision-table entries and map block references.
 - `src/graphics.js` — JavaScript decoder for the repository's `lzcompress` stream format, Game Boy 2bpp tile decoding, and 32x32 metatile and full map-grid pixel composition.
@@ -59,7 +59,7 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [ ] Render the town from source map blocks, metatile definitions, and graphics; translate raw collision labels into game-engine movement behavior.
 - [ ] Translate source-defined collisions, warps, map connections, object events, and scripts.
 - [x] Render a source-data New Bark Town map preview in the browser.
-- [x] Add a temporary keyboard movement prototype to test the map viewport and coordinates.
+- [x] Add temporary keyboard and touch movement controls to test map coordinates on desktop and mobile.\n- [x] Fail closed on unknown collision labels instead of treating them as walkable.
 - [ ] Render the real opening sequence with player sprite, palette colors, movement, and source events.
 - [ ] Port dialogue, menus, battles, party, items, progression, and remaining maps.
 - [ ] Verify the full browser game and deployment.
