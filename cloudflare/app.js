@@ -27,6 +27,7 @@ function render() {
       }
     }
   }
+  document.querySelector('#status').textContent = 'Rendered from source map and tileset data (320 × 288 pixels).';
 }
 source.addEventListener('load', render);
 source.addEventListener('error', () => {
