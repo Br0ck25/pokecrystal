@@ -38,3 +38,18 @@ export function getNewBarkTownBlockAtMetatile(x, y) {
       || x < 0 || y < 0 || x >= metatilesWide || y >= metatilesHigh) return null;
   return getNewBarkTownBlock(Math.floor(x / 2), Math.floor(y / 2));
 }
+
+
+/**
+ * Resolve the source collision class for a 16x16 map-coordinate cell.
+ * Each .blk entry is a 32x32 metatile with four 16x16 collision quadrants.
+ */
+export function getNewBarkTownCollisionAtMetatile(x, y) {
+  if (!Number.isInteger(x) || !Number.isInteger(y)
+      || x < 0 || y < 0
+      || x >= NEW_BARK_TOWN.dimensions.metatilesWide
+      || y >= NEW_BARK_TOWN.dimensions.metatilesHigh) return null;
+  const blockId = getNewBarkTownBlockAtMetatile(x, y);
+  const quadrant = (y % 2) * 2 + (x % 2);
+  return getJohtoMetatileCollision(blockId, quadrant);
+}
