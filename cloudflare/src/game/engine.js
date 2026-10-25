@@ -200,6 +200,9 @@ export class Game {
     if (!this.tileEventsEnabled) return false;
     this.tileEventsEnabled = false;
     const { x, y } = this.player;
+    // events.asm CheckMovingOffEdgeOfMap: stepping off a map's edge into a connection enters the connected map.
+    const exit = this.world.connectionExit(x, y);
+    if (exit) { this.crossConnection(exit); return true; }
     const collision = this.world.collisionAt(x, y);
     if (warpTile(collision) && !(collision in directionalCarpet)) {
       const warp = this.world.warps.find((w) => w.x === x && w.y === y);
@@ -270,6 +273,13 @@ export class Game {
       return true;
     }
     return false;
+  }
+
+  async crossConnection(exit) {
+    this.loading = true;
+    const facing = this.player.facing;
+    await this.enterMap(exit.map, exit.x, exit.y, facing);
+    this.tileEventsEnabled = true;                               // MAPSETUP_CONNECTION enables events at once
   }
 
   // ---- warps ----------------------------------------------------------------------------------------------------

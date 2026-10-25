@@ -19,7 +19,6 @@ export function mapBgPalettes(mapId, timeOfDay = TIME_OF_DAY) {
   if (!map) throw new Error(`unknown map ${mapId}`);
   // The map's own PALETTE_* (maps.asm) overrides the clock: DAY, NITE and DARK are fixed, AUTO follows the time of day.
   if (map.palette !== 'AUTO') timeOfDay = map.palette.toLowerCase();
-  if (map.tileset === 'MANSION') throw new Error('the mansion palette is not ported yet');
   const special = SPECIAL_PALETTES[map.tileset];
   if (special && !(map.tileset === 'ICE_PATH' && map.environment === 'INDOOR')) return special.map(toRgb8);
   const setName = ENVIRONMENT_COLORS.pointers[map.environment];

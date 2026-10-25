@@ -109,3 +109,23 @@ test('objects follow their event flags from a new game: rival and aide present, 
   // Mom's four time-of-day objects: only the first (always present, no flag set yet) shows in a new game
   assert.deepEqual((await visible('PLAYERS_HOUSE_1F', 6, 7)).filter((id) => id.includes('MOM')), ['PLAYERSHOUSE1F_MOM1']);
 });
+
+test('walking off the west edge of New Bark Town enters Route 29 on its east edge, same row (connection offset 0)', async () => {
+  const g = await newGame('NEW_BARK_TOWN', 1, 1);
+  const y = [...Array(g.world.height).keys()].find((row) => g.world.collisionAt(0, row) === 0 && g.world.collisionAt(-1, row) === 0);
+  assert.notEqual(y, undefined, 'a walkable crossing row exists');
+  await g.enterMap('NEW_BARK_TOWN', 0, y, 'left');
+  for (let i = 0; i < 80 && g.world.id === 'NEW_BARK_TOWN'; i++) g.update({ dir: 'left' });
+  await waitLoaded(g);
+  assert.equal(g.world.id, 'ROUTE_29');
+  assert.deepEqual([g.player.x, g.player.y], [g.world.width - 1, y]);
+});
+
+test('connected maps draw their edge blocks beyond the border instead of the border block', async () => {
+  const g = await newGame('NEW_BARK_TOWN', 1, 1);
+  const row = 6;
+  const west = g.world.blockIdAt(-2, row);                       // Route 29's easternmost block column, three deep
+  assert.notEqual(west, null);
+  assert.equal(g.world.connectedBlock(-1, 0) !== null, true);
+  assert.equal(g.world.connectedBlock(0, -1), null);              // no northern connection
+});
