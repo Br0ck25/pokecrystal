@@ -147,7 +147,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -417,17 +417,25 @@ function interact() {
     if (state.momIntroStage === 0) {
       state.momIntroStage = 1;
       state.pokegear = true;
-      showDialogue('MOM', "Oh! I almost forgot! Your POKéMON GEAR is back from the repair shop. Here you go!");
+      showDialogue('MOM', "POKéMON GEAR, or just POKéGEAR. It's essential if you want to be a good trainer. Oh, the day of the week isn't set. You mustn't forget that!");
       return;
     }
     if (state.momIntroStage === 1) {
       state.momIntroStage = 2;
-      showDialogue('MOM', "POKéMON GEAR, or just POKéGEAR. It's essential if you want to be a good trainer. Oh, the day of the week isn't set. You mustn't forget that!");
+      state.momChoiceYes = true;
+      showDialogue('MOM', "Is it Daylight Saving Time now?\n\n▶ YES       NO");
       return;
     }
     if (state.momIntroStage === 2) {
       state.momIntroStage = 3;
-      showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE? Turn the POKéGEAR on and select the PHONE icon.");
+      showDialogue('MOM', "Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?\n\n" + (state.momChoiceYes ? '▶ YES       NO' : '  YES     ▶ NO'));
+      return;
+    }
+    if (state.momIntroStage === 3) {
+      state.momIntroStage = 4;
+      showDialogue('MOM', state.momChoiceYes
+        ? "Don't you just turn the POKéGEAR on and select the PHONE icon?\n\nI'll explain it next time."
+        : "Turn the POKéGEAR on and select the PHONE icon.\n\nI'll explain it next time.");
       return;
     }
     state.momIntroActive = false;
@@ -617,6 +625,17 @@ function step(dx, dy, face) {
     showDialogue('PROF. ELM', `${starter}?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
     return;
   }
+  if (state.momIntroActive) {
+    if (state.momIntroStage === 2 || state.momIntroStage === 3) {
+      if (dx !== 0) state.momChoiceYes = dx < 0;
+      const options = state.momChoiceYes ? '▶ YES       NO' : '  YES     ▶ NO';
+      const prompt = state.momIntroStage === 2
+        ? 'Is it Daylight Saving Time now?'
+        : 'Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?';
+      showDialogue('MOM', prompt + '\\n\\n' + options);
+    }
+    return;
+  }
   state.facing = face;
   if (state.townTeacherStage !== null || state.labExitWarningStage !== null) return;
   const oldX = state.x, oldY = state.y;
@@ -643,7 +662,7 @@ function step(dx, dy, face) {
     state.momX = nx === 9 ? 8 : 7;
     state.momIntroActive = true;
     state.momIntroStage = 0;
-    showDialogue('MOM', "Oh, <PLAYER>…! Our neighbor, PROF. ELM, was looking for you. He said he wanted you to do something for him.");
+    showDialogue('MOM', "Oh, <PLAYER>…! Our neighbor, PROF. ELM, was looking for you. He said he wanted you to do something for him.\n\nOh! I almost forgot! Your POKéMON GEAR is back from the repair shop. Here you go!");
     draw();
     return;
   }
