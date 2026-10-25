@@ -251,10 +251,10 @@ test('all three starter images and all required NPC sprite sheets are embedded a
  const { CRYSTAL_EXTRA_SPRITES } = await import('./assets/source-sprites.js');
  const { CRYSTAL_OVERWORLD_SPRITES } = await import('./assets/overworld-sprites.js');
  for (const species of ['CYNDAQUIL', 'TOTODILE', 'CHIKORITA']) {
-  assert.match(CRYSTAL_EXTRA_SPRITES[species], /^iVBORw0KGgo/, species + ' starter image must be embedded PNG data');
+  assert.match(CRYSTAL_EXTRA_SPRITES[species].replace(/\\s/g, ''), /^iVBORw0KGgo/, species + ' starter image must be embedded PNG data');
  }
  for (const character of ['KRIS', 'ELM', 'MOM', 'TEACHER', 'FISHER', 'RIVAL']) {
-  assert.match(CRYSTAL_OVERWORLD_SPRITES[character], /^iVBORw0KGgo/, character + ' sprite must be embedded PNG data');
+  assert.match(CRYSTAL_OVERWORLD_SPRITES[character].replace(/\\s/g, ''), /^iVBORw0KGgo/, character + ' sprite must be embedded PNG data');
  }
 });
 
