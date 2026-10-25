@@ -6,7 +6,10 @@ export const PLAYERS_HOUSE_1F = Object.freeze({
  {x:7,y:7,destinationMap:'NEW_BARK_TOWN',destinationWarp:2},
  {x:9,y:0,destinationMap:'PLAYERS_HOUSE_2F',destinationWarp:1}
  ]),
- coordinateEvents:Object.freeze([]),
+ coordinateEvents:Object.freeze([
+ {x:8,y:4,scene:'SCENE_PLAYERSHOUSE1F_MEET_MOM',script:'MeetMomLeftScript'},
+ {x:9,y:4,scene:'SCENE_PLAYERSHOUSE1F_MEET_MOM',script:'MeetMomRightScript'}
+ ]),
  backgroundEvents:Object.freeze([
  {x:0,y:1,kind:'stove',text:"Mom's specialty! CINNABAR VOLCANO BURGER."},
  {x:1,y:1,kind:'sink',text:'The sink is spotless. Mom likes it clean.'},
@@ -19,4 +22,4 @@ export const PLAYERS_HOUSE_1F = Object.freeze({
  ])
 });
 export function playersHouse1fEventsAt(x,y){return eventsAt(PLAYERS_HOUSE_1F,x,y)}
-function eventsAt(map,x,y){if(!Number.isInteger(x)||!Number.isInteger(y)||x<0||y<0||x>=map.dimensions.metatilesWide||y>=map.dimensions.metatilesHigh)return [];return [...map.warps.filter(e=>e.x===x&&e.y===y).map(e=>({type:'warp',...e})),...map.backgroundEvents.filter(e=>e.x===x&&e.y===y).map(e=>({type:'background',...e})),...map.objects.filter(e=>e.x===x&&e.y===y).map(e=>({type:'object',...e}))]}
+function eventsAt(map,x,y){if(!Number.isInteger(x)||!Number.isInteger(y)||x<0||y<0||x>=map.dimensions.metatilesWide||y>=map.dimensions.metatilesHigh)return [];return [...map.warps.filter(e=>e.x===x&&e.y===y).map(e=>({type:'warp',...e})),...map.coordinateEvents.filter(e=>e.x===x&&e.y===y).map(e=>({type:'coordinate',...e})),...map.backgroundEvents.filter(e=>e.x===x&&e.y===y).map(e=>({type:'background',...e})),...map.objects.filter(e=>e.x===x&&e.y===y).map(e=>({type:'object',...e}))]}
