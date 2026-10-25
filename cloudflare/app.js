@@ -572,6 +572,11 @@ function transition(warp) {
   state.x = landing.x;
   state.y = landing.y;
   state.facing = landing.facing;
+  if (beginsElmOpening) {
+    // ElmsLab_WalkUpToElmMovement in maps/ElmsLab.asm is seven steps UP, then a left turn.
+    state.y = Math.max(0, landing.y - 7);
+    state.facing = 'left';
+  }
   resizeCanvasForMap();
   draw();
   if (beginsElmOpening) {
