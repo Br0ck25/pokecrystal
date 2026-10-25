@@ -13,3 +13,14 @@ export function canCancelPendingScene(pendingScene) {
 
 /** Exact direction sequence in ElmsLab_WalkUpToElmMovement from maps/ElmsLab.asm. */
 export const ELM_OPENING_MOVEMENT = Object.freeze(['up','up','up','up','up','up','up']);
+
+/** Exact actor order from ElmsLab_ElmToDefaultPositionMovement1/2 and turnobject calls. */
+export const ELM_RETURN_TO_STATION_MOVEMENT = Object.freeze([
+  Object.freeze({ actor: 'ELM', direction: 'up' }),
+  Object.freeze({ actor: 'PLAYER', facing: 'up' }),
+  Object.freeze({ actor: 'ELM', direction: 'right' }),
+  Object.freeze({ actor: 'ELM', direction: 'right' }),
+  Object.freeze({ actor: 'ELM', direction: 'up' }),
+  Object.freeze({ actor: 'ELM', facing: 'down' }),
+  Object.freeze({ actor: 'PLAYER', facing: 'right' }),
+]);
