@@ -129,3 +129,19 @@ test('connected maps draw their edge blocks beyond the border instead of the bor
   assert.equal(g.world.connectedBlock(-1, 0) !== null, true);
   assert.equal(g.world.connectedBlock(0, -1), null);              // no northern connection
 });
+
+test('the rival follows the player one step, is shoved out, and returns to his own tile, not onto the lab', async () => {
+  const g = await newGame('NEW_BARK_TOWN', 2, 2, 'right');
+  g.state.flags.add('EVENT_RIVAL_NEW_BARK_TOWN');
+  const rival = g.objects.find((o) => o.id === 'NEWBARKTOWN_RIVAL');
+  assert.deepEqual([rival.x, rival.y], [3, 2]);
+  run(g, 1, { a: true });
+  for (let i = 0; i < 6000 && g.runner; i++) {
+    const wait = g.runner.wait;
+    g.update({ a: Boolean(wait && (wait.kind === 'button' || (wait.kind === 'text' && wait.ready))) });
+  }
+  assert.equal(g.runner, null);
+  run(g, 60);
+  assert.deepEqual([rival.x, rival.y], [3, 2]);
+  assert.deepEqual([g.player.x, g.player.y], [2, 4]);
+});

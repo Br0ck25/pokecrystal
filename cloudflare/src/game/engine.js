@@ -143,6 +143,7 @@ export class Game {
   startStep(actor, direction, { force = false, frames = STEP_FRAMES, jump = false } = {}) {
     const d = DIRECTIONS[direction];
     actor.facing = direction;
+    if (force && this.follow?.leader === actor) this.follow.steps.push(direction);
     actor.step = { kind: 'walk', fromX: actor.x, fromY: actor.y, toX: actor.x + d.dx, toY: actor.y + d.dy, frame: 0, frames, jump, force };
   }
 
@@ -187,8 +188,20 @@ export class Game {
   }
 
   /** Advance an actor's step and start the next scripted movement from its queue (turns are instant). */
+  // StartFollow / QueueFollowerFirstStep (player_object.asm): the queue starts with one step toward the leader's
+  // tile; each leader step is appended; the follower takes the oldest entry only while a newer one exists.
+  startFollow(leaderId, followerId) {
+    const leader = this.objectById(leaderId), follower = this.objectById(followerId);
+    const dx = Math.sign(leader.x - follower.x), dy = Math.sign(leader.y - follower.y);
+    const first = dx ? (dx > 0 ? 'right' : 'left') : dy ? (dy > 0 ? 'down' : 'up') : null;
+    this.follow = { leader, follower, steps: first ? [first] : [] };
+  }
   updateActor(actor) {
     this.advanceStep(actor);
+    const f = this.follow;
+    if (f && actor === f.follower && !actor.step && f.steps.length > 1) {
+      this.startStep(actor, f.steps.shift(), { frames: MOVEMENT_FRAMES.step, force: true });
+    }
     while (!actor.step && actor.queue.length) {
       const next = actor.queue.shift();
       if (next.turn) { actor.facing = next.direction; continue; }
@@ -446,7 +459,7 @@ export class Game {
       case 'readvar': return this.readVar(args[0]);
       case 'sdefer': this.deferred = args[0]; return undefined;
       case 'changeblock': this.world.setBlockAt(Number(args[0]), Number(args[1]), Number(args[2].replace('$', '0x'))); return undefined;
-      case 'follow': this.follow = { leader: args[0], follower: args[1] }; return undefined;
+      case 'follow': this.startFollow(args[0], args[1]); return undefined;
       case 'stopfollow': this.follow = null; return undefined;
       case 'warp': this.unported.add('warp'); return undefined;
       case 'playsound': case 'specialsound': {
