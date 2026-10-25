@@ -2,7 +2,9 @@
 
 ## Goal
 
-Recreate the existing Pokémon Crystal game as a browser-native JavaScript application, with a higher-resolution renderer, and deploy it from one self-contained Cloudflare Worker file.
+**Contributor and AI-agent rules:** The repository-root `AGENTS.md` is mandatory and takes precedence for working practices, source fidelity, testing, and completion claims. This plan describes the technical target and sequence.
+
+Recreate the existing Pokémon Crystal game as a browser-native JavaScript application, with a higher-resolution renderer, and ultimately offer it as one self-contained Cloudflare Worker file. During active development, keep the app modular and deployable through Cloudflare Pages from `cloudflare/`; the Worker bundle is a later packaging milestone, not the editing source of truth.
 
 This is **not** a new RPG, a renamed Pokémon game, a ROM builder, or a browser emulator. Do not implement a second invented world or replace the game's rules with simplified lookalikes.
 
@@ -15,6 +17,10 @@ This is **not** a new RPG, a renamed Pokémon game, a ROM builder, or a browser 
 - Use a crisp high-resolution canvas renderer. Keep the original camera, grid movement, map layout, proportions, and visual identity. Improve clarity and scaling without redesigning the world.
 - Support keyboard and touch controls, responsive layout, and save/load.
 - Never describe a partial engine, placeholder map, or visual mockup as a playable recreation of Pokémon Crystal.
+
+## Current deployment versus final packaging
+
+The active preview is Cloudflare Pages at `https://pokemonhd.pages.dev/`, sourced from the `crystal-browser-worker` branch with the Pages root directory set to `cloudflare`, no build command, and output directory `/`. Keep this no-build modular setup working while the game is being translated and tested. The single-file Worker is a later packaging target and must be generated and tested separately; do not treat it as a reason to collapse the development code into one file.
 
 ## Technical approach
 
