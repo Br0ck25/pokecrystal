@@ -133,6 +133,7 @@ test('indoor collision lookups use their own source tables and stairs are traver
  assert.equal(getTilesetCollision('LAB', 1, 0), 'FLOOR');
  assert.equal(getTilesetCollision('PLAYERS_ROOM', 2, 1), 'STAIRCASE');
  assert.equal(isPreviewCollisionWalkable('STAIRCASE'), true);
+ assert.equal(isPreviewCollisionWalkable('LADDER'), true, 'source collision tables call the bedroom stair tile LADDER');
  assert.equal(getPlayersNeighborsHouseCollisionAtMetatile(4, 2), 'FLOOR');
 });
 
@@ -168,4 +169,11 @@ test('player room staircase warps connect both floors at the source doorway coor
   PLAYERS_HOUSE_1F,
  });
  assert.deepEqual(down, { mapId: 'PLAYERS_HOUSE_1F', x: 9, y: 1, facing: 'down' });
+});
+
+
+test('source ladder collision labels remain walkable for room transitions', () => {
+ const { isPreviewCollisionWalkable } = await import('./maps/new-bark-town-movement.js');
+ assert.equal(isPreviewCollisionWalkable('LADDER'), true);
+ assert.equal(isPreviewCollisionWalkable('FLOOR'), true);
 });
