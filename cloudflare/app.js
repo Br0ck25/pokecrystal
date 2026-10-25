@@ -633,7 +633,7 @@ function step(dx, dy, face) {
       const prompt = state.momIntroStage === 2
         ? 'Is it Daylight Saving Time now?'
         : 'Come home to adjust your clock for Daylight Saving Time. By the way, do you know how to use the PHONE?';
-      showDialogue('MOM', prompt + '\\n\\n' + options);
+      showDialogue('MOM', prompt + '\n\n' + options);
     }
     return;
   }
