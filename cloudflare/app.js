@@ -312,6 +312,7 @@ function draw() {
   drawPlayer();
   ctx.restore();
   drawStarterPreview();
+  drawDialogueBox();
 }
 function blocked(x, y) {
   const current = activeMap();
@@ -350,6 +351,29 @@ function eventsAtFacing() {
 function showDialogue(speaker, text) {
   status.textContent = speaker + "\n" + text;
   status.dataset.kind = 'dialogue';
+  draw();
+}
+function drawDialogueBox() {
+  if (status.dataset.kind !== 'dialogue') return;
+  const x = 3, y = 96, w = canvas.width - 6, h = 45;
+  ctx.save();
+  ctx.fillStyle = '#f8f8f0'; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#18202a'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+  ctx.strokeStyle = '#7a8790'; ctx.lineWidth = 1; ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
+  ctx.fillStyle = '#17232a'; ctx.font = '7px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  const raw = status.textContent.split('\\n');
+  const speaker = raw.shift() || '';
+  ctx.font = 'bold 7px monospace'; ctx.fillText(speaker.slice(0, 28), x + 8, y + 6);
+  ctx.font = '7px monospace';
+  const body = raw.join(' ').replace(/\\s+/g, ' ').trim();
+  const words = body.split(' '); const lines = []; let line = '';
+  for (const word of words) {
+    const next = line ? line + ' ' + word : word;
+    if (next.length > 33 && line) { lines.push(line); line = word; } else line = next;
+  }
+  if (line) lines.push(line);
+  lines.slice(0, 3).forEach((lineText, i) => ctx.fillText(lineText, x + 8, y + 16 + i * 8));
+  ctx.restore();
 }
 function interact() {
   if (state.momIntroActive) {
