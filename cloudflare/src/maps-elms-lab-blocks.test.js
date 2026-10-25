@@ -16,5 +16,5 @@ test('Elm lab block and metatile lookup rejects out-of-range coordinates', () =>
   assert.equal(getElmsLabBlockAtMetatile(9, 11), 1);
   assert.equal(getElmsLabBlockAtMetatile(10, 11), null);
   assert.equal(getElmsLabCollisionAtMetatile(-1, 0), null);
-  assert.equal(getElmsLabCollisionAtMetatile(0, 0), 'FLOOR');
+  assert.equal(getElmsLabCollisionAtMetatile(0, 0), 'WALL');
 });
