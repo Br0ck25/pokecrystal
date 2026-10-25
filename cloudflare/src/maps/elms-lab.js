@@ -11,6 +11,7 @@
  */
 export const ELMS_LAB = Object.freeze({
   id: 'ELMS_LAB',
+  tileset: 'LAB',
   group: 'NEW_BARK',
   dimensions: Object.freeze({
     blocksWide: 5,
