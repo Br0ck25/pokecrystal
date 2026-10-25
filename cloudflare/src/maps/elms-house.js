@@ -8,8 +8,8 @@ export const ELMS_HOUSE = Object.freeze({
  {x:6,y:1,kind:'bookshelf',text:'A bookshelf full of difficult books.'},{x:7,y:1,kind:'bookshelf',text:'A bookshelf full of difficult books.'}
  ]),
  objects:Object.freeze([
- {id:'ELMS_WIFE',x:1,y:5,script:'ElmsWife',dialogue:["Hi! My husband's always so busy—I hope he's OK.","When caught up in Pokémon research, he even forgets to eat."]},
- {id:'ELMS_SON',x:5,y:4,script:'ElmsSon',dialogue:["When I grow up, I'm going to help my dad!","I'm going to be a great Pokémon professor!"]}
+ {id:'ELMS_WIFE',x:1,y:5,sprite:'SPRITE_TEACHER',script:'ElmsWife',dialogue:["Hi! My husband's always so busy—I hope he's OK.","When caught up in Pokémon research, he even forgets to eat."]},
+ {id:'ELMS_SON',x:5,y:4,sprite:'SPRITE_BUG_CATCHER',script:'ElmsSon',dialogue:["When I grow up, I'm going to help my dad!","I'm going to be a great Pokémon professor!"]}
  ])
 });
 export function elmsHouseEventsAt(x,y){return eventsAt(ELMS_HOUSE,x,y)}
