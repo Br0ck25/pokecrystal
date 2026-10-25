@@ -16,3 +16,12 @@ export function getLabStarterBallId(species) {
 export function mustBlockLabExit(starter) {
   return !starter;
 }
+
+export function getLabStarterPrompt(species) {
+  const prompts = {
+    CYNDAQUIL: "You'll take CYNDAQUIL, the fire POKéMON?",
+    TOTODILE: "Do you want TOTODILE, the water POKéMON?",
+    CHIKORITA: "So, you like CHIKORITA, the grass POKéMON?",
+  };
+  return prompts[species] ?? null;
+}
