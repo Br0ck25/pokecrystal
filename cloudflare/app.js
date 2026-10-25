@@ -134,7 +134,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'NEW_BARK_TOWN';
-const state = { x: 9, y: 8, facing: 'down', starter: null, elmTalked: false };
+const state = { x: 9, y: 8, facing: 'down', starter: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, choiceYes: true };
 const keys = new Set();
 let lastStep = 0;
 
@@ -289,26 +289,44 @@ function showDialogue(speaker, text) {
   status.dataset.kind = 'dialogue';
 }
 function interact() {
+  if (state.pendingStarter) {
+    if (state.choiceYes) {
+      state.starter = state.pendingStarter;
+      state.pendingStarter = null;
+      showDialogue('PROF. ELM', `ELM: I think that's a great POKéMON too!\n\n${state.starter} joined your team at level 5 holding a BERRY.\n\nThis preview tracks your first partner; full battle, stats, and item systems are not ported yet.`);
+      draw();
+    } else {
+      state.pendingStarter = null;
+      showDialogue('PROF. ELM', 'ELM: Think it over carefully. Your partner is important.');
+    }
+    return;
+  }
   const event = eventsAtFacing().find(item => item.type === 'background' || item.type === 'object');
   if (!event) {
     setHint('Nothing to interact with here.');
     return;
   }
   if (currentMapId === 'ELMS_LAB' && event.type === 'object' && event.id === 'ELMSLAB_ELM') {
-    if (!state.elmTalked) {
+    if (!state.labIntroComplete) {
       state.elmTalked = true;
-      showDialogue('PROF. ELM', "Hi! I'm waiting for you.\nChoose one of the three POKéMON on the table.");
+      showDialogue('PROF. ELM', "ELM: There you are! I needed to ask you a favor.\n\nI'm researching POKéMON and need you to raise one I recently caught. Will you help me?\n\nChoice: YES / NO (left/right, then A)");
+      state.pendingStarter = 'LAB_INTRO';
+      state.choiceYes = true;
     } else if (!state.starter) {
-      showDialogue('PROF. ELM', 'Go ahead! Choose the POKéMON you like best.');
+      showDialogue('PROF. ELM', "I want you to raise one of the POKéMON contained in these BALLS. You'll be that POKéMON's first partner! Go on. Pick one!");
     } else {
-      showDialogue('PROF. ELM', 'Take good care of your ' + state.starter + '!');
+      showDialogue('PROF. ELM', 'ELM: Take good care of your ' + state.starter + '!');
     }
     return;
   }
   if (currentMapId === 'ELMS_LAB' && event.type === 'object' && event.id?.startsWith('ELMSLAB_POKE_BALL')) {
-    if (state.starter) { showDialogue('POKé BALL', 'You already chose ' + state.starter + '.'); return; }
-    state.starter = event.id.endsWith('1') ? 'CYNDAQUIL' : event.id.endsWith('2') ? 'TOTODILE' : 'CHIKORITA';
-    showDialogue('PROF. ELM', 'You chose ' + state.starter + '!\nTake good care of it.');
+    if (!state.labIntroComplete) { showDialogue('PROF. ELM', 'ELM: Talk to me first. I need to explain your errand.'); return; }
+    if (state.starter) { showDialogue('POKé BALL', 'It contains a POKéMON caught by PROF. ELM. You already chose ' + state.starter + '.'); return; }
+    const starter = event.id.endsWith('1') ? 'CYNDAQUIL' : event.id.endsWith('2') ? 'TOTODILE' : 'CHIKORITA';
+    state.pendingStarter = starter;
+    state.choiceYes = true;
+    const prompts = { CYNDAQUIL: "ELM: You'll take CYNDAQUIL, the FIRE POKéMON?", TOTODILE: "ELM: Do you want TOTODILE, the WATER POKéMON?", CHIKORITA: "ELM: So, you like CHIKORITA, the GRASS POKéMON?" };
+    showDialogue('PROF. ELM', prompts[starter] + '\n\nChoice: YES / NO (left/right, then A)');
     draw();
     return;
   }
@@ -350,16 +368,19 @@ function interact() {
   status.dataset.kind = 'dialogue';
 }
 function pressB() {
+  if (state.pendingStarter) { state.pendingStarter = null; setHint('Choice cancelled. Face a character or object and press A.'); return; }
   if (status.dataset.kind === 'dialogue') setHint(activeMap().title + ' · Press A to interact; B closes this text.');
   else setHint('There is nothing to cancel right now.');
 }
 function transition(warp) {
+  const previousMapId = currentMapId;
   const landing = resolvePreviewWarp(currentMapId, warp, maps);
   if (!landing || !maps[landing.mapId]) {
     setHint('This destination has not been ported yet: ' + (warp?.destinationMap || 'unknown'));
     return;
   }
   currentMapId = landing.mapId;
+  if (currentMapId === 'ELMS_LAB' && previousMapId !== 'ELMS_LAB' && !state.starter) { state.labIntroComplete = false; state.elmTalked = false; }
   state.x = landing.x;
   state.y = landing.y;
   state.facing = landing.facing;
@@ -368,6 +389,17 @@ function transition(warp) {
   setHint('Entered ' + activeMap().title + '. Talk to characters and inspect objects with A.');
 }
 function step(dx, dy, face) {
+  if (state.pendingStarter === 'LAB_INTRO') {
+    if (dx !== 0) state.choiceYes = dx < 0;
+    showDialogue('PROF. ELM', `Will you help PROF. ELM?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
+    return;
+  }
+  if (state.pendingStarter) {
+    if (dx !== 0) state.choiceYes = dx < 0;
+    const starter = state.pendingStarter;
+    showDialogue('PROF. ELM', `${starter}?\n\n${state.choiceYes ? '▶ YES       NO' : '  YES     ▶ NO'}\nPress A to confirm.`);
+    return;
+  }
   state.facing = face;
   const nx = state.x + dx, ny = state.y + dy;
   const occupied = (activeMap().metadata.objects || []).some(object => object.x === nx && object.y === ny
