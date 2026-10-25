@@ -29,3 +29,11 @@ test('starter balls, officer, and aide visibility follow current starter state',
   assert.equal(isSceneObjectVisible('ELMS_LAB', aide, { starter: 'TOTODILE' }), true);
   assert.equal(isSceneObjectVisible('NEW_BARK_TOWN', ball, { starterBall: ball.id }), true);
 });
+
+
+test('New Bark Town rival visibility follows the source starter event', () => {
+  const rival = { id: 'NEWBARKTOWN_RIVAL', appearsWhen: 'EVENT_RIVAL_NEW_BARK_TOWN' };
+  assert.equal(isSceneObjectVisible('NEW_BARK_TOWN', rival, { starter: null }), false);
+  assert.equal(isSceneObjectVisible('NEW_BARK_TOWN', rival, { starter: 'CYNDAQUIL' }), true);
+  assert.equal(isSceneObjectVisible('ELMS_LAB', rival, { starter: null }), true);
+});
