@@ -46,8 +46,12 @@ The Worker should be a static application host: return the self-contained browse
 - Do not jump directly into a fabricated map or bypass the game's original progression.
 
 ### 3. Overworld vertical slice
-- Port the real opening location and its actual map data, warps, object events, scripts, dialogue, and transitions.
-- Verify walking, collisions, talking, doors, map changes, and persistence against the disassembly.
+- [x] Render New Bark Town from source block/metatile data.
+- [x] Import and render Elm's Lab source block grid.
+- [x] Connect the New Bark Town ↔ Elm's Lab entrance/exit warp pair in the preview.
+- [ ] Replace preview-level arrival offsets with a reusable source-faithful warp resolver.
+- [ ] Port the original opening scene, map callbacks, scene flags, object scripts, dialogue control flow, and progression state.
+- [ ] Verify walking, full collision semantics, talking, doors, map changes, and persistence against the disassembly.
 
 ### 4. Core game systems
 - Translate menus, party, Pokédex, inventory, PC/storage, text handling, trainer battles, wild encounters, turn order, status, experience, evolution, money, shops, and item effects.
