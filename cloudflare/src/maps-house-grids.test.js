@@ -8,6 +8,7 @@ import { ELMS_HOUSE } from './maps/elms-house.js';
 import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './maps/elms-house-blocks.js';
 import { resolvePreviewWarp, PREVIEW_WARP_LANDINGS } from './maps/preview-warps.js';
 import { NEW_BARK_TOWN } from './maps/new-bark-town.js';
+import { getNewBarkTownCollisionAtMetatile } from './maps/new-bark-town-blocks.js';
 import { ELMS_LAB } from './maps/elms-lab.js';
 import { PLAYERS_NEIGHBORS_HOUSE } from './maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './maps/players-neighbors-house-blocks.js';
@@ -209,5 +210,15 @@ test('every ground-floor room object has a reachable interaction tile from the f
  for(const object of PLAYERS_HOUSE_1F.objects){
   const neighbors=[[object.x,object.y-1],[object.x+1,object.y],[object.x,object.y+1],[object.x-1,object.y]];
   assert.ok(neighbors.some(([x,y])=>reachable.has(x+','+y),),`no reachable interaction tile for ${object.id}`);
+ }
+});
+
+
+test('New Bark Town has walkable routes from the player-house exit to Elm’s Lab entrance and town NPCs',()=>{
+ const reachable=reachableTiles(NEW_BARK_TOWN,getNewBarkTownCollisionAtMetatile,{x:13,y:6});
+ assert.ok(reachable.has('6,4'),'the player must be able to reach the lab entrance approach');
+ for(const object of NEW_BARK_TOWN.objects){
+  const neighbors=[[object.x,object.y-1],[object.x+1,object.y],[object.x,object.y+1],[object.x-1,object.y]];
+  assert.ok(neighbors.some(([x,y])=>reachable.has(x+','+y)),`no reachable interaction tile for ${object.id}`);
  }
 });
