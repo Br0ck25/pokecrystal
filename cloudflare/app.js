@@ -32,6 +32,7 @@ import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/sce
 import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
 import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
 import { formatSourceText } from './src/maps/source-text.js';
+import { advanceRadioSequence } from './src/maps/radio-sequence.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -148,7 +149,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -506,6 +507,17 @@ function interact() {
   const event = eventsAtFacing().find(item => item.type === 'background' || item.type === 'object');
   if (!event) {
     setHint('Nothing to interact with here.');
+    return;
+  }
+  if (event.type === 'background' && event.kind === 'radio') {
+    const radio = advanceRadioSequence({
+      starter: state.starter,
+      listened: state.initialRadioListened,
+      stage: state.radioStage,
+    });
+    state.initialRadioListened = radio.listened;
+    state.radioStage = radio.stage;
+    showDialogue('RADIO', radio.text);
     return;
   }
   if (currentMapId === 'ELMS_LAB' && event.type === 'object' && event.id === 'ELMSLAB_ELM') {
