@@ -36,6 +36,7 @@ import { advanceRadioSequence } from './src/maps/radio-sequence.js';
 import { createDialoguePages } from './src/maps/dialogue-pages.js';
 import { normalizeKey, getButtonAction } from './src/maps/input-bindings.js';
 import { formatYesNoChoice, moveYesNoChoice } from './src/maps/yes-no-menu.js';
+import { getNewBarkTownObjectDialogue } from './src/maps/new-bark-town-dialogue.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -667,7 +668,8 @@ function interact() {
       showDialogue('SIGN', event.text || 'A sign.', true);
       return;
     }
-    showDialogue(event.id || '…', (event.dialogue || ['…']).join('\n'), true);
+    const dialogue = currentMapId === 'NEW_BARK_TOWN' ? getNewBarkTownObjectDialogue(event, state) : (event.dialogue || ['…']);
+    showDialogue(event.id || '…', dialogue.join('\n'), true);
     return;
   }
   if (event.type === 'background') {
