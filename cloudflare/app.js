@@ -4,6 +4,7 @@ import { ELMS_LAB, elmLabEventsAt } from './src/maps/elms-lab.js';
 import { ELMS_LAB_BLOCK_IDS, getElmsLabCollisionAtMetatile } from './src/maps/elms-lab-blocks.js';
 import { JOHTO_METATILE_TILES } from './src/maps/johto-metatiles.js';
 import { CRYSTAL_OVERWORLD_SPRITES } from './src/assets/overworld-sprites.js';
+import { CRYSTAL_EXTRA_SPRITES } from './src/assets/source-sprites.js';
 import { JOHTO_TILESET_PNG_BASE64 } from './src/assets/johto-tileset.js';
 import { HOUSE_METATILE_TILES } from './src/maps/house-metatiles.js';
 import { LAB_METATILE_TILES } from './src/maps/lab-metatiles.js';
@@ -45,7 +46,14 @@ window.addEventListener('unhandledrejection', event => reportBootError(event.rea
 const tileSources = {};
 const renderedTilesets = {};
 const overworldSpriteImages = {};
-for (const [name, base64] of Object.entries(CRYSTAL_OVERWORLD_SPRITES)) {
+const starterImages = {};
+for (const [name, base64] of Object.entries({ CYNDAQUIL: CRYSTAL_EXTRA_SPRITES.CYNDAQUIL, TOTODILE: CRYSTAL_EXTRA_SPRITES.TOTODILE, CHIKORITA: CRYSTAL_EXTRA_SPRITES.CHIKORITA })) {
+  const image = new Image();
+  image.onload = () => { starterImages[name] = image; draw(); };
+  image.onerror = () => console.error('[Pokémon Crystal preview] Could not decode starter art:', name);
+  image.src = 'data:image/png;base64,' + base64;
+}
+for (const [name, base64] of Object.entries({ ...CRYSTAL_OVERWORLD_SPRITES, ...Object.fromEntries(Object.entries(CRYSTAL_EXTRA_SPRITES).filter(([name]) => ['ELM','MOM','SCIENTIST','OFFICER','POKE_BALL'].includes(name))) })) {
   const image = new Image();
   image.onload = () => { overworldSpriteImages[name] = image; draw(); };
   image.onerror = () => console.error('[Pokémon Crystal preview] Could not decode source sprite:', name);
@@ -210,6 +218,10 @@ function drawNpc(object) {
   const x = object.x * TILE, y = object.y * TILE;
   const sourceId = String(object.id || '').toUpperCase();
   if (sourceId.includes('TEACHER') && drawSourceSprite('TEACHER', x, y, 'down')) return;
+  if (sourceId.includes('ELM') && drawSourceSprite('ELM', x, y, 'down')) return;
+  if (sourceId.includes('MOM') && drawSourceSprite('MOM', x, y, 'down')) return;
+  if ((sourceId.includes('AIDE') || sourceId.includes('SCIENTIST')) && drawSourceSprite('SCIENTIST', x, y, 'down')) return;
+  if ((sourceId.includes('OFFICER') || sourceId.includes('COP')) && drawSourceSprite('OFFICER', x, y, 'down')) return;
   if (sourceId.includes('FISHER') && drawSourceSprite('FISHER', x, y, 'down')) return;
   if (sourceId.includes('RIVAL') && drawSourceSprite('RIVAL', x, y, 'right', true)) return;
   const id = String(object.id || object.script || '').toUpperCase();
@@ -227,6 +239,7 @@ function drawNpc(object) {
     ctx.fillStyle = '#30252a'; ctx.fillRect(x + 6, y + 3, 1, 1); ctx.fillRect(x + 9, y + 3, 1, 1);
     return;
   }
+  if (id.includes('POKE_BALL') && drawSourceSprite('POKE_BALL', x, y, 'down')) return;
   if (id.includes('POKE_BALL')) {
     const color = id.endsWith('1') ? '#d83b45' : id.endsWith('2') ? '#2679cf' : '#66a84f';
     ctx.fillStyle = '#202020'; ctx.fillRect(x + 3, y + 4, 10, 9);
@@ -259,6 +272,28 @@ function drawObjects() {
     drawNpc({ ...object, ...position });
   }
 }
+function drawStarterPreview() {
+  if (!state.pendingStarter || state.pendingStarter === 'LAB_INTRO') return;
+  const image = starterImages[state.pendingStarter];
+  ctx.save();
+  ctx.fillStyle = '#f5f4e9';
+  ctx.fillRect(38, 26, 84, 76);
+  ctx.strokeStyle = '#273e4a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(39, 27, 82, 74);
+  ctx.fillStyle = '#263e4b';
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(state.pendingStarter, 80, 37);
+  if (image && image.naturalWidth >= 40 && image.naturalHeight >= 40) {
+    // Crystal front sprites are 40px wide, with animation frames stacked vertically.
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(image, 0, 0, 40, 40, 56, 42, 48, 48);
+  } else {
+    ctx.fillText('Loading art…', 80, 70);
+  }
+  ctx.restore();
+}
 function draw() {
   if (!ctx || !activeMap()) return;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -280,6 +315,7 @@ function draw() {
   drawObjects();
   drawPlayer();
   ctx.restore();
+  drawStarterPreview();
 }
 function blocked(x, y) {
   const current = activeMap();
