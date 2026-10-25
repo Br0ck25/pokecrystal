@@ -9,6 +9,10 @@ export function getSourceSpriteForObject(object) {
   if (sprite === 'SPRITE_COOLTRAINER_F') return 'COOLTRAINER_F';
   if (sprite === 'SPRITE_BUG_CATCHER') return 'BUG_CATCHER';
   if (id.includes('POKE_BALL')) return 'POKE_BALL';
+  if (id === 'DAUGHTER') return 'COOLTRAINER_F';
+  if (id === 'NEIGHBOR') return 'POKEFAN_F';
+  if (id === 'ELMS_WIFE') return 'TEACHER';
+  if (id === 'ELMS_SON') return 'BUG_CATCHER';
   if (id.includes('TEACHER')) return 'TEACHER';
   if (id.includes('OFFICER') || id.includes('COP')) return 'OFFICER';
   if (id.includes('AIDE') || id.includes('SCIENTIST')) return 'SCIENTIST';
