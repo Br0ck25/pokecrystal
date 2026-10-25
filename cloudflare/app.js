@@ -27,6 +27,7 @@ import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/map
 import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './src/maps/players-neighbors-house-blocks.js';
 import { getLabStarter, getLabStarterBallId, mustBlockLabExit } from './src/maps/starter-selection.js';
+import { shouldStartElmOpeningScene, canCancelPendingScene } from './src/maps/scene-progression.js';
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
 import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
 
@@ -424,7 +425,7 @@ function interact() {
   }
   if (state.starterReveal) { state.starterReveal = null; draw(); }
   if (state.pendingStarter) {
-    if (state.pendingStarter === 'LAB_INTRO') {
+    if (!canCancelPendingScene(state.pendingStarter) && state.pendingStarter === 'LAB_INTRO') {
       if (state.labIntroStage === 0) {
         if (!state.choiceYes) {
           showDialogue('PROF. ELM', "But… Please, I need your help!\n\n▶ YES       NO");
@@ -566,7 +567,7 @@ function transition(warp) {
     return;
   }
   currentMapId = landing.mapId;
-  const beginsElmOpening = currentMapId === 'ELMS_LAB' && previousMapId !== 'ELMS_LAB' && !state.starter && !state.labIntroComplete;
+  const beginsElmOpening = shouldStartElmOpeningScene({ mapId: currentMapId, previousMapId, starter: state.starter, labIntroComplete: state.labIntroComplete });
   if (currentMapId === 'ELMS_LAB' && previousMapId !== 'ELMS_LAB' && !state.starter) { state.labIntroComplete = false; state.elmTalked = false; }
   state.x = landing.x;
   state.y = landing.y;
