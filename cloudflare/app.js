@@ -501,7 +501,7 @@ function interact() {
     const starter = starterData.species;
     state.pendingStarter = starter;
     state.choiceYes = true;
-    state.choiceNeedsConfirm = true;
+    state.choiceNeedsConfirm = false;
     const prompts = { CYNDAQUIL: "ELM: You'll take CYNDAQUIL, the FIRE POKéMON?", TOTODILE: "ELM: Do you want TOTODILE, the WATER POKéMON?", CHIKORITA: "ELM: So, you like CHIKORITA, the GRASS POKéMON?" };
     showDialogue('PROF. ELM', prompts[starter] + '\n\nChoice: YES / NO (left/right, then A)');
     draw();
@@ -547,6 +547,13 @@ function interact() {
 function pressB() {
   if (state.starterReveal) { state.starterReveal = null; draw(); }
   if (state.momIntroActive) { state.momIntroActive = false; state.momIntroStage = 0; setHint('Talk to Mom again if you need to.'); return; }
+  if (state.pendingStarter === 'LAB_INTRO') {
+    // Source ElmsLab.asm loops until the player agrees; B cannot skip the opening scene.
+    state.choiceYes = true;
+    state.labIntroStage = 0;
+    showDialogue('PROF. ELM', "ELM: <PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
+    return;
+  }
   if (state.pendingStarter) { state.pendingStarter = null; state.choiceNeedsConfirm = false; setHint('Choice cancelled. Face a character or object and press A.'); return; }
   if (status.dataset.kind === 'dialogue') setHint(activeMap().title + ' · Press A to interact; B closes this text.');
   else setHint('There is nothing to cancel right now.');
@@ -559,12 +566,22 @@ function transition(warp) {
     return;
   }
   currentMapId = landing.mapId;
+  const beginsElmOpening = currentMapId === 'ELMS_LAB' && previousMapId !== 'ELMS_LAB' && !state.starter && !state.labIntroComplete;
   if (currentMapId === 'ELMS_LAB' && previousMapId !== 'ELMS_LAB' && !state.starter) { state.labIntroComplete = false; state.elmTalked = false; }
   state.x = landing.x;
   state.y = landing.y;
   state.facing = landing.facing;
   resizeCanvasForMap();
   draw();
+  if (beginsElmOpening) {
+    // ElmsLabMeetElmScene is a deferred source scene: it begins on map entry,
+    // walks the player up to Elm, and requires a YES answer.
+    state.pendingStarter = 'LAB_INTRO';
+    state.labIntroStage = 0;
+    state.choiceYes = true;
+    showDialogue('PROF. ELM', "ELM: <PLAYER>! There you are!\n\nI needed to ask you a favor.\n\nI'm conducting new POKéMON research right now. I was wondering if you could help me with it, <PLAYER>.\n\nI'd like you to raise a POKéMON that I recently caught.\n\n▶ YES       NO");
+    return;
+  }
   setHint('Entered ' + activeMap().title + '. Talk to characters and inspect objects with A.');
 }
 function step(dx, dy, face) {
