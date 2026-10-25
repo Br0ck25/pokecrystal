@@ -117,3 +117,35 @@ export function decodeGameBoy2bppTiles(bytes) {
   }
   return { tileCount, pixels };
 }
+
+
+/**
+ * Assemble a source metatile's 16 8x8 tiles into a 32x32 palette-index image.
+ * `decodedTiles` is the object returned by decodeGameBoy2bppTiles().
+ */
+export function composeMetatilePixels(metatileId, metatileTileIds, decodedTiles) {
+  if (!Number.isInteger(metatileId) || metatileId < 0) throw new RangeError('metatileId must be a non-negative integer');
+  if (!Array.isArray(metatileTileIds) || metatileTileIds.length !== 16) {
+    throw new TypeError('metatileTileIds must contain exactly 16 tile IDs');
+  }
+  if (!decodedTiles || !(decodedTiles.pixels instanceof Uint8Array)
+      || !Number.isInteger(decodedTiles.tileCount)) {
+    throw new TypeError('decodedTiles must be returned by decodeGameBoy2bppTiles()');
+  }
+
+  const pixels = new Uint8Array(32 * 32);
+  for (let tileIndex = 0; tileIndex < 16; tileIndex++) {
+    const tileId = metatileTileIds[tileIndex];
+    if (!Number.isInteger(tileId) || tileId < 0 || tileId >= decodedTiles.tileCount) {
+      throw new RangeError(`metatile ${metatileId} references missing tile ${tileId}`);
+    }
+    const src = tileId * 64;
+    const tileX = (tileIndex % 4) * 8;
+    const tileY = Math.floor(tileIndex / 4) * 8;
+    for (let y = 0; y < 8; y++) {
+      const dest = (tileY + y) * 32 + tileX;
+      pixels.set(decodedTiles.pixels.subarray(src + y * 8, src + y * 8 + 8), dest);
+    }
+  }
+  return { width: 32, height: 32, pixels };
+}
