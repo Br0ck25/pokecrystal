@@ -41,6 +41,23 @@
     <p id="status">Rendering source tiles…</p>
     <p><small>Temporary player marker. Source tileset graphics and palette colors are applied. Characters are currently simplified preview sprites; official overworld sprites, exact original script timing, and full collision behavior remain in progress.</small></p>
   </main>
-  <script type="module" src="./app.js"></script>
+  <script>
+    // Keep module-import failures visible instead of leaving a silent black canvas.
+    window.addEventListener("error", function (event) {
+      var status = document.getElementById("status");
+      if (status) {
+        status.dataset.kind = "dialogue";
+        status.textContent = "Game startup failed: " + (event.message || "A game module could not load.") + " Try refreshing once the deployment is complete.";
+      }
+    });
+    window.addEventListener("unhandledrejection", function (event) {
+      var status = document.getElementById("status");
+      if (status) {
+        status.dataset.kind = "dialogue";
+        status.textContent = "Game startup failed: " + (event.reason && event.reason.message || String(event.reason || "Unexpected error"));
+      }
+    });
+  </script>
+  <script type="module" src="./app.js?v=b1224086755"></script>
 </body>
 </html>
