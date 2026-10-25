@@ -10,7 +10,7 @@ export const PLAYERS_HOUSE_1F = Object.freeze({
  backgroundEvents:Object.freeze([
  {x:0,y:1,kind:'stove',text:"Mom's specialty! CINNABAR VOLCANO BURGER."},
  {x:1,y:1,kind:'sink',text:'The sink is spotless. Mom likes it clean.'},
- {x:2,y:1,kind:'fridge',text:'Fresh water and tasty lemonade!'},
+ {x:2,y:1,kind:'fridge',text:'Let’s see what’s in the fridge… FRESH WATER and tasty LEMONADE!'},
  {x:4,y:1,kind:'tv',text:"There's a movie on TV: Stars dot the sky as two boys ride on a train… I'd better get rolling too!"}
  ]),
  objects:Object.freeze([
