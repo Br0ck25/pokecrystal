@@ -9,7 +9,7 @@ export const ELMS_HOUSE = Object.freeze({
  ]),
  objects:Object.freeze([
  {id:'ELMS_WIFE',x:1,y:5,sprite:'SPRITE_TEACHER',script:'ElmsWife',dialogue:["Hi, <PLAYER>! My husband's always so busy--I hope he's OK.","When he's caught up in his POKéMON research, he even forgets to eat."]},
- {id:'ELMS_SON',x:5,y:4,sprite:'SPRITE_BUG_CATCHER',script:'ElmsSon',dialogue:["When I grow up, I'm going to help my dad!","I'm going to be a great Pokémon professor!"]}
+ {id:'ELMS_SON',x:5,y:4,sprite:'SPRITE_BUG_CATCHER',script:'ElmsSon',dialogue:["When I grow up, I'm going to help my dad!","I'm going to be a great POKéMON professor!"]}
  ])
 });
 export function elmsHouseEventsAt(x,y){return eventsAt(ELMS_HOUSE,x,y)}
