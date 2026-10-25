@@ -31,6 +31,7 @@ import { shouldStartElmOpeningScene, canCancelPendingScene, ELM_OPENING_MOVEMENT
 import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
 import { getCardinalStep, getSpriteFrameRow } from './src/maps/movement-input.js';
 import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
+import { getNpcFacingTowardPlayer } from './src/maps/npc-facing.js';
 import { formatSourceText } from './src/maps/source-text.js';
 import { advanceRadioSequence } from './src/maps/radio-sequence.js';
 import { createDialoguePages } from './src/maps/dialogue-pages.js';
@@ -156,7 +157,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'PLAYERS_HOUSE_2F';
-const state = { x: 3, y: 3, facing: 'up', elmX: null, elmY: null, elmFacing: 'right', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momDstChoiceYes: true, momPhoneChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
+const state = { x: 3, y: 3, facing: 'up', objectFacings: {}, elmX: null, elmY: null, elmFacing: 'right', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, labIntroStage: 0, starterReveal: null, starterReceiptStage: 0, starterLevel: null, starterHeldItem: null, elmPhoneAdded: false, choiceYes: true, choiceNeedsConfirm: false, momIntroActive: false, momIntroStage: 0, momChoiceYes: true, momDstChoiceYes: true, momPhoneChoiceYes: true, momX: 7, pokegear: false, townTeacherStage: null, townTeacherX: 6, townTeacherY: 8, townTeacherStartY: 8, rivalX: 3, rivalY: 2, rivalStage: 0, initialRadioListened: false, radioStage: 0, labExitWarningStage: null };
 const keys = new Set();
 let lastStep = 0;
 let walkFrame = 0;
@@ -311,7 +312,7 @@ function drawObjects() {
   for (const object of activeMap().metadata.objects || []) {
     if (!isSceneObjectVisible(currentMapId, object, state)) continue;
     const position = objectPosition(object);
-    let facing = object.facing || 'down';
+    let facing = state.objectFacings[object.id] || object.facing || 'down';
     if (object.id === 'MOM' && state.momIntroActive) facing = 'right';
     if (object.id === 'ELMSLAB_ELM') {
       facing = state.elmFacing || (state.labIntroComplete ? 'down' : 'right');
@@ -639,6 +640,11 @@ function interact() {
   if (!event) {
     setHint('Nothing to interact with here.');
     return;
+  }
+  if (event.type === 'object') {
+    const npcPosition = objectPosition(event);
+    const facing = getNpcFacingTowardPlayer(npcPosition, { x: state.x, y: state.y });
+    if (facing) state.objectFacings[event.id] = facing;
   }
   if (event.type === 'background' && event.kind === 'radio') {
     const radio = advanceRadioSequence({
