@@ -220,8 +220,8 @@ function drawPlayer() {
 function drawNpc(object) {
   const x = object.x * TILE, y = object.y * TILE;
   const sourceSprite = getSourceSpriteForObject(object);
-  if (sourceSprite === 'RIVAL' && drawSourceSprite(sourceSprite, x, y, 'right', true)) return;
-  if (sourceSprite && drawSourceSprite(sourceSprite, x, y, 'down')) return;
+  const facing = object.facing || 'down';
+  if (sourceSprite && drawSourceSprite(sourceSprite, x, y, facing, facing === 'right')) return;
   const id = String(object.id || object.script || '').toUpperCase();
   if (id.includes('CONSOLE')) {
     ctx.fillStyle = '#24242b'; ctx.fillRect(x + 1, y + 4, 14, 9);
@@ -265,7 +265,8 @@ function drawObjects() {
   for (const object of activeMap().metadata.objects || []) {
     if (!isSceneObjectVisible(currentMapId, object, state)) continue;
     const position = objectPosition(object);
-    drawNpc({ ...object, ...position });
+    const facing = object.id === 'MOM' && state.momIntroActive ? 'right' : (object.facing || 'down');
+    drawNpc({ ...object, ...position, facing });
   }
 }
 function drawStarterPreview() {
@@ -660,6 +661,7 @@ function step(dx, dy, face) {
     // Crystal has two separate coordinate scripts: from the left Mom turns
     // toward the player; from the right she steps one tile toward them.
     state.momX = nx === 9 ? 8 : 7;
+    state.facing = 'left';
     state.momIntroActive = true;
     state.momIntroStage = 0;
     showDialogue('MOM', "Oh, <PLAYER>…! Our neighbor, PROF. ELM, was looking for you. He said he wanted you to do something for him.\n\nOh! I almost forgot! Your POKéMON GEAR is back from the repair shop. Here you go!");
