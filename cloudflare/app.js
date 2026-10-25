@@ -157,6 +157,7 @@ let walkFrame = 0;
 let dialoguePages = [];
 let dialoguePageIndex = 0;
 let dialogueSpeaker = '';
+let dialogueDismissOnA = false;
 
 function activeMap() { return maps[currentMapId]; }
 function objectPosition(object) {
@@ -177,6 +178,7 @@ function setHint(text) {
   dialoguePages = [];
   dialoguePageIndex = 0;
   dialogueSpeaker = '';
+  dialogueDismissOnA = false;
   status.textContent = formatSourceText(text);
   status.dataset.kind = 'hint';
   draw();
@@ -372,8 +374,9 @@ function eventsAtFacing() {
   }
   return events;
 }
-function showDialogue(speaker, text) {
+function showDialogue(speaker, text, dismissOnA = false) {
   dialogueSpeaker = formatSourceText(speaker);
+  dialogueDismissOnA = dismissOnA;
   dialoguePages = createDialoguePages(formatSourceText(text));
   dialoguePageIndex = 0;
   status.textContent = dialogueSpeaker + "\n" + dialoguePages[0].join("\n");
@@ -413,6 +416,10 @@ function drawDialogueBox() {
 }
 function interact() {
   if (advanceDialoguePage()) return;
+  if (dialogueDismissOnA && status.dataset.kind === 'dialogue') {
+    setHint(activeMap().title + ' · Press A to interact; B closes dialogue.');
+    return;
+  }
   if (state.townTeacherStage !== null) {
     if (state.townTeacherStage === 0) {
       // NewBarkTown_TeacherStopsYouScene1/2: the teacher runs left to the
@@ -546,7 +553,7 @@ function interact() {
     });
     state.initialRadioListened = radio.listened;
     state.radioStage = radio.stage;
-    showDialogue('RADIO', radio.text);
+    showDialogue('RADIO', radio.text, radio.listened);
     return;
   }
   if (currentMapId === 'ELMS_LAB' && event.type === 'object' && event.id === 'ELMSLAB_ELM') {
@@ -606,10 +613,10 @@ function interact() {
   }
   if (currentMapId === 'NEW_BARK_TOWN') {
     if (event.type === 'background') {
-      showDialogue('SIGN', event.text || 'A sign.');
+      showDialogue('SIGN', event.text || 'A sign.', true);
       return;
     }
-    showDialogue(event.id || '…', (event.dialogue || ['…']).join('\n'));
+    showDialogue(event.id || '…', (event.dialogue || ['…']).join('\n'), true);
     return;
   }
   if (event.type === 'background') {
@@ -625,16 +632,16 @@ function interact() {
       ElmsLabPC: 'The PC is turned on. There are emails from researchers.',
     };
     const message = event.text || sourceTexts[event.script] || 'There is something here.';
-    showDialogue(event.kind === 'pc' ? 'PC' : 'OBJECT', message);
+    showDialogue(event.kind === 'pc' ? 'PC' : 'OBJECT', message, true);
     return;
   }
   if (event.type === 'object') {
-    showDialogue(event.id || '…', (event.dialogue || [event.script || event.id || '…']).join('\n'));
+    showDialogue(event.id || '…', (event.dialogue || [event.script || event.id || '…']).join('\n'), true);
     return;
   }
   // Keep unported lab scripts explicit instead of inventing their stateful behavior.
   const label = event.label || event.script || 'Object';
-  showDialogue(label, 'Original script not yet implemented: ' + event.script);
+  showDialogue(label, 'Original script not yet implemented: ' + event.script, true);
 }
 function pressB() {
   if (state.starterReveal) { state.starterReveal = null; draw(); }
