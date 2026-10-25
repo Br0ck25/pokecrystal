@@ -34,6 +34,7 @@ import { getSourceSpriteForObject } from './src/maps/npc-sprite-map.js';
 import { formatSourceText } from './src/maps/source-text.js';
 import { advanceRadioSequence } from './src/maps/radio-sequence.js';
 import { createDialoguePages } from './src/maps/dialogue-pages.js';
+import { normalizeKey, getButtonAction } from './src/maps/input-bindings.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -819,10 +820,12 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 window.addEventListener('keydown', e => {
+  const key = normalizeKey(e.key);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter', 'Backspace'].includes(e.key)) e.preventDefault();
-  if (!e.repeat && [' ', 'Enter', 'z', 'Z', 'e', 'E'].includes(e.key)) { interact(); return; }
-  if (!e.repeat && ['x', 'X', 'Escape', 'Backspace'].includes(e.key)) { pressB(); return; }
-  keys.add(e.key);
+  const action = getButtonAction(key);
+  if (!e.repeat && action === 'a') { interact(); return; }
+  if (!e.repeat && action === 'b') { pressB(); return; }
+  keys.add(key);
 });
 document.querySelectorAll('[data-action]').forEach(button => {
   button.addEventListener('click', () => {
@@ -837,7 +840,7 @@ document.querySelectorAll('[data-move]').forEach(button => {
   button.addEventListener('pointerdown', down);
   for (const type of ['pointerup', 'pointercancel', 'pointerleave']) button.addEventListener(type, up);
 });
-window.addEventListener('keyup', e => keys.delete(e.key));
+window.addEventListener('keyup', e => keys.delete(normalizeKey(e.key)));
 window.addEventListener('blur', () => keys.clear());
 // Each source image is embedded in this bundle. There is no single global
 // "source" image: every map chooses its own tileset in drawMap().
