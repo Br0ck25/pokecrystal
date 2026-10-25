@@ -23,8 +23,9 @@ test('starter balls, officer, and aide visibility follow current starter state',
   const aide = { id: 'ELMSLAB_ELMS_AIDE' };
   assert.equal(isSceneObjectVisible('ELMS_LAB', ball, { starterBall: null }), true);
   assert.equal(isSceneObjectVisible('ELMS_LAB', ball, { starterBall: 'ELMSLAB_POKE_BALL1' }), false);
-  assert.equal(isSceneObjectVisible('ELMS_LAB', officer, { starter: null }), true);
-  assert.equal(isSceneObjectVisible('ELMS_LAB', officer, { starter: 'TOTODILE' }), false);
+  assert.equal(isSceneObjectVisible('ELMS_LAB', officer, { starter: null }), false, 'officer stays hidden during the initial lab scene');
+  assert.equal(isSceneObjectVisible('ELMS_LAB', officer, { starter: 'TOTODILE' }), false, 'choosing a starter alone does not trigger the later officer scene');
+  assert.equal(isSceneObjectVisible('ELMS_LAB', officer, { officerVisible: true }), true, 'officer appears only when the story event explicitly enables him');
   assert.equal(isSceneObjectVisible('ELMS_LAB', aide, { starter: null }), false);
   assert.equal(isSceneObjectVisible('ELMS_LAB', aide, { starter: 'TOTODILE' }), true);
   assert.equal(isSceneObjectVisible('NEW_BARK_TOWN', ball, { starterBall: ball.id }), true);
