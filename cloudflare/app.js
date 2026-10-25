@@ -329,10 +329,26 @@ function eventsAtFacing() {
   const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[state.facing];
   if (!delta) return [];
   const x = state.x + delta[0], y = state.y + delta[1];
-  const events = activeMap().eventsAt(x, y);
-  if (currentMapId === 'ELMS_LAB') {
-    const elm = activeMap().metadata.objects.find(object => object.id === 'ELMSLAB_ELM');
-    if (elm) { const p = objectPosition(elm); if (p.x === x && p.y === y) events.push({ type: 'object', ...elm, x, y }); }
+  // Event metadata stores original coordinates, but source callbacks can move
+  // objects at runtime (notably Elm during the opening scene). Never allow an
+  // interaction with an NPC's stale, pre-callback coordinate.
+  const current = activeMap();
+  const events = current.eventsAt(x, y).filter(event => {
+    if (event.type !== 'object') return true;
+    const object = (current.metadata.objects || []).find(candidate => candidate.id === event.id);
+    if (!object) return true;
+    const position = objectPosition(object);
+    return position.x === x && position.y === y;
+  });
+  for (const object of current.metadata.objects || []) {
+    const position = objectPosition(object);
+    if (position.x !== x || position.y !== y) continue;
+    if (object.id === 'ELMSLAB_OFFICER' && state.starter) continue;
+    if (object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter) continue;
+    if (object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starterBall === object.id) continue;
+    if (!events.some(event => event.type === 'object' && event.id === object.id)) {
+      events.push({ type: 'object', ...object, x, y });
+    }
   }
   return events;
 }
