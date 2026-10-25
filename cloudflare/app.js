@@ -42,6 +42,8 @@ import { storeMomChoice, beginMomPhoneQuestion } from './src/maps/mom-intro-stat
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
 ctx.imageSmoothingEnabled = false;
+// Opt-in collision overlay for diagnosing invisible walls without changing the normal game UI.
+const collisionDebugEnabled = new URLSearchParams(window.location.search).get('debug') === 'collision';
 const status = document.querySelector('#status');
 let bootErrorReported = false;
 function reportBootError(message) {
@@ -209,6 +211,31 @@ function drawMap() {
     }
   }
 }
+function drawCollisionDebugOverlay() {
+  if (!collisionDebugEnabled) return;
+  const current = activeMap();
+  const d = current.metadata.dimensions;
+  ctx.save();
+  ctx.font = '5px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let y = 0; y < d.metatilesHigh; y++) {
+    for (let x = 0; x < d.metatilesWide; x++) {
+      const collision = current.collisionAt(x, y);
+      const walkable = canPreviewEnterOrWarp(x, y, d.metatilesWide, d.metatilesHigh, current.collisionAt, current.metadata.warps);
+      if (!walkable) {
+        ctx.fillStyle = 'rgba(230, 35, 45, 0.32)';
+        ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+      }
+      ctx.strokeStyle = walkable ? 'rgba(30, 130, 60, 0.35)' : 'rgba(120, 0, 0, 0.65)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x * TILE + 0.25, y * TILE + 0.25, TILE - 0.5, TILE - 0.5);
+      ctx.fillStyle = walkable ? '#073b18' : '#fff';
+      ctx.fillText(String(collision ?? '?').slice(0, 7), x * TILE + TILE / 2, y * TILE + TILE / 2);
+    }
+  }
+  ctx.restore();
+}
 function drawSourceSprite(name, x, y, facing = 'down', flip = false, animate = false) {
   const image = overworldSpriteImages[name];
   if (!image || image.naturalWidth < 16 || image.naturalHeight < 96) return false;
@@ -339,6 +366,7 @@ function draw() {
   ctx.save();
   ctx.translate(camera.originX - camera.cameraX, camera.originY - camera.cameraY);
   drawMap();
+  drawCollisionDebugOverlay();
   drawObjects();
   drawPlayer();
   ctx.restore();
