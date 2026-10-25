@@ -702,8 +702,8 @@ function step(dx, dy, face) {
     draw();
     return;
   }
-  if (currentMapId === 'ELMS_LAB' && state.labIntroComplete && !state.starter
-      && (nx === 4 || nx === 5) && ny === 6) {
+  const labExitEvent = activeMap().metadata.coordinateEvents?.find(event => event.script === 'LabTryToLeaveScript' && event.x === nx && event.y === ny);
+  if (currentMapId === 'ELMS_LAB' && labExitEvent && state.labIntroComplete && !state.starter) {
     // Source coordinate scripts LabTryToLeaveScript run before the door warp.
     state.x = oldX;
     state.y = oldY;
