@@ -57,8 +57,8 @@ test('Elm lab starter ball IDs map to the exact source species, type, and level'
     assert.equal(getLabStarterBallId(starter.species), ballId);
   }
   assert.equal(getLabStarter('UNKNOWN'), null);
-  assert.equal(canLeaveLabBeforeStarter(null), true);
-  assert.equal(canLeaveLabBeforeStarter('CYNDAQUIL'), false);
+  assert.equal(mustBlockLabExit(null), true);
+  assert.equal(mustBlockLabExit('CYNDAQUIL'), false);
 });
 
 test('source NPC positions and dialogue remain present for the connected scenes', () => {
