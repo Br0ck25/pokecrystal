@@ -33,3 +33,12 @@ test('source spot checks: Elm\'s Lab exit block and New Bark Town tileset', () =
   assert.equal(MAPS.NEW_BARK_TOWN.tileset, 'JOHTO');
   assert.equal(MAPS.PLAYERS_NEIGHBORS_HOUSE.source, 'maps/House1.blk');
 });
+
+test('decoration data matches the source: new-game bed and poster blocks and where they are written', async () => {
+  const { DECORATION_BLOCKS, DECORATION_PLACEMENT, NEW_GAME_DECORATIONS } = await import('./generated/decorations.js');
+  assert.deepEqual(NEW_GAME_DECORATIONS, { bed: 'DECO_FEATHERY_BED', poster: 'DECO_TOWN_MAP' });
+  assert.equal(DECORATION_BLOCKS.DECO_FEATHERY_BED, 0x1b);
+  assert.equal(DECORATION_BLOCKS.DECO_TOWN_MAP, 0x1f);
+  assert.deepEqual(DECORATION_PLACEMENT.bed, [0, 4]);
+  assert.deepEqual(DECORATION_PLACEMENT.poster, [6, 0]);
+});

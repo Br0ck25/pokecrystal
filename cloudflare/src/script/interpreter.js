@@ -6,6 +6,7 @@
 // 'promptbutton' | 'yesorno' | 'movement' { object, steps } | 'effect' { name, args } | 'special' { name }.
 import { renderText } from './text.js';
 import { EVENTS } from '../generated/events.js';
+import { NEW_GAME_DECORATIONS } from '../generated/decorations.js';
 
 export const DIRECTIONS = ['DOWN', 'UP', 'LEFT', 'RIGHT'];
 const TIMES = { MORN: 1, DAY: 2, NITE: 4 };   // constants/time_constants.asm: 1 << MORN_F, DAY_F, NITE_F
@@ -43,7 +44,6 @@ const POSTER_SCRIPTS = { DECO_TOWN_MAP: 'DecorationDesc_TownMapPoster', DECO_PIK
   DECO_CLEFAIRY_POSTER: 'DecorationDesc_ClefairyPoster', DECO_JIGGLYPUFF_POSTER: 'DecorationDesc_JigglypuffPoster' };
 const DECORATION_VISIBILITY_FLAGS = { console: 'EVENT_PLAYERS_HOUSE_2F_CONSOLE', leftOrnament: 'EVENT_PLAYERS_HOUSE_2F_DOLL_1',
   rightOrnament: 'EVENT_PLAYERS_HOUSE_2F_DOLL_2', bigDoll: 'EVENT_PLAYERS_HOUSE_2F_BIG_DOLL' };
-export const NEW_GAME_DECORATIONS = Object.freeze({ bed: 'DECO_FEATHERY_BED', poster: 'DECO_TOWN_MAP' });
 const decorations = (state) => state.decorations ?? NEW_GAME_DECORATIONS;
 const setFlag = (state, flag, on) => (on ? state.flags.add(flag) : state.flags.delete(flag));
 
@@ -119,6 +119,7 @@ export function* runScript(ctx, startLabel) {
       case 'ifgreater': if (state.scriptVar > value(args[0])) jump(args[1]); break;
       case 'ifless': if (state.scriptVar < value(args[0])) jump(args[1]); break;
       case 'jumpstd': jump(args[0]); break;
+      case 'variablesprite': (state.variableSprites ??= {})[args[0]] = args[1]; break;   // wVariableSprites
       case 'setval': state.scriptVar = value(args[0]); break;
       case 'addval': state.scriptVar += value(args[0]); break;
       case 'checkevent': state.scriptVar = state.flags.has(args[0]) ? 1 : 0; break;
@@ -178,7 +179,7 @@ export function* runScript(ctx, startLabel) {
       }
       case 'special':
         // ToggleDecorationsVisibility / ToggleMaptileDecorations write event flags from the owned decorations.
-        if (args[0] === 'ToggleMaptileDecorations') { setFlag(state, 'EVENT_PLAYERS_ROOM_POSTER', Boolean(decorations(state).poster)); break; }
+        if (args[0] === 'ToggleMaptileDecorations') setFlag(state, 'EVENT_PLAYERS_ROOM_POSTER', Boolean(decorations(state).poster));   // then the host writes the blocks
         if (args[0] === 'ToggleDecorationsVisibility') {
           for (const [kind, flag] of Object.entries(DECORATION_VISIBILITY_FLAGS)) setFlag(state, flag, !decorations(state)[kind]);
           break;
