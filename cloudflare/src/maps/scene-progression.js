@@ -10,3 +10,6 @@ export function shouldStartElmOpeningScene({ mapId, previousMapId, starter, labI
 export function canCancelPendingScene(pendingScene) {
   return pendingScene !== 'LAB_INTRO';
 }
+
+/** Exact direction sequence in ElmsLab_WalkUpToElmMovement from maps/ElmsLab.asm. */
+export const ELM_OPENING_MOVEMENT = Object.freeze(['up','up','up','up','up','up','up']);
