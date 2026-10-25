@@ -14,3 +14,9 @@ test('long source dialogue is split into pages that fit the GBC text box', () =>
 test('short dialogue stays on a single page', () => {
   assert.deepEqual(createDialoguePages('Hello there.'), [['Hello there.']]);
 });
+
+
+test('explicit line breaks preserve vertical YES/NO choices', () => {
+  assert.deepEqual(createDialoguePages('Choose?\n\n▶ YES\n  NO'), [['Choose?', '▶ YES', 'NO']]);
+  assert.deepEqual(createDialoguePages('  YES\n▶ NO'), [['YES', '▶ NO']]);
+});
