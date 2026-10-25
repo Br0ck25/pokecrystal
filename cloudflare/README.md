@@ -14,7 +14,7 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps/johto-metatiles.js` — all 128 source Johto metatile definitions, each containing 16 8x8 tile IDs.
 - `src/maps/johto-palette-map.js` — source palette-name assignments for both Johto `tilepal` groups, including the reserved `$ff` gap.
 - `src/assets/johto-tileset.js` — embedded 128×96 source tileset preview image used by the browser map renderer.
-- `index.html` / `app.js` — no-build browser map preview that composes the 10×9 New Bark Town block grid from source tile IDs.
+- `index.html` / `app.js` — no-build browser map preview with keyboard movement prototype over the source-derived New Bark Town map.
 - `src/maps-metatiles.test.js` — checks the imported metatile table.
 - `src/maps-collision.test.js` — verifies collision-table entries and map block references.
 - `src/graphics.js` — JavaScript decoder for the repository's `lzcompress` stream format, Game Boy 2bpp tile decoding, and 32x32 metatile and full map-grid pixel composition.
@@ -37,7 +37,7 @@ A GitHub Actions workflow runs these tests when files in this directory change.
 
 ## Hosting choice
 
-Cloudflare Pages connected to GitHub is the simplest development deployment while the game is split into maintainable source files. Use the `crystal-browser-worker` branch and set the Pages project root directory to `cloudflare`. Since no browser entry page is implemented yet, **do not deploy this directory expecting a playable game**.
+Cloudflare Pages connected to GitHub is the simplest development deployment while the game is split into maintainable source files. Use the `crystal-browser-worker` branch and set the Pages project root directory to `cloudflare`. The current deployment is an early interactive map prototype, not the full game.
 
 When the browser app exists, Pages can auto-deploy every commit from this branch. If a single-file Worker is still preferred, we can bundle the browser app into `cloudflare/worker.js` as a later packaging step. Pages versus a single Worker does not change the work required to translate the original game's logic.
 
@@ -59,6 +59,7 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [ ] Render the town from source map blocks, metatile definitions, and graphics; translate raw collision labels into game-engine movement behavior.
 - [ ] Translate source-defined collisions, warps, map connections, object events, and scripts.
 - [x] Render a source-data New Bark Town map preview in the browser.
+- [x] Add a temporary keyboard movement prototype to test the map viewport and coordinates.
 - [ ] Render the real opening sequence with player sprite, palette colors, movement, and source events.
 - [ ] Port dialogue, menus, battles, party, items, progression, and remaining maps.
 - [ ] Verify the full browser game and deployment.
