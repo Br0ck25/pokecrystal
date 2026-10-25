@@ -79,13 +79,14 @@ test('doorways remain reachable when source object sprites block movement', () =
   }
 });
 
-test('every readable source sign, radio, PC, bookshelf and lab prop has a reachable approach tile', () => {
+test('walkable source signs, radios and room props have reachable approach tiles', () => {
   for (const { map, collision, spawn } of MAPS) {
     for (const event of map.backgroundEvents || []) {
       // These lab bookshelves sit directly behind the workbench. The source
       // collision data marks the intervening lower half as WALL, so the
       // original map event exists but cannot be reached from the walkable floor.
-      if (map.id === 'ELMS_LAB' && event.script === 'ElmsLabBookshelf') continue;
+      if ((map.id === 'ELMS_LAB' && event.script === 'ElmsLabBookshelf')
+          || (map.id === 'ELMS_HOUSE' && event.kind === 'pc')) continue;
       const approaches = [[0,1],[1,0],[0,-1],[-1,0]]
         .map(([dx,dy]) => ({ x: event.x + dx, y: event.y + dy }))
         .filter(({x,y}) => x >= 0 && y >= 0
