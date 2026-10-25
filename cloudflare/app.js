@@ -134,7 +134,7 @@ const maps = {
   PLAYERS_NEIGHBORS_HOUSE: { metadata: PLAYERS_NEIGHBORS_HOUSE, blocks: PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, collisionAt: getPlayersNeighborsHouseCollisionAtMetatile, eventsAt: playersNeighborsHouseEventsAt, title: "Neighbor's House " },
 };
 let currentMapId = 'NEW_BARK_TOWN';
-const state = { x: 9, y: 8, facing: 'down', starter: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, choiceYes: true };
+const state = { x: 9, y: 8, facing: 'down', starter: null, starterBall: null, elmTalked: false, labIntroComplete: false, pendingStarter: null, choiceYes: true };
 const keys = new Set();
 let lastStep = 0;
 
@@ -251,7 +251,7 @@ function drawNpc(object) {
 }
 function drawObjects() {
   for (const object of activeMap().metadata.objects || []) {
-    if (object.id?.startsWith('ELMSLAB_POKE_BALL') && state.starter) continue;
+    if (object.id === state.starterBall) continue;
     if (object.id === 'ELMSLAB_OFFICER' && state.starter) continue;
     if (object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter) continue;
     const position = objectPosition(object);
@@ -316,6 +316,7 @@ function interact() {
     }
     if (state.choiceYes) {
       state.starter = state.pendingStarter;
+      state.starterBall = state.starter === 'CYNDAQUIL' ? 'ELMSLAB_POKE_BALL1' : state.starter === 'TOTODILE' ? 'ELMSLAB_POKE_BALL2' : 'ELMSLAB_POKE_BALL3';
       state.pendingStarter = null;
       showDialogue('PROF. ELM', `ELM: I think that's a great POKéMON too!\n\nYou received ${state.starter} at level 5 holding a BERRY.\n\nThe browser preview records your partner; battles and the full party system are not implemented yet.`);
       draw();
