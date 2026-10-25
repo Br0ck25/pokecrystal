@@ -27,6 +27,7 @@ import { ELMS_HOUSE_BLOCK_IDS, getElmsHouseCollisionAtMetatile } from './src/map
 import { PLAYERS_NEIGHBORS_HOUSE, playersNeighborsHouseEventsAt } from './src/maps/players-neighbors-house.js';
 import { PLAYERS_NEIGHBORS_HOUSE_BLOCK_IDS, getPlayersNeighborsHouseCollisionAtMetatile } from './src/maps/players-neighbors-house-blocks.js';
 import { getLabStarter, getLabStarterBallId, mustBlockLabExit } from './src/maps/starter-selection.js';
+import { resolveSceneObjectPosition, isSceneObjectVisible } from './src/maps/scene-object-state.js';
 
 const canvas = document.querySelector('#map');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -149,11 +150,7 @@ let lastStep = 0;
 
 function activeMap() { return maps[currentMapId]; }
 function objectPosition(object) {
-  if (currentMapId === 'ELMS_LAB' && object.id === 'ELMSLAB_ELM') {
-    // ElmsLabMoveElmCallback moves Elm only for the initial meeting scene.
-    return state.labIntroComplete ? { x: 5, y: 2 } : { x: 3, y: 4 };
-  }
-  return { x: object.x, y: object.y };
+  return resolveSceneObjectPosition(currentMapId, object, state) || { x: object.x, y: object.y };
 }
 function resizeCanvasForMap() {
   // Crystal's Game Boy Color display is 160x144 pixels. Keep this viewport fixed
@@ -265,9 +262,7 @@ function drawNpc(object) {
 }
 function drawObjects() {
   for (const object of activeMap().metadata.objects || []) {
-    if (object.id === state.starterBall) continue;
-    if (object.id === 'ELMSLAB_OFFICER' && state.starter) continue;
-    if (object.id === 'ELMSLAB_ELMS_AIDE' && !state.starter) continue;
+    if (!isSceneObjectVisible(currentMapId, object, state)) continue;
     const position = objectPosition(object);
     drawNpc({ ...object, ...position });
   }
