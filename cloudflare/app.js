@@ -152,6 +152,20 @@ function drawPlayer() {
 function drawNpc(object) {
   const x = object.x * TILE, y = object.y * TILE;
   const id = String(object.id || object.script || '').toUpperCase();
+  if (id.includes('CONSOLE')) {
+    ctx.fillStyle = '#24242b'; ctx.fillRect(x + 1, y + 4, 14, 9);
+    ctx.fillStyle = '#9aa3af'; ctx.fillRect(x + 3, y + 2, 10, 3);
+    ctx.fillStyle = '#cf3547'; ctx.fillRect(x + 4, y + 6, 2, 2);
+    ctx.fillStyle = '#4a79d0'; ctx.fillRect(x + 9, y + 6, 2, 2);
+    return;
+  }
+  if (id.includes('DOLL')) {
+    ctx.fillStyle = '#553b54'; ctx.fillRect(x + 4, y + 3, 8, 10);
+    ctx.fillStyle = id.includes('2') ? '#80a7d7' : '#e7a8ba'; ctx.fillRect(x + 3, y + 5, 10, 6);
+    ctx.fillStyle = '#f1d0b0'; ctx.fillRect(x + 5, y + 1, 6, 5);
+    ctx.fillStyle = '#30252a'; ctx.fillRect(x + 6, y + 3, 1, 1); ctx.fillRect(x + 9, y + 3, 1, 1);
+    return;
+  }
   if (id.includes('POKE_BALL')) {
     const color = id.endsWith('1') ? '#d83b45' : id.endsWith('2') ? '#2679cf' : '#66a84f';
     ctx.fillStyle = '#202020'; ctx.fillRect(x + 3, y + 4, 10, 9);
@@ -240,7 +254,19 @@ function interact() {
     return;
   }
   if (event.type === 'background') {
-    status.textContent = event.text || 'There is something here.';
+    const sourceTexts = {
+      ElmsLabHealingMachine: 'A healing machine for POKéMON.',
+      ElmsLabBookshelf: 'A bookshelf full of research books.',
+      ElmsLabTravelTip1: 'Travel Tip: Press START to open the menu.',
+      ElmsLabTravelTip2: 'Travel Tip: Check your POKéMON status.',
+      ElmsLabTravelTip3: 'Travel Tip: You can save your progress from the menu.',
+      ElmsLabTravelTip4: 'Travel Tip: Talk to people to learn about POKéMON.',
+      ElmsLabTrashcan: 'The trash can is empty.',
+      ElmsLabWindow: 'The sunlight streams in through the window.',
+      ElmsLabPC: 'The PC is turned on. There are emails from researchers.',
+    };
+    const message = event.text || sourceTexts[event.script] || 'There is something here.';
+    status.textContent = message;
     status.dataset.kind = 'dialogue';
     return;
   }
@@ -282,7 +308,15 @@ function step(dx, dy, face) {
   if (blocked(nx, ny) || occupied) { draw(); return; }
   state.x = nx; state.y = ny;
   const warp = activeMap().metadata.warps.find(w => w.x === nx && w.y === ny);
-  if (warp) { transition(warp); return; }
+  if (warp) {
+    if (currentMapId === 'ELMS_LAB' && !state.starter) {
+      showDialogue('PROF. ELM', "Wait! You can't leave without choosing a POKéMON.");
+      draw();
+      return;
+    }
+    transition(warp);
+    return;
+  }
   draw();
   setHint(activeMap().title + ' · ' + (nx + 1) + ', ' + (ny + 1) + ' · Press A to interact');
 }
