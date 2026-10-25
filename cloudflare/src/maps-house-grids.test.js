@@ -55,7 +55,7 @@ test('every New Bark Town building and floor has an in-bounds, reversible previe
  const maps = {
   NEW_BARK_TOWN: NEW_BARK_TOWN,
   ELMS_LAB: ELMS_LAB,
-  PLAYERS_HOUSE_1F: PLAYERS_HOUSE_1F,
+  PLAYERS_HOUSE_1F: { metadata: PLAYERS_HOUSE_1F, collisionAt: getPlayersHouse1FCollisionAtMetatile },
   PLAYERS_HOUSE_2F: PLAYERS_HOUSE_2F,
   ELMS_HOUSE: ELMS_HOUSE,
   PLAYERS_NEIGHBORS_HOUSE: PLAYERS_NEIGHBORS_HOUSE,
@@ -91,7 +91,8 @@ test('warp arrival coordinates come from the numbered destination warp entry', (
  const upstairs = resolvePreviewWarp('PLAYERS_HOUSE_1F', PLAYERS_HOUSE_1F.warps[2], maps);
  assert.deepEqual(upstairs, { mapId: 'PLAYERS_HOUSE_2F', x: 7, y: 1, facing: 'down' });
  const downstairs = resolvePreviewWarp('PLAYERS_HOUSE_2F', PLAYERS_HOUSE_2F.warps[0], maps);
- assert.deepEqual(downstairs, { mapId: 'PLAYERS_HOUSE_1F', x: 9, y: 1, facing: 'down' });
+ assert.deepEqual(downstairs, { mapId: 'PLAYERS_HOUSE_1F', x: 8, y: 3, facing: 'down' });
+ assert.equal(isPreviewCollisionWalkable(getPlayersHouse1FCollisionAtMetatile(downstairs.x, downstairs.y)), true, 'upstairs exit must land on a walkable downstairs tile');
  assert.equal(resolvePreviewWarp('NEW_BARK_TOWN', { destinationMap: 'ELMS_LAB', destinationWarp: 99 }, maps), null);
 });
 
