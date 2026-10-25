@@ -102,7 +102,7 @@ test('warp arrival coordinates come from the numbered destination warp entry', (
 test('player house interaction metadata keeps source NPC coordinates and dialogue', () => {
  const neighbor = PLAYERS_HOUSE_1F.objects.find(object => object.id === 'NEIGHBOR');
  assert.deepEqual({ x: neighbor.x, y: neighbor.y }, { x: 4, y: 4 });
- assert.match(neighbor.dialogue.join(' '), /Have you heard\? My daughter is adamant about becoming PROF\. ELM's assistant/);
+ assert.match(neighbor.dialogue.join(' '), /<PLAY_G>, have you heard\? My daughter is adamant about becoming PROF\. ELM's assistant/);
  assert.equal(PLAYERS_HOUSE_1F.objects.find(object => object.id === 'MOM').x, 7);
 });
 
