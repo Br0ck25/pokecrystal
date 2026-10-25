@@ -2,52 +2,202 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pokémon Crystal — Browser Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#263e4b">
+  <title>Pokémon Crystal</title>
   <style>
-    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #111827; color: #f3f4f6; }
-    body { margin: 0; padding: 24px; }
-    main { max-width: 900px; margin: auto; }
-    h1 { font-size: 1.4rem; margin-bottom: .4rem; }
-    p { color: #cbd5e1; line-height: 1.5; }
-    #status { white-space: pre-line; min-height: 2.8em; margin: 14px 0; padding: 12px 14px; border: 2px solid #64748b; border-radius: 10px; background: #1e293b; color: #f8fafc; line-height: 1.5; overflow-wrap: anywhere; }
-    #status[data-kind="dialogue"] { background: #f8fafc; color: #111827; border-color: #94a3b8; font-weight: 600; }
-    .frame { overflow: auto; border: 1px solid #475569; background: #202020; padding: 12px; }
-    .controls { display: grid; grid-template-columns: repeat(3, 56px); gap: 6px; justify-content: center; margin: 14px auto; touch-action: none; }
-    .controls button { min-height: 48px; border: 1px solid #64748b; border-radius: 10px; background: #273449; color: white; font-size: 1.25rem; touch-action: none; }
-    .controls button:active { background: #475569; }
-    .controls .up { grid-column: 2; }
-    .controls .left { grid-column: 1; grid-row: 2; }
-    .controls .down { grid-column: 2; grid-row: 2; }
-    .controls .right { grid-column: 3; grid-row: 2; }
-    .action-controls { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 10px auto 18px; }
-    .action-controls button { width: 64px; height: 64px; border: 2px solid #94a3b8; border-radius: 50%; background: #9f2538; color: #fff; font-size: 1.3rem; font-weight: 800; box-shadow: 0 3px 0 #4c1520; touch-action: manipulation; }
-    .action-controls button[data-action="b"] { background: #2456a6; box-shadow: 0 3px 0 #142e59; }
-    .action-controls button:active { transform: translateY(2px); box-shadow: none; }
-    canvas { display: block; width: min(100%, 640px); height: auto; image-rendering: pixelated; image-rendering: crisp-edges; outline: none; }
-    small { color: #94a3b8; }
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, sans-serif;
+      background: #11191f;
+      color: #f4f5f7;
+      --shell: #344f5e;
+      --shell-edge: #1a303a;
+      --pink: #d96d9b;
+      --pink-edge: #823d62;
+      --blue: #7389d8;
+      --blue-edge: #3d4d8b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; min-height: 100%; }
+    body {
+      min-height: 100dvh;
+      padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overscroll-behavior: none;
+      background: radial-gradient(ellipse at 50% 20%, #273b45 0%, #11191f 72%);
+    }
+    main {
+      width: min(100%, 560px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 2dvh, 16px);
+    }
+    .device {
+      width: 100%;
+      padding: clamp(10px, 3vw, 20px);
+      border: 2px solid #506c7a;
+      border-right-color: #203741;
+      border-bottom-color: #203741;
+      border-radius: clamp(20px, 5vw, 32px);
+      background: linear-gradient(145deg, #496575, var(--shell) 45%, #2b4653);
+      box-shadow: 0 8px 0 var(--shell-edge), 0 18px 34px #0007, inset 0 1px 0 #ffffff22;
+    }
+    .screen-bezel {
+      padding: clamp(7px, 2vw, 12px);
+      border: 2px solid #17252d;
+      border-radius: 12px 12px 18px 18px;
+      background: #10191e;
+      box-shadow: inset 0 2px 5px #000b;
+    }
+    .screen-label {
+      margin: 0 0 7px;
+      color: #9db5c0;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+    .screen {
+      overflow: hidden;
+      width: 100%;
+      aspect-ratio: 10 / 9;
+      border: 2px solid #090f12;
+      background: #d9e8c8;
+      box-shadow: 0 0 0 1px #526b58;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      outline: none;
+    }
+    .controls-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: center;
+      gap: clamp(12px, 5vw, 28px);
+      padding: 5px 2px 0;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, clamp(38px, 11vw, 54px));
+      grid-template-rows: repeat(3, clamp(38px, 11vw, 54px));
+      justify-content: center;
+      align-content: center;
+      filter: drop-shadow(0 3px 0 #1b3039);
+    }
+    .dpad button {
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border: 1px solid #111c22;
+      border-radius: 5px;
+      background: linear-gradient(145deg, #27323a, #111a20);
+      color: #dfe8eb;
+      font-size: clamp(19px, 5vw, 25px);
+      font-weight: 800;
+      touch-action: none;
+    }
+    .dpad .up { grid-column: 2; grid-row: 1; border-radius: 6px 6px 2px 2px; }
+    .dpad .left { grid-column: 1; grid-row: 2; border-radius: 6px 2px 2px 6px; }
+    .dpad .down { grid-column: 2; grid-row: 2; }
+    .dpad .right { grid-column: 3; grid-row: 2; border-radius: 2px 6px 6px 2px; }
+    .dpad .center { grid-column: 2; grid-row: 3; background: #111a20; }
+    .action-area { display: flex; justify-content: center; align-items: center; gap: clamp(10px, 3vw, 18px); transform: rotate(-16deg); }
+    .action {
+      width: clamp(52px, 15vw, 68px);
+      height: clamp(52px, 15vw, 68px);
+      padding: 0;
+      border: 2px solid #ffffff44;
+      border-right-color: #0005;
+      border-bottom-color: #0006;
+      border-radius: 50%;
+      color: #fff;
+      font-size: clamp(19px, 5vw, 25px);
+      font-weight: 900;
+      box-shadow: inset 0 2px 2px #ffffff30, 0 4px 0 #1b3039;
+      touch-action: manipulation;
+    }
+    .action[data-action="a"] { background: linear-gradient(145deg, #ed8bb3, var(--pink)); box-shadow: inset 0 2px 2px #ffffff40, 0 4px 0 var(--pink-edge); }
+    .action[data-action="b"] { background: linear-gradient(145deg, #8e9fe9, var(--blue)); box-shadow: inset 0 2px 2px #ffffff40, 0 4px 0 var(--blue-edge); }
+    button:active { filter: brightness(1.2); transform: translateY(2px); }
+    .system-keys { display: flex; justify-content: center; gap: 16px; padding-top: 8px; }
+    .system-keys button {
+      width: 48px; height: 13px; padding: 0; border: 1px solid #14242c; border-radius: 10px;
+      background: #1a2b34; box-shadow: inset 0 1px 2px #0008; transform: rotate(-18deg);
+    }
+    .system-keys span { display: block; margin-top: 17px; color: #a6bdc7; font-size: 8px; font-weight: 800; letter-spacing: .12em; text-align: center; }
+    #status {
+      width: 100%;
+      min-height: 2.6em;
+      padding: 10px 12px;
+      border: 2px solid #263c48;
+      border-radius: 8px;
+      background: #f5f4e9;
+      color: #17232a;
+      white-space: pre-line;
+      overflow-wrap: anywhere;
+      line-height: 1.35;
+      font-size: 14px;
+      font-weight: 650;
+    }
+    #status[data-kind="hint"] { background: #e4ebd6; }
+    @media (max-height: 720px) and (orientation: landscape) {
+      body { align-items: flex-start; }
+      main { width: min(58vw, 560px); }
+      .device { padding: 8px; }
+      .controls-row { gap: 8px; }
+      .dpad { grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 34px); }
+      .action { width: 46px; height: 46px; }
+      #status { font-size: 12px; min-height: 2em; padding: 6px 8px; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Pokémon Crystal — Browser Preview</h1>
-    <p>Explore the source-derived New Bark Town map and Professor Elm’s Laboratory. Use arrow keys or WASD to move between connected maps. On a phone, use the directional pad plus A to interact/confirm and B to cancel/close dialogue. This is an early browser recreation, not the complete game.</p>
-    <div class="frame"><canvas id="map" width="320" height="288" aria-label="Current Pokémon Crystal map rendered from source data"></canvas></div>
-    <div class="controls" aria-label="Touch movement controls"><button class="up" data-move="ArrowUp" aria-label="Move up">▲</button><button class="left" data-move="ArrowLeft" aria-label="Move left">◀</button><button class="down" data-move="ArrowDown" aria-label="Move down">▼</button><button class="right" data-move="ArrowRight" aria-label="Move right">▶</button></div>
-    <div class="action-controls" aria-label="Game action buttons">
-      <button type="button" data-action="b" aria-label="B button: cancel or close dialogue">B</button>
-      <button type="button" data-action="a" aria-label="A button: interact or confirm">A</button>
-    </div>
-    <p id="status">Rendering source tiles…</p>
-    <p><small>Temporary player marker. Source tileset graphics and palette colors are applied. Characters are currently simplified preview sprites; official overworld sprites, exact original script timing, and full collision behavior remain in progress.</small></p>
+  <main aria-label="Pokémon Crystal game">
+    <section class="device" aria-label="Game Boy Color style game console">
+      <div class="screen-bezel">
+        <p class="screen-label">Color · Pocket Game</p>
+        <div class="screen">
+          <canvas id="map" width="320" height="288" tabindex="0" aria-label="Pokémon Crystal game screen"></canvas>
+        </div>
+      </div>
+      <div class="controls-row">
+        <div class="dpad" aria-label="Directional pad">
+          <button class="up" data-move="ArrowUp" aria-label="Move up">▲</button>
+          <button class="left" data-move="ArrowLeft" aria-label="Move left">◀</button>
+          <button class="down" data-move="ArrowDown" aria-label="Move down">▼</button>
+          <button class="right" data-move="ArrowRight" aria-label="Move right">▶</button>
+          <div class="center" aria-hidden="true"></div>
+        </div>
+        <div class="action-area" aria-label="A and B buttons">
+          <button class="action" type="button" data-action="b" aria-label="B button: cancel or close dialogue">B</button>
+          <button class="action" type="button" data-action="a" aria-label="A button: interact or confirm">A</button>
+        </div>
+      </div>
+      <div class="system-keys">
+        <div><button type="button" aria-label="Select"></button><span>SELECT</span></div>
+        <div><button type="button" aria-label="Start"></button><span>START</span></div>
+      </div>
+    </section>
+    <div id="status" role="status" aria-live="polite">Loading…</div>
   </main>
   <script>
-    // Keep module-import failures visible instead of leaving a silent black canvas.
     window.addEventListener("error", function (event) {
       var status = document.getElementById("status");
       if (status) {
         status.dataset.kind = "dialogue";
-        status.textContent = "Game startup failed: " + (event.message || "A game module could not load.") + " Try refreshing once the deployment is complete.";
+        status.textContent = "Game startup failed: " + (event.message || "A game module could not load.") + " Refresh after deployment completes.";
       }
     });
     window.addEventListener("unhandledrejection", function (event) {
@@ -58,6 +208,6 @@
       }
     });
   </script>
-  <script type="module" src="./app.js?v=0086c8ffc19c"></script>
+  <script type="module" src="./app.js?v=gameboy-pixel9-20261025"></script>
 </body>
 </html>
