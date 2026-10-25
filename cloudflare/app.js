@@ -94,8 +94,15 @@ function draw() {
   drawPlayer();
 }
 function blocked(x, y) {
-  const d = activeMap().metadata.dimensions;
-  return !canPreviewEnter(x, y, d.metatilesWide, d.metatilesHigh, activeMap().collisionAt);
+  const current = activeMap();
+  const d = current.metadata.dimensions;
+  // A source-declared warp tile must remain reachable even when the simplified
+  // collision table labels its underlying graphics block as a special tile.
+  // The transition is handled immediately after stepping onto this coordinate.
+  if (current.metadata.warps.some(warp => warp.x === x && warp.y === y)) {
+    return x < 0 || y < 0 || x >= d.metatilesWide || y >= d.metatilesHigh;
+  }
+  return !canPreviewEnter(x, y, d.metatilesWide, d.metatilesHigh, current.collisionAt);
 }
 function eventsAtFacing() {
   const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[state.facing];
