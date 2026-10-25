@@ -12,7 +12,7 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps/elms-lab.js` and `src/maps/elms-lab-blocks.js` — source-derived Elm's Lab events, original 30-byte block grid, collision lookup, rendering, and connected town entrance/exit.
 - `src/maps/players-house-1f.js`, `src/maps/players-house-1f-blocks.js`, `src/maps/players-house-2f.js`, and `src/maps/players-house-2f-blocks.js` — source map grids, event metadata, and entry/exit routes for both floors of the player's house.
 - `src/maps/elms-house.js` and `src/maps/elms-house-blocks.js` — source grid and event metadata for Professor Elm's house.
-- `src/maps/players-neighbors-house.js` and `src/maps/players-neighbors-house-blocks.js` — reachable neighbor house with source-derived events; the upstream checkout has no `maps/PlayersNeighborsHouse.blk`, so its interior block grid is explicitly a temporary visual fallback, not source-accurate.
+- `src/maps/players-neighbors-house.js` and `src/maps/players-neighbors-house-blocks.js` — reachable neighbor house with source-derived events; the map uses the shared `maps/House1.blk` grid assigned by `data/maps/blocks.asm`.
 - `src/maps/preview-warps.js` — resolves entry positions using the destination map's numbered warp metadata when available; the one-tile arrival offset remains preview glue rather than a complete port of the original warp engine.
 - `src/maps/new-bark-town-movement.js` — conservative movement collision rules plus source-warp exceptions so special warp tiles remain reachable without allowing out-of-bounds movement.
 - `src/maps/elms-lab-blocks.js` — the 30 source block IDs from `maps/ElmsLab.blk`, plus block/metatile/collision lookup helpers.
@@ -25,7 +25,7 @@ This directory is the beginning of a JavaScript browser port of the Pokémon Cry
 - `src/maps/johto-metatiles.js` — all 128 source Johto metatile definitions, each containing 16 8x8 tile IDs.
 - `src/maps/johto-palette-map.js` — source palette-name assignments for both Johto `tilepal` groups, including the reserved `$ff` gap.
 - `src/assets/johto-tileset.js` — embedded 128×96 source tileset preview image used by the browser map renderer.
-- `index.html` / `app.js` — no-build browser preview that renders New Bark Town, Elm's Lab, the player's house (both floors), Professor Elm's house, and the neighbor's house. House entrances and exits are connected; the neighbor-house interior layout is a temporary fallback because the source block file is absent. Player/NPC sprites, palettes, full collision semantics, and original scripts remain incomplete.
+- `index.html` / `app.js` — no-build browser preview that renders New Bark Town, Elm's Lab, the player's house (both floors), Professor Elm's house, and the neighbor's house. House entrances and exits are connected; the neighbor-house interior layout is a temporary fallback because the source block file is absent. NPCs are drawn with distinct temporary pixel-art silhouettes and Elm's Lab supports starter selection; official overworld sprites, source-script timing, stateful world progression, and full collision semantics remain incomplete.
 - `src/maps-metatiles.test.js` — checks the imported metatile table.
 - `src/maps-collision.test.js` — verifies collision-table entries and map block references.
 - `src/graphics.js` — JavaScript decoder for the repository's `lzcompress` stream format, Game Boy 2bpp tile decoding, and 32x32 metatile and full map-grid pixel composition.
@@ -66,7 +66,7 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 - [x] Added 32x32 metatile and full map-grid palette-index compositors; connected New Bark Town map coordinates to collision quadrants.
 - [x] Implement and test the source LZ decompressor and Game Boy 2bpp tile decoder.
 - [x] Load the source Johto tileset preview in the browser and render the New Bark Town map from its source block/metatile tables (palette colors not yet applied).
-- [ ] Decode the original Johto tile graphics into their native 2bpp asset form and apply each map's source palette assignments (current preview does not apply palettes, so interiors will not yet match original colors).
+- [x] Apply map-specific source palette assignments to the embedded tileset previews; verify colors and interior layouts against original source assets.
 - [ ] Render the town from source map blocks, metatile definitions, and graphics; translate raw collision labels into game-engine movement behavior.
 - [x] Connect the New Bark Town ↔ Elm's Lab entrance/exit warps using source-defined warp coordinates and tested block-grid collision lookups.
 - [ ] Translate the full original movement engine, map connections, scene conditions, object event state, and scripts.
