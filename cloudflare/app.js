@@ -15,6 +15,7 @@ import { PLAYERS_HOUSE_TILESET_PNG_BASE64 } from './src/assets/players_house-til
 import { PLAYERS_ROOM_TILESET_PNG_BASE64 } from './src/assets/players_room-tileset.js';
 import { TILESET_PALETTE_LABELS, CRYSTAL_PALETTES } from './src/maps/tileset-palette-data.js';
 import { canPreviewEnterOrWarp } from './src/maps/new-bark-town-movement.js';
+import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT, getCameraTransform } from './src/maps/viewport.js';
 import { resolvePreviewWarp } from './src/maps/preview-warps.js';
 import { PLAYERS_HOUSE_1F, playersHouse1fEventsAt } from './src/maps/players-house-1f.js';
 import { PLAYERS_HOUSE_1F_BLOCK_IDS, getPlayersHouse1FCollisionAtMetatile } from './src/maps/players-house-1f-blocks.js';
@@ -139,13 +140,12 @@ let lastStep = 0;
 
 function activeMap() { return maps[currentMapId]; }
 function resizeCanvasForMap() {
-  const d = activeMap().metadata.dimensions;
-  canvas.width = d.metatilesWide * TILE;
-  canvas.height = d.metatilesHigh * TILE;
-  // Preserve the source map's aspect ratio on the Pixel 9 instead of stretching
-  // every interior into the outdoor map's 10:9 shape.
+  // Crystal's Game Boy Color display is 160x144 pixels. Keep this viewport fixed
+  // on every map and scroll the world behind it instead of shrinking maps to fit.
+  canvas.width = GBC_VIEWPORT_WIDTH;
+  canvas.height = GBC_VIEWPORT_HEIGHT;
   const screen = document.querySelector('.screen');
-  if (screen) screen.style.aspectRatio = `${d.metatilesWide} / ${d.metatilesHigh}`;
+  if (screen) screen.style.aspectRatio = `${GBC_VIEWPORT_WIDTH} / ${GBC_VIEWPORT_HEIGHT}`;
 }
 function setHint(text) {
   status.textContent = text;
@@ -158,8 +158,6 @@ function drawMap() {
   const source = renderedTilesets[tileset];
   const metatiles = metatilesByTileset[tileset];
   if (!source || !metatiles) return;
-  ctx.fillStyle = '#202020';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
   for (let by = 0; by < d.blocksHigh; by++) {
     for (let bx = 0; bx < d.blocksWide; bx++) {
       const blockId = current.blocks[by * d.blocksWide + bx];
@@ -254,6 +252,9 @@ function drawObjects() {
 }
 function draw() {
   if (!ctx || !activeMap()) return;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#202020';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   if (!renderedTilesets[activeMap().metadata.tileset]) {
     ctx.fillStyle = '#e8e8e8';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -262,9 +263,14 @@ function draw() {
     ctx.fillText('Loading map graphics…', 12, 24);
     return;
   }
+  const d = activeMap().metadata.dimensions;
+  const camera = getCameraTransform(d.metatilesWide, d.metatilesHigh, state.x, state.y);
+  ctx.save();
+  ctx.translate(camera.originX - camera.cameraX, camera.originY - camera.cameraY);
   drawMap();
   drawObjects();
   drawPlayer();
+  ctx.restore();
 }
 function blocked(x, y) {
   const current = activeMap();
