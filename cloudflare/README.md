@@ -78,6 +78,6 @@ When the browser app exists, Pages can auto-deploy every commit from this branch
 
 ## Rights
 
-The Neighbor's House uses the shared `maps/House1.blk` grid specified by `data/maps/blocks.asm`; it is no longer filled with Elm's House as a fallback. Interior appearance is still incomplete: the current preview does not apply source palette colors or render all map objects/decorations as the original game does. The player's upstairs room also uses the base map blocks, while the original toggles decorations through map callbacks, so the console/dolls/poster need state-aware rendering.
+The Neighbor's House uses the shared `maps/House1.blk` grid specified by `data/maps/blocks.asm`; it is no longer filled with Elm's House as a fallback. Each current map now records its original source tileset (`JOHTO`, `LAB`, `PLAYERS_HOUSE`, `PLAYERS_ROOM`, or `HOUSE`) so the renderer can select the correct graphics data rather than assuming every interior uses Johto town graphics. Interior appearance is still incomplete: the current preview does not apply source palette colors or render all map objects/decorations as the original game does. The player's upstairs room also uses the base map blocks, while the original toggles decorations through map callbacks, so the console/dolls/poster need state-aware rendering.
 
 The source disassembly does not automatically grant rights to distribute Nintendo's original assets or a full recreation. Review permissions before publishing source-derived graphics, music, dialogue, or other protected content.
