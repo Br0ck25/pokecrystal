@@ -422,6 +422,18 @@ function drawDialogueBox() {
 }
 function interact() {
   if (advanceDialoguePage()) return;
+  // NewBarkTownRivalScript performs the shove immediately after the second
+  // text is dismissed; it is not a third interaction prompt in the source.
+  if (currentMapId === 'NEW_BARK_TOWN' && state.rivalStage === 2 && status.dataset.kind === 'dialogue') {
+    const pushedY = state.y + 1;
+    if (!blocked(state.x, pushedY)) state.y = pushedY;
+    state.rivalX = Math.min(NEW_BARK_TOWN.dimensions.metatilesWide - 1, state.rivalX + 1);
+    state.rivalStage = 0;
+    state.facing = 'up';
+    setHint('The rival shoves past you and slips back into the shadows.');
+    draw();
+    return;
+  }
   if (dialogueDismissOnA && status.dataset.kind === 'dialogue') {
     setHint(activeMap().title + ' · Press A to interact; B closes dialogue.');
     return;
