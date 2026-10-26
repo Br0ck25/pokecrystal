@@ -6,6 +6,15 @@ import { MOVES } from '../generated/moves.js';
 import { expAtLevel, levelForExp, recalcStats } from '../script/mon.js';
 
 const MAX_LEVEL = 100;
+const FANFARE_FRAMES = 65;                                   // the level-up jingle after "grew to level ##!" (measured)
+const BAR_TO_HUD_FRAMES = 23;                                 // from the bar's last pixel to UpdatePlayerHUD (the stats are worked out in between; measured)
+const HIT_END_FRAMES = 22;                                   // SFX_HIT_END_OF_EXP_BAR, waited for by a Pokémon that is not in the field (measured)
+
+/** CalcExpBar: the pixels (0-64) of the experience bar at `exp` for a Pokémon of this species and level. */
+export function expPixels(species, level, exp) {
+  const base = expAtLevel(species, level), next = expAtLevel(species, level + 1);
+  return Math.max(0, Math.min(64, 64 - Math.floor(((next - exp) * 64) / (next - base))));
+}
 const STAT_EXP_KEYS = ['hp', 'atk', 'def', 'spd', 'spc'];
 
 /**
@@ -32,21 +41,30 @@ export function* giveExperience(battle, { participants, playerId, trainer = fals
     if (mon.item === 'LUCKY_EGG') gained = boost(gained);
     const name = mon.nickname ?? POKEMON[mon.species].name;
     yield { text: [['text', `${name} gained`], ...(traded ? [['line', 'a boosted'], ['cont', `${gained} EXP. Points!`]] : [['line', `${gained} EXP. Points!`]]), ['prompt']] };
-    const before = mon.exp;
+    const before = mon.exp, oldLevel = mon.level;
     mon.exp = Math.min(mon.exp + gained, 0xffffff);
     const cap = expAtLevel(mon.species, MAX_LEVEL);
     if (mon.exp > cap) mon.exp = cap;
-    yield { exp: true, partyIndex: index, from: before, to: mon.exp };
-
-    const oldLevel = mon.level;
-    const newLevel = levelForExp(mon.species, mon.exp);
-    if (oldLevel >= MAX_LEVEL || newLevel === oldLevel) continue;
+    const newLevel = oldLevel >= MAX_LEVEL ? oldLevel : levelForExp(mon.species, mon.exp);
+    const active = battle.sides[0].mon === mon;
+    if (active && oldLevel < MAX_LEVEL) {                    // AnimateExpBar: the bar fills to the end for every level gained, then to where the experience leaves it
+      for (let level = oldLevel; level < newLevel; level++) {
+        yield { expBar: { from: expPixels(mon.species, level, level === oldLevel ? before : expAtLevel(mon.species, level)), to: 64, first: level === oldLevel } };
+        yield { hudLevel: level + 1 };
+        yield battle.say('BattleText_StringBuffer1GrewToLevel', { wStringBuffer1: name, wCurPartyLevel: level + 1 });
+        yield { wait: FANFARE_FRAMES };
+      }
+      yield { expBar: { from: newLevel === oldLevel ? expPixels(mon.species, oldLevel, before) : 0, to: expPixels(mon.species, newLevel, mon.exp), first: newLevel === oldLevel, final: true } };
+    }
+    if (newLevel === oldLevel) continue;
     mon.level = newLevel;
     recalcStats(mon);
-    const active = battle.sides[0].mon === mon;
-    if (active) battle.refreshPlayerStats();
-    if (!active) yield battle.say('BattleText_StringBuffer1GrewToLevel', { wStringBuffer1: name, wCurPartyLevel: newLevel });
-    yield { levelUp: true, partyIndex: index, mon };
+    if (active) { yield { wait: BAR_TO_HUD_FRAMES }; battle.refreshPlayerStats(); yield { hudRefresh: true }; }
+    else {
+      yield battle.say('BattleText_StringBuffer1GrewToLevel', { wStringBuffer1: name, wCurPartyLevel: newLevel });
+      yield { wait: HIT_END_FRAMES };
+    }
+    yield { statBox: mon };
     for (let level = oldLevel + 1; level <= newLevel; level++) yield* learnLevelMoves(battle, mon, name, level);
   }
 }

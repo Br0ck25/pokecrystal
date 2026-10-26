@@ -82,6 +82,15 @@ if TRACE:
     b1, a1 = ref.sym['PlayBattleAnim']; ref.pb.hook_register(b1, a1, anim_start, None)
     b2, a2 = ref.sym['BattleAnimDelayFrame']; ref.pb.hook_register(b2, a2, anim_frame, None)
     b3, a3 = ref.sym['BattleAnimRunScript.done']; ref.pb.hook_register(b3, a3, anim_end, None)
+EVENTS = os.environ.get('ROM_EVENTS')              # symbols (comma separated): print the frame and registers each time the ROM reaches one
+if EVENTS:
+    def log_event(name):
+        def f(ctx):
+            r = ref.pb.register_file
+            print(f'  @{ref.pb.frame_count} {name} a={r.A} b={r.B} c={r.C} d={r.D} e={r.E} hl={r.HL:04x}')
+        return f
+    for name in EVENTS.split(','):
+        bk, ad = ref.sym[name]; ref.pb.hook_register(bk, ad, log_event(name), None)
 battle = {'started': False}
 bb, ba = ref.sym['BattleIntro']
 ref.pb.hook_register(bb, ba, lambda ctx: battle.__setitem__('started', True), None)
@@ -140,6 +149,7 @@ for s in steps:
             if i % 40 == s.get('phase', 0): ref.pb.button_press(s['mash'])
             elif i % 40 == (s.get('phase', 0) + 3) % 40: ref.pb.button_release(s['mash'])
         i = 0
+        if EVENTS: print('  mash starts at', ref.pb.frame_count)
         for label, f in sorted(s['shots'].items(), key=lambda kv: kv[1]):
             while i < f: tap_at(i); ref.tick(1); i += 1
             tap_at(i); roms[label] = ref.shot(); i += 1
