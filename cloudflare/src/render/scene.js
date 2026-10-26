@@ -55,6 +55,11 @@ export function describeScene(game) {
   });
   const hero = playerSprite(game.state);
   sprites.push(spriteEntry(game, hero, objectPaletteIndex({ sprite: hero, palette: '0' }), game.player));
+  // Every hop spawns a shadow that stays on the ground under the jumper (SpawnShadow, MovementFunction_Shadow: 14 pixels down, 12 for sideways hops)
+  const shadows = [game.player, ...game.visibleObjects()].filter((a) => a.step?.kind === 'walk' && a.step.jump).map((a) => {
+    const { x, y } = actorPixels(a);
+    return { x, y: y + SPRITE_Y_OFFSET + (a.facing === 'up' || a.facing === 'down' ? 14 : 12) };
+  });
   const wait = game.runner?.wait;
   let textbox = null;
   if (game.textboxOpen) {
@@ -68,11 +73,11 @@ export function describeScene(game) {
   }
   const yesno = wait?.kind === 'yesno' ? { cursor: wait.cursor, left: wait.x, top: 7, right: wait.x + 5, bottom: 11 } : null;
   const panels = [];                                                    // boxes of text drawn under the dialogue box
-  if (wait?.kind === 'naming') return { camera, sprites: [], panels: wait.screen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: game.fade, mapId: game.world.id };
+  if (wait?.kind === 'naming') return { camera, sprites: [], shadows: [], panels: wait.screen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: game.fade, mapId: game.world.id };
   if (game.menu) panels.push(startMenuView(game.state, game.menu.cursor, game.menu.hollow));
   if (game.savingInfo) panels.push(saveInfoView(game.state));
   const b = game.blackout;
   const black = b ? b.from + (b.to - b.from) * (b.frame / b.frames) : 0;       // 0 clear .. 1 black
   const sign = game.sign && game.sign.frame >= 2 ? game.sign.name : null;     // shown from the second frame for 60 frames
-  return { camera, sprites, panels, pokepic: game.pokepic, sign, textbox, yesno, black, fade: game.fade, mapId: game.world.id };
+  return { camera, sprites, shadows, panels, pokepic: game.pokepic, sign, textbox, yesno, black, fade: game.fade, mapId: game.world.id };
 }

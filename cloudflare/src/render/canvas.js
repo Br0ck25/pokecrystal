@@ -2,6 +2,7 @@
 import { TILESET_IMAGES, ROOFS } from '../generated/tileset-images.js';
 import { TILESETS } from '../generated/tilesets.js';
 import { SPRITES } from '../generated/sprites.js';
+import { JUMP_SHADOW } from '../generated/sprite-movement.js';
 import { FONT_PNG, FONT_EXTRA_PNG, FRAME_PNG, FONT_CODES, TEXT_PALETTE } from '../generated/font.js';
 import { mapBgPalettes, tilePaletteIndex } from '../maps/map-palettes.js';
 import { objectPaletteColors, recolorSprite, PALETTE_NAMES } from '../maps/object-sprites.js';
@@ -203,6 +204,21 @@ export class Renderer {
     c.putImageData(frame, 0, 0);
     this.sprites.set(key, canvas);
     return canvas;
+  }
+
+  /** The hop's shadow (gfx/overworld/shadow.png) in the EMOTE palette, two tiles wide, the right one mirrored. */
+  drawShadow(x, y) {
+    if (!this.shadow) {
+      const canvas = makeCanvas(16, 8), c = canvas.getContext('2d'), image = c.createImageData(16, 8);
+      const colors = objectPaletteColors(PALETTE_NAMES.indexOf('EMOTE'));
+      for (let i = 0; i < 64; i++) {
+        const shade = JUMP_SHADOW.charCodeAt(i) - 48, px = i % 8, py = Math.floor(i / 8);
+        if (shade) for (const column of [px, 15 - px]) image.data.set([...colors[shade], 255], (py * 16 + column) * 4);
+      }
+      c.putImageData(image, 0, 0);
+      this.shadow = canvas;
+    }
+    this.ctx.drawImage(this.shadow, x, y);
   }
 
   /** The naming screen's own tiles ('■' border, '→' empty slot, '<DOT>' underline) in a palette. */
@@ -412,6 +428,7 @@ export class Renderer {
         c.drawImage(this.metatile(world, world.blockIdAt(bx * 2, by * 2)), bx * 32 - camera.x, by * 32 - camera.y);
       }
     }
+    for (const s of scene.shadows) this.drawShadow(s.x - camera.x, s.y - camera.y);
     for (const s of scene.sprites) {
       const sheet = this.coloredSprite(s.sprite, s.paletteIndex);
       if (!sheet) continue;

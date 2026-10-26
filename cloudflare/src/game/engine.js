@@ -32,7 +32,7 @@ const upper = (d) => d.toUpperCase();
 export const STEP_FRAMES = 16;
 export const TURN_FRAMES = 8;
 /** Movement command speeds in frames per square (macros/scripts/movement.asm: slow, normal and big steps). */
-const MOVEMENT_FRAMES = { slow_step: 32, step: 16, big_step: 8, slow_jump_step: 32, jump_step: 16, fast_jump_step: 8 };
+const MOVEMENT_FRAMES = { slow_step: 32, step: 16, big_step: 8, slow_jump_step: 64, jump_step: 32, fast_jump_step: 16 };   // a jump covers two squares (JumpStep: StepFunction_*Jump lands on the second)
 export { TEXT_FRAMES_PER_CHAR };
 
 const LAND = 0;
@@ -173,10 +173,10 @@ export class Game {
 
   // ---- stepping -----------------------------------------------------------------------------------------------
 
-  startStep(actor, direction, { force = false, frames = STEP_FRAMES, jump = false, distance = 1, wander = false } = {}) {
+  startStep(actor, direction, { force = false, frames = STEP_FRAMES, jump = false, distance = jump ? 2 : 1, wander = false } = {}) {
     const d = DIRECTIONS[direction];
     if (!actor.fixedFacing) actor.facing = direction;     // fix_facing keeps the sprite turned while it moves
-    if (force && this.follow?.leader === actor) this.follow.steps.push(direction);
+    if (force && this.follow?.leader === actor) for (let i = 0; i < distance; i++) this.follow.steps.push(direction);
     actor.step = { kind: 'walk', fromX: actor.x, fromY: actor.y, toX: actor.x + d.dx * distance, toY: actor.y + d.dy * distance, frame: 0, frames, jump, force, distance, wander };
   }
 
@@ -320,10 +320,10 @@ export class Game {
       const warp = this.world.warps.find((w) => w.x === p.x && w.y === p.y);
       if (warp) { this.warp(warp); return; }
     }
-    // A ledge is hopped in one 32-frame arc, landing on the square beyond it.
-    const there = this.world.collisionAt(nx, ny);
-    if (isLedge(there) && LEDGE_DIRECTIONS[there & 7].includes(direction)) { this.startStep(p, direction, { frames: 2 * STEP_FRAMES, jump: true, distance: 2 }); return; }
-    if (this.canWalkTo(nx, ny)) this.startStep(p, direction);
+    if (this.canWalkTo(nx, ny)) { this.startStep(p, direction); return; }
+    // player_movement.asm .TryJump: standing on a ledge square, a step that failed becomes one 32-frame hop over the next square
+    const standing = this.world.collisionAt(p.x, p.y);
+    if (isLedge(standing) && LEDGE_DIRECTIONS[standing & 7].includes(direction)) this.startStep(p, direction, { frames: MOVEMENT_FRAMES.jump_step, jump: true });
   }
 
   // ---- interaction ----------------------------------------------------------------------------------------------
@@ -523,7 +523,7 @@ export class Game {
     for (const [command, direction] of steps) {
       const dir = direction?.toLowerCase();
       if (command === 'turn_head') { actor.facing = dir; continue; }
-      if (command in MOVEMENT_FRAMES) { actor.x += DIRECTIONS[dir].dx; actor.y += DIRECTIONS[dir].dy; actor.facing = dir; }
+      if (command in MOVEMENT_FRAMES) { const n = command.includes('jump') ? 2 : 1; actor.x += DIRECTIONS[dir].dx * n; actor.y += DIRECTIONS[dir].dy * n; actor.facing = dir; }
     }
   }
 

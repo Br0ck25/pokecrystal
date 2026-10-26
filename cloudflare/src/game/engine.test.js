@@ -143,23 +143,26 @@ test('the rival follows the player one step, is shoved out, and returns to his o
   assert.equal(g.runner, null);
   run(g, 60);
   assert.deepEqual([rival.x, rival.y], [3, 2]);
-  assert.deepEqual([g.player.x, g.player.y], [2, 4]);
+  assert.deepEqual([g.player.x, g.player.y], [2, 5]);                 // step 1 square, then jump_step covers 2 (the real game ends on 2,5)
 });
 
-test('a ledge is hopped in one 32-frame arc and lands two squares on', async () => {
-  const g = await newGame('ROUTE_38', 0, 0);
-  // find a ledge tile with walkable land on both sides in the facing direction
+test('a ledge square is walked onto; standing on it, pressing its direction hops over the wall in one 32-frame arc to the second square', async () => {
+  const g = await newGame('ROUTE_29', 0, 0);
+  const land = (x, y) => g.world.collisionAt(x, y) !== undefined && g.canWalkTo(x, y);
   let found = null;
-  for (let y = 1; y < 40 && !found; y++) for (let x = 1; x < 60 && !found; x++) {
-    const c = g.world.collisionAt(x, y);
-    if (c === 0xa3) found = [x, y];
+  for (let y = 1; y < g.world.height - 2 && !found; y++) for (let x = 0; x < g.world.width && !found; x++) {
+    if (g.world.collisionAt(x, y) === 0xa3 && land(x, y - 1) && !land(x, y + 1) && land(x, y + 2)) found = [x, y];     // COLL_HOP_DOWN with a wall below and floor beyond
   }
-  assert.ok(found, 'a south-facing ledge on Route 38');
+  assert.ok(found, 'a south-facing ledge on Route 29');
   g.player.x = found[0]; g.player.y = found[1] - 1; g.player.facing = 'down';
+  run(g, 1, { dir: 'down' });
+  assert.equal(g.player.step.distance, 1, 'onto the ledge square it is an ordinary step');
+  run(g, 16, { dir: null });
+  assert.deepEqual([g.player.x, g.player.y], found);
   run(g, 1, { dir: 'down' });
   assert.equal(g.player.step.distance, 2);
   run(g, 32, { dir: null });
-  assert.deepEqual([g.player.x, g.player.y], [found[0], found[1] + 1]);
+  assert.deepEqual([g.player.x, g.player.y], [found[0], found[1] + 2]);
 });
 
 const talkThrough = (g, limit = 6000) => {
