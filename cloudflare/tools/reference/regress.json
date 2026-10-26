@@ -122,6 +122,16 @@
         "stats2": 840,
         "stats3": 840
       }
+    },
+    {
+      "script": "move_screen",
+      "budgets": {
+        "mv1": 0,
+        "mv2": 82,
+        "mv3": 82,
+        "mv4": 82,
+        "mv5": 82
+      }
     }
   ]
 }

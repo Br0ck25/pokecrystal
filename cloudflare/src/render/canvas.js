@@ -319,6 +319,10 @@ export class Renderer {
     let x = tileX * 8;
     for (const character of tiles(text)) {
       if (NAMING_GLYPHS[character]) this.ctx.drawImage(this.namingGlyph(character, colors), x, tileY * 8);
+      else if (FONT_CODES[character] >= 0x79 && FONT_CODES[character] <= 0x7e) {   // the text box's border tiles, as strings use them
+        const n = FONT_CODES[character] - 0x79;
+        this.ctx.drawImage(this.frame, (n % 3) * 8, Math.floor(n / 3) * 8, 8, 8, x, tileY * 8, 8, 8);
+      }
       else if (character !== ' ') {
         const [sheet, index] = this.glyph(character, fonts);
         this.ctx.drawImage(sheet, (index % 16) * 8, Math.floor(index / 16) * 8, 8, 8, x, tileY * 8, 8, 8);

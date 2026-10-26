@@ -1,6 +1,6 @@
 // The party screen opened by START > POKéMON (engine/pokemon/party_menu.asm, mon_menu.asm, mon_submenu.asm):
 // one row per Pokémon with icon, nickname, level, HP bar and HP digits, the action submenu, and SWITCH.
-// The summary (STATS) is stats-screen.js; the MOVE and ITEM actions are not ported (reported through `unported`).
+// The summary (STATS) is stats-screen.js; the MOVE screen is move-screen.js (reported through `unported`).
 import { BATTLE_EXTRA, PARTY_MENU_BG, HELD_ITEM_ICONS } from '../generated/party-ui.js';
 import { PREDEF_PALETTES, MON_ICONS, ICON_OBJ_PALETTE } from '../generated/intro.js';
 import { POKEMON } from '../generated/pokemon.js';
@@ -8,6 +8,7 @@ import { MOVES } from '../generated/moves.js';
 import { directionRepeat } from './menu.js';
 import { StatsScreen } from './stats-screen.js';
 import { PackScreen } from './pack.js';
+import { MoveScreen } from './move-screen.js';
 import { ITEMS } from '../generated/items.js';
 import { SCRIPTS as TEXT } from '../generated/scripts/_text.js';
 import { renderText } from '../script/text.js';
@@ -72,6 +73,7 @@ export class PartyScreen {
     const rows = this.party.length + (this.phase === 'switch' || this.battle?.forced ? 0 : 1);
     if (this.talk) { this.updateTalk(input); return false; }
     if (this.pack) { this.updatePack(input); return false; }
+    if (this.moves) { if (this.moves.update(input)) { this.cursor = this.moves.index + 1; this.state.partyCursor = this.cursor; this.moves = null; } return false; }
     if (this.phase === 'itemmenu') return this.updateItemMenu(input);
     if (this.stats) { if (this.stats.update(input)) { this.cursor = this.stats.index + 1; this.state.partyCursor = this.cursor; this.stats = null; } return false; }
     if (this.message) { if (input.a || input.b) this.message = null; return false; }
@@ -116,6 +118,7 @@ export class PartyScreen {
     if (id === 'SWITCH' && this.party.length >= 2) { this.switchFrom = this.cursor; this.phase = 'switch'; return false; }
     this.phase = 'select';
     if (id === 'STATS') this.stats = new StatsScreen(this.state, this.cursor - 1);
+    else if (id === 'MOVE') this.moves = new MoveScreen(this.state, this.cursor - 1);
     else if (id === 'ITEM') { this.phase = 'itemmenu'; this.itemCursor = 0; }
     else if (id !== 'CANCEL' && id !== 'SWITCH') this.unported.add(`party: ${id}`);
     return false;
@@ -206,6 +209,7 @@ export class PartyScreen {
   /** Panels bottom first: tiles and texts in the party menu palette, the HP bars in their HP palette, icons, then boxes. */
   panels() {
     if (this.pack) return this.pack.panels();
+    if (this.moves) return this.moves.panels();
     if (this.stats) return this.stats.panels();
     if (this.frame <= BLANK_FRAMES) return [{ colors: PARTY_MENU_BG, fill: 0 }];
     const n = this.party.length, text = [], tiles = [], out = [];
