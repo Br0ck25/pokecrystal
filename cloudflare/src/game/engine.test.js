@@ -193,3 +193,13 @@ test('a fruit tree gives its fruit once a day', async () => {
   assert.equal(g.state.items.BERRY, 1);
   assert.ok(seen.some((t) => /nothing here/.test(t)), seen.join('|'));
 });
+
+test('music and cry commands never open the Pokémon picture box', async () => {
+  const g = await newGame('NEW_BARK_TOWN', 5, 8);
+  for (const name of ['playmusic', 'musicfadeout', 'cry']) g.applyEffect({ name, args: ['MUSIC_X'] }, { instant: false });
+  assert.equal(g.pokepic, null);
+  g.applyEffect({ name: 'pokepic', args: ['CYNDAQUIL'] }, { instant: false });
+  assert.equal(g.pokepic, 'CYNDAQUIL');
+  g.applyEffect({ name: 'closepokepic', args: [] }, { instant: false });
+  assert.equal(g.pokepic, null);
+});

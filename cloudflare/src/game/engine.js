@@ -555,7 +555,7 @@ export class Game {
         const left = (this.sfxUntil ?? 0) - this.frame;
         return instant || left <= 0 ? undefined : { wait: { kind: 'frames', left } };
       }
-      case 'playmusic': case 'musicfadeout': case 'cry':
+      case 'playmusic': case 'musicfadeout': case 'cry': return undefined;                 // audio is not ported yet
       case 'pokepic': this.pokepic = args[0] === 'USE_SCRIPT_VAR' ? String(this.state.scriptVar) : args[0]; return undefined;   // engine/events/pokepic.asm
       case 'closepokepic': this.pokepic = null; return undefined;
       case 'reanchormap': case 'addcellnum': case 'itemnotify':

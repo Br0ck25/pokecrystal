@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#263e4b">
   <title>Pokémon Crystal</title>
   <style>
@@ -19,7 +19,7 @@
       --blue-edge: #3d4d8b;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; width: 100%; min-height: 100%; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
     body {
       min-height: 100dvh;
       padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
@@ -30,35 +30,36 @@
       background: radial-gradient(ellipse at 50% 20%, #273b45 0%, #11191f 72%);
     }
     main {
-      width: min(100%, 560px);
+      container-type: inline-size;
+      width: min(calc(100vw - 16px), calc((100dvh - 16px) / 1.52), 560px);
       max-height: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: clamp(8px, 1.5dvh, 14px);
+      gap: 1.5dvh;
     }
     .device {
       width: 100%;
-      padding: clamp(10px, 3vw, 20px);
+      padding: 4cqw;
       border: 2px solid #506c7a;
       border-right-color: #203741;
       border-bottom-color: #203741;
-      border-radius: clamp(20px, 5vw, 32px);
+      border-radius: 6cqw;
       background: linear-gradient(145deg, #496575, var(--shell) 45%, #2b4653);
       box-shadow: 0 8px 0 var(--shell-edge), 0 18px 34px #0007, inset 0 1px 0 #ffffff22;
     }
     .screen-bezel {
-      padding: clamp(7px, 2vw, 12px);
+      padding: 2.4cqw;
       border: 2px solid #17252d;
       border-radius: 12px 12px 18px 18px;
       background: #10191e;
       box-shadow: inset 0 2px 5px #000b;
     }
     .screen-label {
-      margin: 0 0 7px;
+      margin: 0 0 1.6cqw;
       color: #9db5c0;
       text-align: center;
-      font-size: 10px;
+      font-size: 2.6cqw;
       font-weight: 800;
       letter-spacing: .22em;
       text-transform: uppercase;
@@ -86,7 +87,7 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       align-items: center;
-      gap: clamp(12px, 5vw, 28px);
+      gap: 5cqw;
       padding: 5px 2px 0;
       touch-action: none;
       user-select: none;
@@ -94,8 +95,8 @@
     }
     .dpad {
       display: grid;
-      grid-template-columns: repeat(3, clamp(38px, 11vw, 54px));
-      grid-template-rows: repeat(3, clamp(38px, 11vw, 54px));
+      grid-template-columns: repeat(3, 11cqw);
+      grid-template-rows: repeat(3, 11cqw);
       justify-content: center;
       align-content: center;
       filter: drop-shadow(0 3px 0 #1b3039);
@@ -108,7 +109,7 @@
       border-radius: 5px;
       background: linear-gradient(145deg, #27323a, #111a20);
       color: #dfe8eb;
-      font-size: clamp(19px, 5vw, 25px);
+      font-size: 5cqw;
       font-weight: 800;
       touch-action: none;
     }
@@ -117,17 +118,17 @@
     .dpad .down { grid-column: 2; grid-row: 3; border-radius: 2px 2px 6px 6px; }
     .dpad .right { grid-column: 3; grid-row: 2; border-radius: 2px 6px 6px 2px; }
     .dpad .center { grid-column: 2; grid-row: 2; background: #111a20; }
-    .action-area { display: flex; justify-content: center; align-items: center; gap: clamp(10px, 3vw, 18px); transform: rotate(-16deg); }
+    .action-area { display: flex; justify-content: center; align-items: center; gap: 3cqw; transform: rotate(-16deg); }
     .action {
-      width: clamp(52px, 15vw, 68px);
-      height: clamp(52px, 15vw, 68px);
+      width: 15cqw;
+      height: 15cqw;
       padding: 0;
       border: 2px solid #ffffff44;
       border-right-color: #0005;
       border-bottom-color: #0006;
       border-radius: 50%;
       color: #fff;
-      font-size: clamp(19px, 5vw, 25px);
+      font-size: 5cqw;
       font-weight: 900;
       box-shadow: inset 0 2px 2px #ffffff30, 0 4px 0 #1b3039;
       touch-action: manipulation;
@@ -135,50 +136,14 @@
     .action[data-action="a"] { background: linear-gradient(145deg, #ed8bb3, var(--pink)); box-shadow: inset 0 2px 2px #ffffff40, 0 4px 0 var(--pink-edge); }
     .action[data-action="b"] { background: linear-gradient(145deg, #8e9fe9, var(--blue)); box-shadow: inset 0 2px 2px #ffffff40, 0 4px 0 var(--blue-edge); }
     button:active { filter: brightness(1.2); transform: translateY(2px); }
-    .system-keys { display: flex; justify-content: center; gap: 16px; padding-top: 8px; }
-    .system-keys button {
-      width: 48px; height: 13px; padding: 0; border: 1px solid #14242c; border-radius: 10px;
+    .bottom-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 6px 0 12cqw; }
+    .system-keys, .save-keys { display: flex; gap: 14px; }
+    .system-keys button, .save-keys button {
+      width: 11cqw; height: 3cqw; padding: 0; border: 1px solid #14242c; border-radius: 10px;
       background: #1a2b34; box-shadow: inset 0 1px 2px #0008; transform: rotate(-18deg);
     }
-    .system-keys span { display: block; margin-top: 17px; color: #a6bdc7; font-size: 8px; font-weight: 800; letter-spacing: .12em; text-align: center; }
-    .save-tools { display: flex; gap: 8px; }
-    .save-tools button { padding: 6px 12px; border: 1px solid #506c7a; border-radius: 6px; background: #1a2b34; color: #d5e2e8; font: inherit; font-size: 12px; cursor: pointer; }
-    #status {
-      width: 100%;
-      min-height: 2.6em;
-      padding: 10px 12px;
-      border: 2px solid #263c48;
-      border-radius: 8px;
-      background: #f5f4e9;
-      color: #17232a;
-      white-space: pre-line;
-      overflow-wrap: anywhere;
-      line-height: 1.35;
-      font-size: 14px;
-      font-weight: 650;
-    }
-    #status[data-kind="hint"] { background: #e4ebd6; }
-    @media (max-height: 820px) and (orientation: portrait) {
-      body { align-items: flex-start; }
-      main { gap: 7px; }
-      .device { padding: 10px; }
-      .screen-bezel { padding: 6px; }
-      .controls-row { padding-top: 1px; }
-      .dpad { grid-template-columns: repeat(3, clamp(34px, 9vw, 44px)); grid-template-rows: repeat(3, clamp(34px, 9vw, 44px)); }
-      .action { width: clamp(46px, 12vw, 56px); height: clamp(46px, 12vw, 56px); }
-      .system-keys { padding-top: 4px; }
-      .system-keys span { margin-top: 13px; }
-      #status { min-height: 2em; padding: 7px 9px; font-size: 12px; }
-    }
-    @media (max-height: 720px) and (orientation: landscape) {
-      body { align-items: flex-start; }
-      main { width: min(58vw, 560px); }
-      .device { padding: 8px; }
-      .controls-row { gap: 8px; }
-      .dpad { grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 34px); }
-      .action { width: 46px; height: 46px; }
-      #status { font-size: 12px; min-height: 2em; padding: 6px 8px; }
-    }
+    .system-keys span, .save-keys span { display: block; margin-top: 4cqw; color: #a6bdc7; font-size: 2.2cqw; font-weight: 800; letter-spacing: .12em; text-align: center; }
+    #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -203,17 +168,19 @@
           <button class="action" type="button" data-action="a" aria-label="A button: interact or confirm">A</button>
         </div>
       </div>
+      <div class="bottom-row">
       <div class="system-keys">
         <div><button type="button" data-action="select" aria-label="Select"></button><span>SELECT</span></div>
         <div><button type="button" data-action="start" aria-label="Start: open the menu"></button><span>START</span></div>
       </div>
+      <div class="save-keys">
+        <div><button type="button" id="export-save" aria-label="Export save file"></button><span>EXPORT</span></div>
+        <div><button type="button" id="import-save" aria-label="Import save file"></button><span>IMPORT</span></div>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+      </div>
     </section>
     <div id="status" role="status" aria-live="polite">Loading…</div>
-    <div class="save-tools">
-      <button type="button" id="export-save">Export save</button>
-      <button type="button" id="import-save">Import save</button>
-      <input type="file" id="import-file" accept=".json,application/json" hidden>
-    </div>
   </main>
   <script>
     window.addEventListener("error", function (event) {
