@@ -25,3 +25,7 @@ Done: `src/battle/damage.js` (DamageStats, DamageCalc, Critical, Stab with weath
 
 ## To investigate
 - `tools/reference/damage/verify.mjs` leaves 3 of 67 ROM hits unexplained: a MAROWAK loses exactly 10 HP (wCurDamage 10, wTypeModifier 10, no STAB) while the enemy move shown is Tackle/Splash. Record the status and substatus bits at the event to see if it is a confusion hit or a harness mix-up.
+
+## Status (UI)
+- `src/battle/screen.js` shows a wild battle (HUDs, text box, FIGHT/RUN menu, move list) driven by `Battle.run()`; `Game.startWildBattle` opens it and `wild.js` + `Game.checkWildEncounter` trigger it on grass. `?battle=SPECIES:LEVEL&mon=SPECIES:LEVEL` opens one directly (tools).
+- Not ported: transition, sliding intro, send-out/faint animations, move animations, exp bar animation, PKMN/PACK menus, blackout after losing, layout checks against the ROM (compare with `tools/reference/damage/shots_probe.py` screenshots).

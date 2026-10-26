@@ -58,6 +58,8 @@ export class Battle {
     this.failedMessage = 0;
     this.effectFailed = false;
     this.alreadyFailed = false;
+    this.fleeAttempts = 0;
+    this.skipPlayerTurn = false;
   }
 
   get user() { return this.sides[this.turn]; }
@@ -85,22 +87,26 @@ export class Battle {
   // ---- the whole battle ---------------------------------------------------------------------------------------
   *run() {
     yield { wait: 40 };
+    yield { text: [['text', `Go! ${this.sides[0].name}!`], ['done']] };        // SendOutMonText: the enemy is at full health
     for (;;) {
       this.sides.forEach((s) => { s.sub.flinched = false; });
       this.curDamage = 0;
+      this.skipPlayerTurn = false;
       const choice = yield { ask: 'action' };
       if (choice.action === 'run') {
         const ran = yield* this.tryRun();
-        if (ran) return { result: 'ran' };
-      } else this.pickPlayerMove(choice.slot);
+        if (ran === 'escaped') return { result: 'ran' };
+        if (ran === 'menu') continue;
+        this.skipPlayerTurn = true;
+      } else { this.fleeAttempts = 0; this.pickPlayerMove(choice.slot); }
       this.pickEnemyMove();
-      const order = this.playerFirst() ? [0, 1] : [1, 0];
+      const order = this.skipPlayerTurn ? [0, 1] : this.playerFirst() ? [0, 1] : [1, 0];
       this.enemyGoesFirst = order[0] === 1;
       for (const t of order) {
         if (this.sides[0].hp === 0 || this.sides[1].hp === 0) break;
         if (t === 1 && (yield* this.tryEnemyFlee())) return { result: 'fled' };
         this.turn = t;
-        yield* this.doTurn();
+        if (!(t === 0 && this.skipPlayerTurn)) yield* this.doTurn();
         if (this.sides[1].hp === 0 || this.sides[0].hp === 0) break;
         yield* this.residual(t);
         if (this.sides[t].hp === 0) break;
@@ -154,8 +160,29 @@ export class Battle {
     return this.random() <= percent(50);
   }
 
-  *tryRun() { throw new Error('unported: running away'); }
-  *tryEnemyFlee() { return false; }
+  /** TryToRunAwayFromBattle for a wild battle (no Smoke Ball): 'escaped', 'lostTurn' (the enemy acts) or 'menu' (back to the menu). */
+  *tryRun() {
+    const [p, e] = this.sides;
+    if (!this.wild) { yield this.say('BattleText_TheresNoEscapeFromTrainerBattle'); return 'menu'; }
+    if (e.sub.cantRun || p.wrapCount) { yield this.say('BattleText_CantEscape'); return 'menu'; }
+    this.fleeAttempts++;
+    let escaped = p.stats.spd >= e.stats.spd;
+    if (!escaped) {
+      const divisor = (e.stats.spd >> 2) & 0xff;
+      const quotient = divisor ? Math.floor((p.stats.spd * 32) / divisor) : 0;
+      if (!divisor || quotient > 0xff) escaped = true;
+      else {
+        let odds = quotient;
+        for (let c = this.fleeAttempts - 1; c > 0 && !escaped; c--) { odds += 30; if (odds > 0xff) escaped = true; }
+        if (!escaped) escaped = odds >= this.random();
+      }
+    }
+    if (!escaped) { yield this.say('BattleText_CantEscape2'); return 'lostTurn'; }
+    yield this.say('BattleText_GotAwaySafely');
+    return 'escaped';
+  }
+
+  *tryEnemyFlee() { return false; }                  // TryEnemyFlee: only the flee lists of data/wild/flee_mons.asm; not ported
 
   // ---- one Pokémon's turn --------------------------------------------------------------------------------------
   *doTurn() {

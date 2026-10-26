@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game, STEP_FRAMES, TURN_FRAMES } from './engine.js';
+import { createMon } from '../script/mon.js';
 
 const newGame = async (mapId, x, y, facing = 'down') => { const g = new Game({ mapId, x, y, facing }); await g.ready; return g; };
 const run = (g, frames, input = {}) => { for (let i = 0; i < frames; i++) g.update(input); };
@@ -314,4 +315,23 @@ test('PACK: pockets list in the order received, left/right switches pockets, TOS
   for (let i = 0; i < 400 && pack.phase === 'text'; i++) run(g, 1, { a: i % 2 === 0 });
   run(g, 1, { b: true });
   assert.equal(g.packScreen, null);
+});
+
+test('wild encounters: none without a Pokémon, five steps of cooldown, then a battle starts on grass', async () => {
+  const g = await newGame('ROUTE_29', 31, 7, 'right');
+  g.randomByte = () => 0;                                       // the roll always succeeds and picks the first slot
+  const walk = (dir) => {                                       // one square: a turn needs an extra press
+    const x = g.player.x;
+    for (let i = 0; i < 3 && g.player.x === x; i++) { run(g, 1, { dir }); while (g.player.step) run(g, 1, { dir: null }); run(g, 8, { dir: null }); }
+  };
+  walk('right'); walk('left'); walk('right'); walk('left');
+  assert.equal(g.battleScreen, null, 'no Pokémon in the party yet');
+  g.state.party = [createMon({ species: 'CHIKORITA', level: 5, dvs: [155, 31], id: 1 })];
+  g.wildCooldown = 5;
+  for (let i = 0; i < 2; i++) { walk('right'); walk('left'); }
+  assert.equal(g.battleScreen, null, 'the cooldown has not run out');
+  walk('right');
+  for (let i = 0; i < 100 && !g.battleScreen; i++) await new Promise((r) => setTimeout(r, 10));
+  assert.ok(g.battleScreen, 'a battle started');
+  assert.equal(g.battleScreen.battle.sides[1].species, 'PIDGEY');
 });

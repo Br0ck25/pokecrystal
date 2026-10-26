@@ -8,6 +8,7 @@ import { integerRenderScale } from './src/maps/viewport.js';
 import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT } from './src/maps/viewport.js';
 import { normalizeKey, getButtonAction } from './src/maps/input-bindings.js';
 import { MAPS } from './src/generated/maps.js';
+import { createMon } from './src/script/mon.js';
 
 const canvas = document.querySelector('#map');
 const status = document.querySelector('#status');
@@ -119,6 +120,11 @@ async function start() {
     if (Number.isInteger(x) && Number.isInteger(y)) await game.enterMap(map, x, y, query.get('facing') ?? 'down');
   }
   await renderer.prepare(game.world);
+  if (query.get('battle')) {                // audit hook: ?battle=SPECIES:LEVEL[&mon=SPECIES:LEVEL] starts a wild battle (tools/reference/damage)
+    if (query.get('mon')) { const [species, level] = query.get('mon').split(':'); game.state.party = [createMon({ species, level: Number(level), dvs: [0xab, 0xcd], id: game.state.playerId })]; }
+    const [species, level] = query.get('battle').split(':');
+    await game.startWildBattle({ species, level: Number(level) });
+  }
   status.textContent = HINT;
   status.dataset.kind = 'hint';
   requestAnimationFrame(loop);

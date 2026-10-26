@@ -43,3 +43,13 @@ test('winning gives experience, stat experience and a level up with the moves of
   assert.equal(player.level, 8);
   assert.ok(player.moves.includes('RAZOR_LEAF'));
 });
+
+test('running: a faster Pokémon always gets away, a slower one may fail and lose its turn', () => {
+  const fast = createMon({ species: 'PIDGEY', level: 20, dvs: [0xff, 0xff], id: 1 });
+  const slow = createMon({ species: 'SNORLAX', level: 5, dvs: [0, 0], id: 1 });
+  const wildMon = createMon({ species: 'RATTATA', level: 10, dvs: [0xff, 0xff] });
+  const run1 = (player, random) => { const b = new Battle({ player: [player], enemy: wildMon, random }); const g = b.run(); let r = g.next(); while (!r.value.ask) r = g.next(); const events = []; r = g.next({ action: 'run' }); while (!r.done && !r.value.ask) { events.push(r.value); r = g.next(); } return { r, events }; };
+  assert.equal(run1(fast, () => 253).r.done, true);
+  const failed = run1(slow, () => 253);
+  assert.ok(texts(failed.events).some((t) => /Can't escape!/.test(t)));
+});

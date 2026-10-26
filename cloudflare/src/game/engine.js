@@ -13,6 +13,10 @@ import { NamingScreen } from './naming.js';
 import { OptionsScreen, options, TEXT_DELAYS } from './options.js';
 import { PackScreen } from './pack.js';
 import { PartyScreen } from './party.js';
+import { Battle } from '../battle/battle.js';
+import { BattleScreen } from '../battle/screen.js';
+import { createMon } from '../script/mon.js';
+import { wildEncounter } from '../battle/wild.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
 import { stepNpc, endNpcWalk, LOOP_FRAMES } from './npc-ai.js';
@@ -43,6 +47,8 @@ const TALK = 0x10;
 // player_movement.asm .TryJump: ledge tiles ($a0-$a7) can be hopped when moving in one of the directions listed (HOP_RIGHT, LEFT, UP, DOWN, then the diagonals).
 const LEDGE_DIRECTIONS = [['right'], ['left'], ['up'], ['down'], ['right', 'down'], ['down', 'left'], ['up', 'right'], ['up', 'left']];
 // home/map_objects.asm CheckSuperTallGrassTile and CheckGrassTile: tiles whose grass hides the lower body of whoever stands in them
+// tile_events.asm CheckGrassCollision (water tiles are left out: surfing is not ported)
+const ENCOUNTER_TILES = new Set([0x08, 0x18, 0x14, 0x28, 0x48, 0x49, 0x4a, 0x4b, 0x4c]);
 const isGrass = (c) => c === 0x14 || c === 0x1c || (((c & 0xf0) === 0x10 || (c & 0xf0) === 0x20) && (c & 7) === 0);
 const isLedge = (c) => (c & 0xf0) === 0xa0 && LEDGE_DIRECTIONS[c & 7].length > 0;
 const warpTile = (c) => c === COLLISION_VALUES.PIT || c === COLLISION_VALUES.PIT_68 || (c & 0xf0) === 0x70;
@@ -58,6 +64,8 @@ export class Game {
     this.partyScreen = null;          // the party screen, opened from the start menu
     this.packScreen = null;           // the PACK screen, opened from the start menu
     this.optionScreen = null;         // the OPTION screen, opened from the start menu
+    this.battleScreen = null;         // a battle in progress (src/battle/screen.js)
+    this.wildCooldown = 5;            // wWildEncounterCooldown: SetUpFiveStepWildEncounterCooldown on entering a map
     this.menu = null;                 // the open start menu: { cursor, lastDir, repeat }
     this.randomByte = () => Math.floor(Math.random() * 256);     // Random; tests replace it
     this.menuCursor = 0;              // wBattleMenuCursorPosition
@@ -91,6 +99,7 @@ export class Game {
     this.loading = true;
     const world = loadWorld(mapId);
     this.ctx = await createScriptContext(world.name, this.state);
+    this.wildCooldown = 5;
     this.world = world;
     this.tileAnim = new TileAnimator(world.tileset);
     this.failedScripts = new Set();
@@ -248,6 +257,7 @@ export class Game {
     this.updateActor(this.player);
     // objects act on their own between scripts and menus (the loop that runs them does not run while text is waiting)
     if (!this.runner && !this.menu && this.frame % LOOP_FRAMES === 0) for (const object of this.visibleObjects()) stepNpc(this, object, this.randomByte);
+    if (this.battleScreen) { this.updateBattle(input); return; }
     if (this.runner) { this.updateRunner(input); return; }
     if (this.partyScreen) { if (this.partyScreen.update(input)) { for (const u of this.partyScreen.unported) this.unported.add(u); this.partyScreen = null; } return; }
     if (this.packScreen) { if (this.packScreen.update(input)) { for (const u of this.packScreen.unported) this.unported.add(u); this.packScreen = null; } return; }
@@ -255,6 +265,32 @@ export class Game {
     if (this.menu) { this.updateMenu(input); return; }
     if (this.player.step) return;
     this.idleEvents(input);
+  }
+
+  /** BattleStart for a wild Pokémon: load the pictures, then the battle screen takes over until it reports a result. */
+  async startWildBattle({ species, level }) {
+    this.loading = true;
+    const dvs = [this.randomByte(), this.randomByte()];
+    const enemy = createMon({ species, level, dvs, id: 0 });
+    const lead = this.state.party.find((m) => m.hp > 0);
+    const gender = this.state.playerGender === 'FEMALE' ? 'KRIS' : 'CHRIS';
+    const [front, back] = await Promise.all([import(`../generated/pokemon/${species}.js`), import(`../generated/trainers/${gender}.js`)]);
+    const tiles = front.PIC.size / 8;
+    const pics = {
+      enemy: { size: front.PIC.size, pixels: front.PIC.front, palette: front.PIC.palette, offX: tiles < 7 ? 1 : 0, offY: 7 - tiles },
+      player: { size: 48, pixels: back.PIC.back, palette: back.PIC.palette },
+    };
+    const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: 0 });
+    const name = POKEMON[species].name;
+    this.battleScreen = new BattleScreen({ battle, pics, intro: [['text', 'Wild '], ['text', name], ['line', 'appeared!'], ['prompt']], lead });
+    this.loading = false;
+  }
+
+  updateBattle(input) {
+    const result = this.battleScreen.update({ ...input, delay: TEXT_DELAYS[options(this.state).textSpeed] });
+    if (!result) return;
+    for (const u of this.battleScreen.unported) this.unported.add(u);
+    this.battleScreen = null;
   }
 
   /** Advance an actor's step and start the next scripted movement from its queue (turns are instant). */
@@ -307,7 +343,22 @@ export class Game {
     const scene = this.sceneName();
     const event = this.world.coordEvents.find((c) => c.x === x && c.y === y && (c.scene === '-1' || c.scene === scene));
     if (event) { this.startScript(event.script, { caller: null }); return true; }
-    return false;
+    return this.checkWildEncounter();
+  }
+
+  /** events.asm RandomEncounter: five steps of cooldown after entering a map, then a roll per step on grass (or anywhere in caves). */
+  checkWildEncounter() {
+    if (!this.state.party?.length) return false;                // STATUSFLAGS_NO_WILD_ENCOUNTERS holds until the first Pokémon
+    if (this.wildCooldown > 0 && --this.wildCooldown > 0) return false;
+    const { x, y } = this.player, environment = this.world.environment;
+    if (environment !== 'CAVE' && environment !== 'DUNGEON' && !ENCOUNTER_TILES.has(this.world.collisionAt(x, y))) return false;
+    const found = wildEncounter({
+      map: this.world.id, timeOfDay: ['MORN', 'DAY', 'NITE'].indexOf(this.state.timeOfDay), party: this.state.party,
+      repelSteps: this.state.repelSteps ?? 0, random: this.randomByte,
+    });
+    if (!found) return false;
+    this.startWildBattle(found).catch((e) => { throw e; });
+    return true;
   }
 
   sceneName() {
