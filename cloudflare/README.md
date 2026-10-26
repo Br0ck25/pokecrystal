@@ -1,7 +1,7 @@
 # Pokémon Crystal browser port — agent guide
 
 Browser-native JS port of the disassembly in this repo. Rules: `../AGENTS.md` (mandatory) and `../CLAUDE.md`. No build step; Pages serves
-this folder. Node 22, no packages. Status: title screen → main menu → new game → room → Mom → town → Elm's Lab runs on the real scripts; START menu with SAVE, OPTION, PACK and the party screen; save/export/import.
+this folder. Node 22, no packages. Status: title screen → main menu → new game → room → Mom → town → Elm's Lab runs on the real scripts; START menu with SAVE, OPTION, PACK, STATUS (trainer card) and the party screen; save/export/import.
 
 ## Commands (run in `cloudflare/`)
 - `npm test` — quiet (dots; failures print). `npm run extract` — regenerate `src/generated/` (a test fails if stale).

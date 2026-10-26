@@ -282,13 +282,13 @@ export class Renderer {
   }
 
   /** One 8x8 background tile given as 64 palette-index digits and its four 5-bit colors. */
-  drawTile(x, y, pixels, colors) {
-    const key = `${pixels}|${colors}`;
+  drawTile(x, y, pixels, colors, transparent = false) {
+    const key = `${pixels}|${colors}|${transparent}`;
     let canvas = this.glyphs.get(key);
     if (!canvas) {
       canvas = makeCanvas(8, 8);
       const c = canvas.getContext('2d'), image = c.createImageData(8, 8);
-      for (let i = 0; i < 64; i++) image.data.set([...colors[pixels.charCodeAt(i) - 48].map(to8), 255], i * 4);
+      for (let i = 0; i < 64; i++) image.data.set([...colors[pixels.charCodeAt(i) - 48].map(to8), transparent && pixels[i] === '0' ? 0 : 255], i * 4);
       c.putImageData(image, 0, 0);
       this.glyphs.set(key, canvas);
     }
@@ -350,7 +350,7 @@ export class Renderer {
       const theme = colors === textColors ? { colors, fonts: [this.font, this.fontExtra], frame: this.frame } : this.theme(colors);
       if (panel.fill !== undefined) { c.fillStyle = `rgb(${colors[panel.fill === true ? 0 : panel.fill]})`; c.fillRect(0, 0, W, H); }
       for (const [x, y, w, h] of [panel.clear, ...(panel.clears ?? [])].filter(Boolean)) { c.fillStyle = `rgb(${colors[0]})`; c.fillRect(x * 8, y * 8, w * 8, h * 8); }
-      for (const [x, y, pixels, tileColors] of panel.tiles ?? []) this.drawTile(x, y, pixels, tileColors);
+      for (const [x, y, pixels, tileColors, transparent] of panel.tiles ?? []) this.drawTile(x, y, pixels, tileColors, transparent);
       if (panel.box) this.drawBox(...panel.box, colors, theme.frame);
       if (panel.pic) this.drawPic(panel.pic, bgp);
       for (const [x, y, text] of panel.texts ?? []) this.drawText(text, x, y, theme.fonts, colors);

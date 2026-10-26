@@ -13,6 +13,7 @@ import { NamingScreen } from './naming.js';
 import { OptionsScreen, options, TEXT_DELAYS } from './options.js';
 import { PackScreen } from './pack.js';
 import { PartyScreen } from './party.js';
+import { TrainerCardScreen } from './trainer-card.js';
 import { Battle } from '../battle/battle.js';
 import { BattleScreen } from '../battle/screen.js';
 import { createMon, healParty } from '../script/mon.js';
@@ -71,6 +72,7 @@ export class Game {
     this.partyScreen = null;          // the party screen, opened from the start menu
     this.packScreen = null;           // the PACK screen, opened from the start menu
     this.optionScreen = null;         // the OPTION screen, opened from the start menu
+    this.cardScreen = null;           // the trainer card (STATUS)
     this.battleScreen = null;         // a battle in progress (src/battle/screen.js)
     this.wildCooldown = 5;            // wWildEncounterCooldown: SetUpFiveStepWildEncounterCooldown on entering a map
     this.menu = null;                 // the open start menu: { cursor, lastDir, repeat }
@@ -269,6 +271,7 @@ export class Game {
     if (this.partyScreen) { if (this.partyScreen.update(input)) { for (const u of this.partyScreen.unported) this.unported.add(u); this.partyScreen = null; } return; }
     if (this.packScreen) { if (this.packScreen.update(input)) { for (const u of this.packScreen.unported) this.unported.add(u); this.packScreen = null; } return; }
     if (this.optionScreen) { if (this.optionScreen.update(input)) this.optionScreen = null; return; }
+    if (this.cardScreen) { if (this.cardScreen.update(input)) this.cardScreen = null; return; }
     if (this.menu) { this.updateMenu(input); return; }
     if (this.player.step) return;
     this.idleEvents(input);
@@ -613,6 +616,7 @@ export class Game {
     else if (item === 'SAVE') this.startSave();
     else if (item === 'POKEMON') this.partyScreen = new PartyScreen(this.state);
     else if (item === 'PACK') this.packScreen = new PackScreen(this.state);
+    else if (item === 'STATUS') this.cardScreen = new TrainerCardScreen(this.state);
     else if (item === 'OPTION') this.optionScreen = new OptionsScreen(options(this.state));
     else this.unported.add(`start menu ${item}`);
   }

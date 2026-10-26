@@ -17,6 +17,7 @@ const fs = require('fs');
         for (const pair of e.scene.split(',').filter(Boolean)) { const [n, i] = pair.split(':'); g.state.scenes[n] = Number(i); }
         for (const f of e.clearFlags) g.state.flags.delete(f);
         for (const f of e.flags) g.state.flags.add(f);
+        if (e.playerId !== undefined) g.state.playerId = e.playerId;                // the ROM's trainer ID (the trainer card shows it)
         Object.assign(g.state.items, e.items ?? {});                              // bag contents, in order
         for (const f of e.engine ?? []) g.state.engineFlags.add(f);          // e.g. ENGINE_POKEGEAR, ENGINE_POKEDEX
         if (e.party?.length) {                                                       // [{ species, level, dvs }]

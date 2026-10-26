@@ -105,6 +105,15 @@
         "party_a": 0,
         "party_a2": 150
       }
+    },
+    {
+      "script": "trainer_card",
+      "budgets": {
+        "menu": 0,
+        "card1": 0,
+        "card2": 0,
+        "card2b": 0
+      }
     }
   ]
 }
