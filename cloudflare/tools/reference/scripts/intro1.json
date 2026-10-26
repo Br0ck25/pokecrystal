@@ -1,0 +1,4 @@
+{"steps": [
+ {"press": "a"}, {"wait": 50}, {"shot": "menu"},
+ {"press": "a"}, {"wait": 0}, {"shot": "n0"}, {"wait": 10}, {"shot": "n10"}, {"wait": 20}, {"shot": "n30"}, {"wait": 40}, {"shot": "n70"}, {"wait": 60}, {"shot": "n130"}
+]}

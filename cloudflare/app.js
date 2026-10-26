@@ -2,6 +2,7 @@
 import { Game } from './src/game/engine.js';
 import { browserSaveStore, parseSave } from './src/game/save.js';
 import { Intro } from './src/game/intro.js';
+import { NewGame } from './src/game/new-game.js';
 import { Renderer } from './src/render/canvas.js';
 import { integerRenderScale } from './src/maps/viewport.js';
 import { GBC_VIEWPORT_WIDTH, GBC_VIEWPORT_HEIGHT } from './src/maps/viewport.js';
@@ -77,9 +78,9 @@ let game = null;
 let starting = false;
 const HINT = 'Move with the arrow keys or WASD. A: Z, E or Space. B: X or Escape. START: Enter (menu, save). SELECT: Shift.';
 
-function newGame() {
-  const g = new Game({ mapId: 'PLAYERS_HOUSE_2F', x: 3, y: 3, facing: 'down', saveStore });
-  g.state.playerId = Math.floor(Math.random() * 0x10000);   // wPlayerID: told apart from another save file when saving
+function newGame(state) {
+  const g = new Game({ mapId: 'PLAYERS_HOUSE_2F', x: 3, y: 3, facing: 'down', saveStore, ...(state ? { state } : {}) });
+  g.state.playerId ??= Math.floor(Math.random() * 0x10000);   // wPlayerID: told apart from another save file when saving
   if (query.get('name')) g.state.playerName = query.get('name').toUpperCase().slice(0, 7);   // naming screen is not ported
   return g;
 }
@@ -87,7 +88,7 @@ function newGame() {
 /** Leave the main menu: `{ start: 'new' }` or `{ start: 'continue', save }` from intro.update. */
 async function beginGame(choice) {
   starting = true;
-  game = choice.start === 'continue' ? Game.fromSave(choice.save, { saveStore }) : newGame();
+  game = choice.start === 'continue' ? Game.fromSave(choice.save, { saveStore }) : newGame(choice.state);
   window.game = game;                     // for tools and debugging
   await game.ready;
   await renderer.prepare(game.world);
@@ -159,7 +160,17 @@ let manual = query.get('manual') === '1';
 window.__manual = (on) => { manual = on; };
 window.__intro = () => intro;
 // Sprites decode on first use, so draw twice with a pause (tools screenshot a single frame).
-window.__draw = async () => { if (intro) { renderer.drawIntro(intro); return; } await renderer.prepare(game.world); renderer.draw(game); await new Promise((r) => setTimeout(r, 80)); renderer.draw(game); };
+window.__draw = async () => { if (intro) { renderer.drawIntro(intro); await new Promise((r) => setTimeout(r, 80)); renderer.drawIntro(intro); return; } await renderer.prepare(game.world); renderer.draw(game); await new Promise((r) => setTimeout(r, 80)); renderer.draw(game); };
+/** One frame of whatever is running: the title/introduction screens or the game. */
+function tick(input) {
+  if (intro) {
+    if (starting) return;
+    const choice = intro.update(input);
+    if (choice?.start === 'new') intro = new NewGame();                    // NEW GAME: the introduction first
+    else if (choice) beginGame(choice.state ? { start: 'new', state: choice.state } : choice).catch((e) => showError(e.message));
+  } else if (game) game.update(input);
+}
+window.__step = tick;                  // tools/reference drives the frames itself under ?manual=1
 let lastTime = 0;
 let accumulator = 0;
 let preparedMap = null;
@@ -168,16 +179,7 @@ function loop(now) {
   lastTime = now;
   while (!manual && accumulator >= 1000 / 60) {
     accumulator -= 1000 / 60;
-    if (intro) {
-      if (!starting) {
-        const choice = intro.update({ dir: heldDirection(), a: pressed.a, b: pressed.b, start: pressed.start });
-        if (choice) beginGame(choice).catch((e) => showError(e.message));
-      }
-      for (const name in pressed) pressed[name] = false;
-      tapped.clear();
-      continue;
-    }
-    game.update({ dir: heldDirection(), a: pressed.a, b: pressed.b, start: pressed.start, aHeld: buttons.a, bHeld: buttons.b });
+    tick({ dir: heldDirection(), a: pressed.a, b: pressed.b, start: pressed.start, select: pressed.select, aHeld: buttons.a, bHeld: buttons.b });
     for (const name in pressed) pressed[name] = false;
     tapped.clear();
   }

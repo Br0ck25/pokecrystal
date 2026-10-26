@@ -6,7 +6,7 @@
 import { loadWorld } from './world.js';
 import { createScriptContext } from '../script/context.js';
 import { runScript, createScriptState } from '../script/interpreter.js';
-import { tileLength } from '../script/text.js';
+import { startTextWait, stepTextWait, TEXT_FRAMES_PER_CHAR } from '../script/textwait.js';
 import { startMenuItems, saveFlow, moveCursor } from './menu.js';
 import { serializeSave, parseSave } from './save.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
@@ -30,7 +30,7 @@ export const STEP_FRAMES = 16;
 export const TURN_FRAMES = 8;
 /** Movement command speeds in frames per square (macros/scripts/movement.asm: slow, normal and big steps). */
 const MOVEMENT_FRAMES = { slow_step: 32, step: 16, big_step: 8, slow_jump_step: 32, jump_step: 16, fast_jump_step: 8 };
-export const TEXT_FRAMES_PER_CHAR = 3;
+export { TEXT_FRAMES_PER_CHAR };
 
 const LAND = 0;
 const TALK = 0x10;
@@ -394,7 +394,7 @@ export class Game {
       switch (request.type) {
         case 'opentext': this.textboxOpen = true; this.lastTextLines = null; break;
         case 'closetext': this.textboxOpen = false; this.lastTextLines = null; break;
-        case 'text': runner.wait = { kind: 'text', screens: request.screens, index: 0, chars: this.screenStart(request.screens, 0), timer: 0, ready: false }; this.textboxOpen = true; return;
+        case 'text': runner.wait = startTextWait(request.screens); this.textboxOpen = true; return;
         case 'waitbutton': case 'promptbutton': runner.wait = { kind: 'button' }; return;
         case 'yesorno': runner.wait = { kind: 'yesno', cursor: 0, x: request.x ?? 14 }; return;   // YesNoBox is at column 14; SaveTheGame_yesorno puts it at 0
         case 'movement': this.beginMovement(request); runner.wait = { kind: 'movement', object: request.object }; return;
@@ -453,10 +453,6 @@ export class Game {
     });
   }
 
-  screenStart(screens, index) {
-    return index > 0 && screens[index - 1].wait === 'cont' ? tileLength(screens[index - 1].lines[1]) : 0;
-  }
-
   updateRunner(input) {
     const runner = this.runner;
     const wait = runner.wait;
@@ -481,24 +477,8 @@ export class Game {
   }
 
   updateText(wait, input) {
-    const screen = wait.screens[wait.index];
-    const total = tileLength(screen.lines[0]) + tileLength(screen.lines[1]);
-    this.lastTextLines = screen.lines;                 // stays on screen through the waitbutton or yes/no that follows
-    if (!wait.ready) {
-      wait.timer++;
-      const per = (input.aHeld || input.bHeld) ? 1 : TEXT_FRAMES_PER_CHAR;
-      if (wait.timer >= per) { wait.timer = 0; wait.chars++; }
-      if (wait.chars >= total) wait.ready = true;
-      return;
-    }
-    const last = wait.index === wait.screens.length - 1;
-    if (screen.wait === null) { this.runner.wait = null; this.advanceRunner(undefined); return; }
-    if (!(input.a || input.b)) return;
-    if (last) { this.runner.wait = null; this.advanceRunner(undefined); return; }
-    wait.index++;
-    wait.chars = this.screenStart(wait.screens, wait.index);
-    wait.timer = 0;
-    wait.ready = false;
+    this.lastTextLines = wait.screens[wait.index].lines;     // stays on screen through the waitbutton or yes/no that follows
+    if (stepTextWait(wait, input)) { this.runner.wait = null; this.advanceRunner(undefined); }
   }
 
   // ---- movement requests and effects ---------------------------------------------------------------------------

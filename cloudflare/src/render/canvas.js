@@ -4,12 +4,13 @@ import { TILESETS } from '../generated/tilesets.js';
 import { SPRITES } from '../generated/sprites.js';
 import { FONT_PNG, FONT_EXTRA_PNG, FRAME_PNG, FONT_CODES, TEXT_PALETTE } from '../generated/font.js';
 import { mapBgPalettes, tilePaletteIndex } from '../maps/map-palettes.js';
-import { objectPaletteColors, recolorSprite } from '../maps/object-sprites.js';
+import { objectPaletteColors, recolorSprite, PALETTE_NAMES } from '../maps/object-sprites.js';
 import { GBC_VIEWPORT_WIDTH as W, GBC_VIEWPORT_HEIGHT as H } from '../maps/viewport.js';
 import { describeScene } from './scene.js';
 import { tiles } from '../script/text.js';
 import { titleFrame } from './title-frame.js';
 import { MAP_ENTRY_SIGN } from '../generated/landmarks.js';
+import { NAMING_GLYPHS } from '../generated/intro.js';
 
 const to8 = (c) => Math.round((c * 255) / 31);
 const textColors = TEXT_PALETTE.map((rgb) => rgb.map(to8));
@@ -74,6 +75,9 @@ export class Renderer {
     this.pics = new Map();         // `${species}|side|colors` -> 56x56 canvas
     this.grayFrames = new Map();
     this.signSheets = new Map();
+    this.themes = new Map();
+    this.picImages = new Map();
+    this.picModules = new Map();
     this.fontReady = Promise.all([loadImage(FONT_PNG), loadImage(FONT_EXTRA_PNG), loadImage(FRAME_PNG)]).then(([font, extra, frame]) => {
       this.font = recolorSheet(font, () => textColors);
       this.fontExtra = recolorSheet(extra, () => textColors);
@@ -81,6 +85,15 @@ export class Renderer {
       this.frameImage = frame;
       this.fontImages = [font, extra];
     });
+  }
+
+  /** Font sheets and frame recolored for a four-color palette (text and boxes take the palette of the screen they are on). */
+  theme(colors) {
+    const key = colors.toString();
+    if (!this.themes.has(key)) {
+      this.themes.set(key, { colors, fonts: this.fontImages.map((f) => recolorSheet(f, () => colors)), frame: recolorSheet(this.frameImage, () => colors) });
+    }
+    return this.themes.get(key);
   }
 
   setScale(scale) {
@@ -176,11 +189,9 @@ export class Renderer {
     if (this.sprites.has(key)) return this.sprites.get(key);
     let image = this.spriteSources.get(sprite);
     if (image === undefined || image === null) {
-      if (image === null) {
-        // First use: decode asynchronously; the sprite appears on a later frame.
-        this.spriteSources.set(sprite, false);
-        loadImage(SPRITES[sprite].png).then((img) => this.spriteSources.set(sprite, img));
-      }
+      // First use: decode asynchronously; the sprite appears on a later frame.
+      this.spriteSources.set(sprite, false);
+      loadImage(SPRITES[sprite].png).then((img) => this.spriteSources.set(sprite, img));
       return null;
     }
     if (image === false) return null;
@@ -194,6 +205,18 @@ export class Renderer {
     return canvas;
   }
 
+  /** The naming screen's own tiles ('■' border, '→' empty slot, '<DOT>' underline) in a palette. */
+  namingGlyph(character, colors) {
+    const key = `${character}|${colors}`;
+    if (!this.glyphs.has(key)) {
+      const canvas = makeCanvas(8, 8), c = canvas.getContext('2d'), image = c.createImageData(8, 8);
+      for (let i = 0; i < 64; i++) image.data.set([...colors[NAMING_GLYPHS[character].charCodeAt(i) - 48], 255], i * 4);
+      c.putImageData(image, 0, 0);
+      this.glyphs.set(key, canvas);
+    }
+    return this.glyphs.get(key);
+  }
+
   glyph(character, fonts = [this.font, this.fontExtra]) {
     const code = FONT_CODES[character];
     if (code === undefined) throw new Error(`no glyph for ${JSON.stringify(character)}`);
@@ -202,10 +225,11 @@ export class Renderer {
     throw new Error(`character ${JSON.stringify(character)} (code ${code.toString(16)}) is not in the font sheets`);
   }
 
-  drawText(text, tileX, tileY, fonts) {
+  drawText(text, tileX, tileY, fonts, colors = textColors) {
     let x = tileX * 8;
     for (const character of tiles(text)) {
-      if (character !== ' ') {
+      if (NAMING_GLYPHS[character]) this.ctx.drawImage(this.namingGlyph(character, colors), x, tileY * 8);
+      else if (character !== ' ') {
         const [sheet, index] = this.glyph(character, fonts);
         this.ctx.drawImage(sheet, (index % 16) * 8, Math.floor(index / 16) * 8, 8, 8, x, tileY * 8, 8, 8);
       }
@@ -224,15 +248,74 @@ export class Renderer {
     tile(0, left, top); tile(2, right, top); tile(4, left, bottom); tile(5, right, bottom);
   }
 
-  /** Boxes of text (menus, save info) as scene.js and intro.js describe them. */
-  drawPanels(panels) {
+  /**
+   * Panels as scene.js and intro.js describe them, bottom first: { fill, clear, box, texts: [[x, y, text]], cursor, prompt, pic, colors }.
+   * `colors` is the panel's four-color palette (the text palette by default); `bgp` remaps its color indexes (the game's palette fades).
+   */
+  drawPanels(panels, { bgp = null, frame = 0 } = {}) {
     const c = this.ctx;
     for (const panel of panels) {
-      if (panel.clear) { const [x, y, w, h] = panel.clear; c.fillStyle = `rgb(${textColors[0]})`; c.fillRect(x * 8, y * 8, w * 8, h * 8); }
-      this.drawBox(...panel.box);
-      for (const [x, y, text] of panel.texts) this.drawText(text, x, y);
-      if (panel.cursor) this.drawText(panel.cursor[2], panel.cursor[0], panel.cursor[1]);
+      const base = panel.colors ? panel.colors.map((rgb) => rgb.map(to8)) : textColors;      // panel colors are the game's 5-bit RGB
+      const colors = bgp ? bgp.map((i) => base[i]) : base;
+      const theme = colors === textColors ? { colors, fonts: [this.font, this.fontExtra], frame: this.frame } : this.theme(colors);
+      if (panel.fill !== undefined) { c.fillStyle = `rgb(${colors[panel.fill === true ? 0 : panel.fill]})`; c.fillRect(0, 0, W, H); }
+      for (const [x, y, w, h] of [panel.clear, ...(panel.clears ?? [])].filter(Boolean)) { c.fillStyle = `rgb(${colors[0]})`; c.fillRect(x * 8, y * 8, w * 8, h * 8); }
+      if (panel.box) this.drawBox(...panel.box, colors, theme.frame);
+      if (panel.pic) this.drawPic(panel.pic, bgp);
+      for (const [x, y, text] of panel.texts ?? []) this.drawText(text, x, y, theme.fonts, colors);
+      if (panel.cursor) this.drawText(panel.cursor[2], panel.cursor[0], panel.cursor[1], theme.fonts);
+      if (panel.cursorBox) { const [x0, y0, x1, y1] = panel.cursorBox; c.fillStyle = '#000'; c.fillRect(x0, y0, x1 - x0 + 1, 1); c.fillRect(x0, y1, x1 - x0 + 1, 1); c.fillRect(x0, y0, 1, y1 - y0 + 1); c.fillRect(x1, y0, 1, y1 - y0 + 1); }
+      for (const sprite of panel.sprites ?? []) this.drawSpriteAt(sprite);
+      if (panel.prompt && ((frame >> 4) & 1)) this.drawText('▼', 18, 17, theme.fonts);
     }
+  }
+
+  /**
+   * A picture at tile (x, y): { species | trainer, x, y, clipX?, pixels? } loaded from the generated modules on first use
+   * (nothing is drawn until then), or already decoded { size, pixels, palette, x, y }. Smaller Pokémon pictures sit
+   * at the bottom of the 7x7 area (PadFrontpic). clipX hides everything left of that pixel column (the window wipe).
+   */
+  drawPic(spec, bgp = null) {
+    const pic = spec.pixels && spec.palette ? spec : this.loadedPic(spec);
+    if (!pic) return;
+    const key = `${spec.species ?? spec.trainer ?? 'raw'}|${pic.pixels.length}|${pic.pixels.slice(0, 96)}|${pic.pixels.slice(-96)}|${pic.palette}|${bgp}`;
+    let canvas = this.picImages.get(key);
+    if (!canvas) {
+      canvas = makeCanvas(56, 56);
+      const c = canvas.getContext('2d'), image = c.createImageData(56, 56);
+      const colors = pic.palette.map((p) => p.map(to8));
+      const tiles = pic.size / 8, offX = spec.species && tiles < 7 ? 1 : 0, offY = spec.species ? 7 - tiles : 0;
+      for (let i = 0; i < pic.size * pic.size; i++) {
+        const index = pic.pixels.charCodeAt(i) - 48;
+        const px = (i % pic.size) + offX * 8, py = Math.floor(i / pic.size) + offY * 8;
+        image.data.set([...colors[bgp ? bgp[index] : index], 255], (py * 56 + px) * 4);
+      }
+      c.putImageData(image, 0, 0);
+      this.picImages.set(key, canvas);
+    }
+    const left = spec.x * 8, clip = Math.max(0, (spec.clipX ?? 0) - left);
+    if (clip < 56) this.ctx.drawImage(canvas, clip, 0, 56 - clip, 56, left + clip, spec.y * 8, 56 - clip, 56);
+  }
+
+  loadedPic(spec) {
+    const name = spec.species ? `pokemon/${spec.species}` : `trainers/${spec.trainer}`;
+    if (!this.picModules.has(name)) {
+      this.picModules.set(name, null);
+      import(`../generated/${name}.js`).then(({ PIC }) => this.picModules.set(name, spec.species ? { size: PIC.size, pixels: PIC.front, palette: PIC.palette } : PIC)).catch(() => {});
+    }
+    const pic = this.picModules.get(name);
+    return pic && spec.pixels ? { ...pic, pixels: spec.pixels } : pic;     // the shrinking frames reuse the player's colors
+  }
+
+  /** A sprite sheet frame at pixel (x, y) in a palette named RED/BLUE...: { sprite, palette, row, mirror, x, y }. */
+  drawSpriteAt({ sprite, palette, row = 0, mirror = false, x, y }) {
+    const sheet = this.coloredSprite(sprite, PALETTE_NAMES.indexOf(palette));
+    if (!sheet) return;
+    const c = this.ctx;
+    c.save();
+    if (mirror) { c.translate(x + 16, y); c.scale(-1, 1); c.drawImage(sheet, 0, row * 16, 16, 16, 0, 0, 16, 16); }
+    else c.drawImage(sheet, 0, row * 16, 16, 16, x, y, 16, 16);
+    c.restore();
   }
 
   /** The area-name sign: a 20x4 window at the bottom of the screen in the map's TEXT palette (map_name_sign.asm PlaceMapNameFrame). */
@@ -285,7 +368,7 @@ export class Renderer {
   drawIntro(intro, now = new Date()) {
     const c = this.ctx;
     c.setTransform(this.scale, 0, 0, this.scale, 0, 0);
-    if (intro.stage === 'title') {
+    if (intro.stage === 'title') {   // the title screen; every other screen is a list of panels
       this.titleCanvas ??= makeCanvas(W, H);
       const image = new ImageData(titleFrame(intro.titleState()), W, H);
       this.titleCanvas.getContext('2d').putImageData(image, 0, 0);
@@ -294,7 +377,7 @@ export class Renderer {
     }
     c.fillStyle = `rgb(${textColors[0]})`;
     c.fillRect(0, 0, W, H);
-    this.drawPanels(intro.menuPanels(now));
+    this.drawPanels(intro.menuPanels ? intro.menuPanels(now) : intro.panels(), { bgp: intro.bgp ?? null, frame: intro.frame ?? 0 });
   }
 
   draw(game) {

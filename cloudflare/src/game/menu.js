@@ -14,18 +14,23 @@ const DESCRIPTIONS = {
 };
 
 /**
- * Cursor movement of a vertical wrapping menu (JoyTextDelay with hInMenu): moves on the press, again after 15 frames
- * held, then every 5. `held` is { lastDir, repeat }, kept between frames; returns the new cursor.
+ * JoyTextDelay with hInMenu: a direction counts on the press, again after 15 frames held, then every 5.
+ * `held` is { lastDir, repeat }, kept between frames; returns the direction to act on this frame or null.
  */
-export function moveCursor(held, dir, cursor, count) {
-  const d = dir === 'up' || dir === 'down' ? dir : null;
-  let next = cursor;
-  if (d && (d !== held.lastDir || --held.repeat <= 0)) {
-    held.repeat = d !== held.lastDir ? 15 : 5;
-    next = (cursor + (d === 'up' ? -1 : 1) + count) % count;
+export function directionRepeat(held, dir) {
+  let acted = null;
+  if (dir && (dir !== held.lastDir || --held.repeat <= 0)) {
+    held.repeat = dir !== held.lastDir ? 15 : 5;
+    acted = dir;
   }
-  held.lastDir = d;
-  return next;
+  held.lastDir = dir ?? null;
+  return acted;
+}
+
+/** Cursor movement of a vertical wrapping menu; returns the new cursor. */
+export function moveCursor(held, dir, cursor, count) {
+  const d = directionRepeat(held, dir === 'up' || dir === 'down' ? dir : null);
+  return d ? (cursor + (d === 'up' ? -1 : 1) + count) % count : cursor;
 }
 
 /** MainMenu: menu_coords 0,0,16,7 with the bottom moved to fit the items (2 rows each, plus 1). */

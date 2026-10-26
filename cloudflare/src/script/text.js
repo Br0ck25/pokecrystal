@@ -7,12 +7,13 @@ import { FONT_CODES } from '../generated/font.js';
 
 // charmap.asm has single glyphs for the contractions 'd 'l 'm 'r 's 't 'v: "It's" is three tiles, not four.
 const CONTRACTIONS = new Set(Object.keys(FONT_CODES).filter((k) => k.length === 2 && k[0] === "'"));
-const COLON = '<COLON>';                               // the colon with tinier dots, used for the clock
+const TOKENS = ['<COLON>', '<PK>', '<MN>', '<DOT>'];             // single-tile codes written with several characters: the clock's colon, "PK" and "MN", the naming screen's underline
 /** Split a string into the tiles the game prints, one per character code. */
 export function tiles(string) {
   const out = [];
   for (let i = 0; i < string.length; i++) {
-    if (string.startsWith(COLON, i)) { out.push(COLON); i += COLON.length - 1; }
+    const token = TOKENS.find((t) => string.startsWith(t, i));
+    if (token) { out.push(token); i += token.length - 1; }
     else if (CONTRACTIONS.has(string.slice(i, i + 2))) { out.push(string.slice(i, i + 2)); i++; } else out.push(string[i]);
   }
   return out;

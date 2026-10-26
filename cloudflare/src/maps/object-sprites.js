@@ -4,11 +4,13 @@ import { SPRITES, OBJECT_PALETTES } from '../generated/sprites.js';
 
 // data/sprites/sprites.asm: the player is Chris unless the girl is chosen at the intro (not ported yet).
 export const PLAYER_SPRITE = 'SPRITE_CHRIS';
+/** data/sprites/sprites.asm via wPlayerGender: Kris for a girl. */
+export const playerSprite = (state) => (state?.playerGender === 'FEMALE' ? 'SPRITE_KRIS' : PLAYER_SPRITE);
 
 // The runtime has no clock yet; the original picks OBJECT_PALETTES by time of day.
 export const TIME_OF_DAY = 'day';
 
-const PALETTE_NAMES = ['RED', 'BLUE', 'GREEN', 'BROWN', 'PINK', 'EMOTE', 'TREE', 'ROCK'];
+export const PALETTE_NAMES = ['RED', 'BLUE', 'GREEN', 'BROWN', 'PINK', 'EMOTE', 'TREE', 'ROCK'];
 
 /** Event object as written in maps/<mapName>.asm at its source coordinates, or null. */
 export function sourceObjectAt(mapName, x, y) {

@@ -1,8 +1,8 @@
 // Turns the engine state into a list of things to draw (pure; the canvas code lives in canvas.js).
 import { DIRECTIONS } from '../game/engine.js';
 import { SPRITES } from '../generated/sprites.js';
-import { objectPaletteIndex, spriteFrame, PLAYER_SPRITE } from '../maps/object-sprites.js';
-import { tileLength, takeTiles } from '../script/text.js';
+import { objectPaletteIndex, spriteFrame, playerSprite } from '../maps/object-sprites.js';
+import { textLines } from '../script/textwait.js';
 import { startMenuView, saveInfoView } from '../game/menu.js';
 import { PLAYER_SCREEN_X, PLAYER_SCREEN_Y, SPRITE_Y_OFFSET } from '../maps/viewport.js';
 
@@ -53,17 +53,14 @@ export function describeScene(game) {
     const def = o.def;
     return spriteEntry(game, game.spriteOf(def), objectPaletteIndex({ sprite: game.spriteOf(def), palette: def.palette }), o);
   });
-  sprites.push(spriteEntry(game, PLAYER_SPRITE, objectPaletteIndex({ sprite: PLAYER_SPRITE, palette: '0' }), game.player));
+  const hero = playerSprite(game.state);
+  sprites.push(spriteEntry(game, hero, objectPaletteIndex({ sprite: hero, palette: '0' }), game.player));
   const wait = game.runner?.wait;
   let textbox = null;
   if (game.textboxOpen) {
     textbox = { lines: ['', ''], prompt: false };
     if (wait?.kind === 'text') {
-      const screen = wait.screens[wait.index];
-      const first = takeTiles(screen.lines[0], wait.chars);
-      const second = takeTiles(screen.lines[1], wait.chars - tileLength(screen.lines[0]));
-      textbox.lines = [first, second];
-      textbox.prompt = wait.ready && screen.wait !== null;
+      Object.assign(textbox, textLines(wait));
     } else if (wait?.kind === 'button') {
       textbox.lines = game.lastTextLines ?? ['', ''];
       textbox.prompt = true;

@@ -1,0 +1,1 @@
+{"steps": [{"press": "a"}, {"wait": 50}, {"press": "a"}, {"wait": 200}, {"shot": "gender"}, {"press": "a"}, {"mashUntil": "Intro_PrepTrainerPic"}, {"wait": 250}, {"shot": "oak1_done"}, {"press": "a"}, {"wait": 80}, {"shot": "p2"}, {"press": "a"}, {"wait": 150}, {"shot": "p3"}]}

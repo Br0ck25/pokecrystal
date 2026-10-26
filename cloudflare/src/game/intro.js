@@ -1,7 +1,7 @@
 // Title screen and main menu (engine/movie/title.asm, engine/menus/intro_menu.asm RunTitleScreen/TitleScreen*, and
 // engine/menus/main_menu.asm). Frame-stepped like Game: update(input) returns null, or what the player chose.
 // Not ported: the copyright and Game Freak splash screens, the intro movie, music, and the secret key combinations
-// (delete save data, reset clock); NEW GAME starts in the player's room without the introduction and naming.
+// (delete save data, reset clock); NEW GAME runs the gender screen, Oak's speech and naming (the clock is skipped; device time).
 import { parseSave } from './save.js';
 import { moveCursor, mainMenuView, saveInfoView } from './menu.js';
 

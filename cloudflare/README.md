@@ -25,4 +25,4 @@ this folder. Node 22, no packages. Status: title screen → main menu → new ga
 - Time of day is fixed to DAY; the player is Chris; ROM-vs-app diffs also show moving NPCs and animated flowers (not bugs).
 
 ## Not ported
-Audio, copyright/Game Freak/intro-movie screens, naming (NEW GAME skips the introduction), OPTION, START-menu entries other than SAVE/EXIT (party/pack/dex/gear/status), the title's secret key combinations, battles, encounters, trainers, item balls, tile animation, NPC wandering, specials in `Game.unported`.
+Audio, copyright/Game Freak/intro-movie screens, setting the clock (NEW GAME runs Oak's speech, gender and naming but uses the device time), OPTION, START-menu entries other than SAVE/EXIT (party/pack/dex/gear/status), the title's secret key combinations, battles, encounters, trainers, item balls, tile animation, NPC wandering, specials in `Game.unported`.
