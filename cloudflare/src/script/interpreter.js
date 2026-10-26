@@ -10,6 +10,7 @@ import { NEW_GAME_DECORATIONS } from '../generated/decorations.js';
 import { FRUIT_TREE_ITEMS } from '../generated/fruit-trees.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { monGender } from './gender.js';
+import { createMon } from './mon.js';
 import { receiveItem, tossItem, itemName, pocketOf, POCKET_NAMES } from './bag.js';
 
 export const DIRECTIONS = ['DOWN', 'UP', 'LEFT', 'RIGHT'];
@@ -156,7 +157,8 @@ export function* runScript(ctx, startLabel) {
       case 'givepoke': {
         // Script_givepoke -> GivePoke: a gift without a nickname/OT argument is "caught", so the player is asked about a nickname
         const species = args[0], speciesName = POKEMON[species].name;
-        const mon = { species, level: Number(args[1]), item: args[2], dvs: [Math.floor(Math.random() * 256), Math.floor(Math.random() * 256)] };
+        const dvs = [Math.floor(Math.random() * 256), Math.floor(Math.random() * 256)];
+        const mon = createMon({ species, level: Number(args[1]), dvs, id: state.playerId, item: args[2] === 'NO_ITEM' ? null : args[2] });
         state.party.push(mon);
         if (!args[3] || args[3] === '0') {
           state.buffers.wStringBuffer1 = speciesName;

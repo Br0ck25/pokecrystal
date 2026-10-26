@@ -19,10 +19,14 @@ const fs = require('fs');
         for (const f of e.flags) g.state.flags.add(f);
         Object.assign(g.state.items, e.items ?? {});                              // bag contents, in order
         for (const f of e.engine ?? []) g.state.engineFlags.add(f);          // e.g. ENGINE_POKEGEAR, ENGINE_POKEDEX
-        while (g.state.party.length < (e.party ?? 0)) g.state.party.push({ species: 'CYNDAQUIL', level: 5 });
+        if (e.party?.length) {                                                       // [{ species, level, dvs }]
+          const { createMon } = await import('/src/script/mon.js');
+          for (const m of e.party) g.state.party.push(createMon({ id: 0, ...m }));
+        }
         if (e.prevLandmark) g.prevLandmark = e.prevLandmark;
         await g.enterMap(e.map, e.x, e.y, 'down');
         while (g.loading) await new Promise((r) => setTimeout(r, 2));
+        for (let i = 0; i < (e.settle ?? 0); i++) g.update({});                  // the ROM idles this long after the warp too
         if (e.tileAnim) { g.tileAnim.index = e.tileAnim[0]; g.tileAnim.timer = e.tileAnim[1]; }   // the real game's animation phase
       }, s.enter);
     } else if (s.hold || s.press || s.wait) {
@@ -37,7 +41,7 @@ const fs = require('fs');
         await settle();
       }, s);
     } else if (s.shot) {
-      await page.evaluate(async () => { await window.__draw(); });
+      await page.evaluate(async () => { const g = window.game; while (g.loading) await new Promise((r) => setTimeout(r, 2)); g.update({}); await window.__draw(); });      // the ROM side ticks one frame to read its screen
       console.log(`  [${s.shot}] app at`, JSON.stringify(await page.evaluate(() => [window.game.player.x, window.game.player.y, window.game.player.facing, window.game.pokepic, !!window.game.runner, [...window.game.unported]])));
       const png = await page.evaluate(() => document.querySelector('#map').toDataURL('image/png'));
       fs.writeFileSync(`${outDir}/play_${s.shot}.png`, Buffer.from(png.split(',')[1], 'base64'));

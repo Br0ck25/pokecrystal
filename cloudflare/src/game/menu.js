@@ -105,7 +105,7 @@ export function* saveFlow(state, { existing, save }) {
     yield say(existing.playerId === state.playerId ? '_AlreadyASaveFileText' : '_AnotherSaveFileText');
     if (!(yield { type: 'yesorno', x: 0 })) return false;
   }
-  yield pause(34);                                     // measured: the yes/no box closes and the screen redraws first
+  yield pause(38);                                     // measured: the yes/no box closes and the screen redraws first
   yield say('_SavingDontTurnOffThePowerText');
   yield pause(16);
   save();
@@ -113,6 +113,6 @@ export function* saveFlow(state, { existing, save }) {
   yield say('_SavedTheGameText');
   yield { type: 'effect', name: 'playsound', args: ['SFX_SAVE'] };
   yield { type: 'effect', name: 'waitsfx', args: [] };
-  yield pause(30);
+  yield pause(43);
   return true;
 }

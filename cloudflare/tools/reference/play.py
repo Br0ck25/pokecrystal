@@ -51,13 +51,16 @@ for s in steps:
         for ev in c.get('set', []): set_event(ev, True)
         group, num = ids[c['id']]
         ref.warp_in(group, num, c['warp'], c.get('settle', 300))
-        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'party': c.get('party', 0), 'items': c.get('items', {}), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
+        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'party': c.get('party', 0), 'items': c.get('items', {}), 'settle': c.get('settle', 0), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
     elif 'wait' in s:
         ref.tick(s['wait'])
+    elif 'dump' in s:                                  # {"dump": ["wPartyMon1Species", 48]}: print RAM bytes (ROM side only)
+        name, n = s['dump']
+        print('  dump', name, [ref.pb.memory[ref.key(name + '+' + str(i))] for i in range(n)])
     elif 'shot' in s:
         roms[s['shot']] = ref.shot()
         print(f"  [{s['shot']}] game at ({ref.rd('wXCoord')},{ref.rd('wYCoord')}) facing {ref.rd('wPlayerDirection') >> 2 & 3} landmark prev/cur {ref.rd('wPrevLandmark')}/{ref.rd('wCurLandmark')} sign {ref.rd('wLandmarkSignTimer')}")
-json.dump(steps, open(os.path.join(a.out, 'steps.json'), 'w'))
+json.dump([x for x in steps if 'dump' not in x], open(os.path.join(a.out, 'steps.json'), 'w'))
 subprocess.run(['node', os.path.join(HERE, 'play_app.cjs'), os.path.join(a.out, 'steps.json'), a.out, a.base], check=True)
 for label, rom in roms.items():
     app = Image.open(os.path.join(a.out, f'play_{label}.png')).convert('RGB')

@@ -12,6 +12,7 @@ import { serializeSave, parseSave } from './save.js';
 import { NamingScreen } from './naming.js';
 import { OptionsScreen, options, TEXT_DELAYS } from './options.js';
 import { PackScreen } from './pack.js';
+import { PartyScreen } from './party.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
 import { stepNpc, endNpcWalk, LOOP_FRAMES } from './npc-ai.js';
@@ -54,6 +55,7 @@ export class Game {
   constructor({ mapId, x, y, facing = 'down', state = createScriptState(), prev = { map: null, warp: null }, saveStore = null, continued = false } = {}) {
     this.state = state;
     this.saveStore = saveStore;       // { read(): text | null, write(text) }; see save.js
+    this.partyScreen = null;          // the party screen, opened from the start menu
     this.packScreen = null;           // the PACK screen, opened from the start menu
     this.optionScreen = null;         // the OPTION screen, opened from the start menu
     this.menu = null;                 // the open start menu: { cursor, lastDir, repeat }
@@ -247,6 +249,7 @@ export class Game {
     // objects act on their own between scripts and menus (the loop that runs them does not run while text is waiting)
     if (!this.runner && !this.menu && this.frame % LOOP_FRAMES === 0) for (const object of this.visibleObjects()) stepNpc(this, object, this.randomByte);
     if (this.runner) { this.updateRunner(input); return; }
+    if (this.partyScreen) { if (this.partyScreen.update(input)) { for (const u of this.partyScreen.unported) this.unported.add(u); this.partyScreen = null; } return; }
     if (this.packScreen) { if (this.packScreen.update(input)) { for (const u of this.packScreen.unported) this.unported.add(u); this.packScreen = null; } return; }
     if (this.optionScreen) { if (this.optionScreen.update(input)) this.optionScreen = null; return; }
     if (this.menu) { this.updateMenu(input); return; }
@@ -467,6 +470,7 @@ export class Game {
     const item = items[m.cursor];
     if (item === 'EXIT') this.menu = null;
     else if (item === 'SAVE') this.startSave();
+    else if (item === 'POKEMON') this.partyScreen = new PartyScreen(this.state);
     else if (item === 'PACK') this.packScreen = new PackScreen(this.state);
     else if (item === 'OPTION') this.optionScreen = new OptionsScreen(options(this.state));
     else this.unported.add(`start menu ${item}`);

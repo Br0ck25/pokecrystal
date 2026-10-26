@@ -5,8 +5,8 @@ import { LANDMARK_NAMES } from '../generated/landmarks.js';
 // .CheckSpecialMap: these landmarks never get a sign.
 const NO_SIGN = new Set(['LANDMARK_SPECIAL', 'LANDMARK_RADIO_TOWER', 'LANDMARK_LAV_RADIO_TOWER', 'LANDMARK_UNDERGROUND_PATH', 'LANDMARK_INDIGO_PLATEAU', 'LANDMARK_POWER_PLANT']);
 const NATIONAL_PARK_GATES = new Set(['ROUTE_35_NATIONAL_PARK_GATE', 'ROUTE_36_NATIONAL_PARK_GATE']);   // CheckNationalParkGate
-// The timer counts overworld loop iterations (one per 2 frames, MaxOverworldDelay), not frames: the sign stays about 2 seconds.
-export const SIGN_FRAMES = 2 * 60;
+// The sign stays on screen this many frames (the timer counts overworld loops, about 2 frames each, plus the slide).
+export const SIGN_FRAMES = 158;                       // measured against the game frame by frame (tools/reference/scripts/sign.json)
 
 /**
  * Entering `mapId` after having been in landmark `prev` (wPrevLandmark): returns the landmark to remember and the

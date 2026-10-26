@@ -1,5 +1,5 @@
 {
-  "comment": "Largest allowed differing_pixels per checkpoint (play.py compares the app with the real game). Only the listed checkpoints are checked; the others are mid-fade or moving-NPC frames. Lower a budget when a fix makes it smaller; raise one only for a diff you have looked at and explained.",
+  "comment": "Largest allowed differing_pixels per checkpoint (play.py compares the app with the real game). Only the listed checkpoints are checked; the others are mid-fade or moving-NPC frames. Lower a budget when a fix makes it smaller; raise one only for a diff you have looked at and explained. The app and the ROM tick one frame per shot, so checkpoints line up frame for frame. sign budgets of 16-32 pixels are a wandering NPC.",
   "runs": [
     {
       "script": "menu",
@@ -47,13 +47,13 @@
     {
       "script": "sign",
       "budgets": {
-        "t11": 0,
+        "t11": 16,
         "t12": 0,
-        "t13": 0,
+        "t13": 32,
         "t14": 0,
         "t16": 32,
-        "t17": 0,
-        "t18": 0
+        "t17": 32,
+        "t18": 16
       }
     },
     {
@@ -95,6 +95,15 @@
         "toss_q2": 0,
         "toss_yn": 0,
         "tossed": 35
+      }
+    },
+    {
+      "script": "party",
+      "budgets": {
+        "startmenu": 0,
+        "party": 0,
+        "party_a": 0,
+        "party_a2": 150
       }
     }
   ]
