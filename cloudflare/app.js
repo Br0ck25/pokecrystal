@@ -121,7 +121,10 @@ async function start() {
   }
   await renderer.prepare(game.world);
   if (query.get('battle')) {                // audit hook: ?battle=SPECIES:LEVEL[&mon=SPECIES:LEVEL] starts a wild battle (tools/reference/damage)
-    if (query.get('mon')) { const [species, level] = query.get('mon').split(':'); game.state.party = [createMon({ species, level: Number(level), dvs: [0xab, 0xcd], id: game.state.playerId })]; }
+    if (query.get('mon')) { const [species, level, nickname, moves] = query.get('mon').split(':');
+      const mon = { ...createMon({ species, level: Number(level), dvs: [0xab, 0xcd], id: game.state.playerId }), ...(nickname ? { nickname } : {}) };
+      if (moves) { mon.moves = moves.split('/'); mon.pp = mon.moves.map(() => 30); }      // tools/reference plants a Pokémon with these moves and 30 PP
+      game.state.party = [mon]; }
     const [species, level] = query.get('battle').split(':');
     await game.startWildBattle({ species, level: Number(level) });
   }

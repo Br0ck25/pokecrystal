@@ -22,7 +22,7 @@ const typeId = (name) => BATTLE.types[name];
 const percent = (n) => Math.floor((n * 255) / 100);
 
 /** InitBattleMon / the enemy's copy: what the battle keeps of a party Pokémon. */
-export function battleMon(mon, { name = POKEMON[mon.species].name } = {}) {
+export function battleMon(mon, { name = mon.nickname ?? POKEMON[mon.species].name } = {}) {
   const types = POKEMON[mon.species].types.map(typeId);
   return {
     mon, name, species: mon.species, level: mon.level, types, item: mon.item ?? null,
@@ -86,8 +86,17 @@ export class Battle {
 
   // ---- the whole battle ---------------------------------------------------------------------------------------
   *run() {
+    // measured in the real game after the "appeared" text: the box clears, the enemy HUD follows 6 frames later, 40 frames of DelayFrames,
+    // the trainer slides out (22 frames), "Go! X!", 30 frames, the send-out animation (62 frames), the HUD, 17 frames to the menu
+    yield { wait: 6 };
+    yield { enemyHud: true };
     yield { wait: 40 };
+    yield { slideOut: true };
     yield { text: [['text', `Go! ${this.sides[0].name}!`], ['done']] };        // SendOutMonText: the enemy is at full health
+    yield { wait: 30 };
+    yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
+    yield { sendOut: 0 };
+    yield { wait: 17 };
     for (;;) {
       this.sides.forEach((s) => { s.sub.flinched = false; });
       this.curDamage = 0;

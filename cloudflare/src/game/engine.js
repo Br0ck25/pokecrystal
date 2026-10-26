@@ -274,11 +274,12 @@ export class Game {
     const enemy = createMon({ species, level, dvs, id: 0 });
     const lead = this.state.party.find((m) => m.hp > 0);
     const gender = this.state.playerGender === 'FEMALE' ? 'KRIS' : 'CHRIS';
-    const [front, back] = await Promise.all([import(`../generated/pokemon/${species}.js`), import(`../generated/trainers/${gender}.js`)]);
+    const [front, back, mine] = await Promise.all([import(`../generated/pokemon/${species}.js`), import(`../generated/trainers/${gender}.js`), import(`../generated/pokemon/${lead.species}.js`)]);
     const tiles = front.PIC.size / 8;
     const pics = {
       enemy: { size: front.PIC.size, pixels: front.PIC.front, palette: front.PIC.palette, offX: tiles < 7 ? 1 : 0, offY: 7 - tiles },
       player: { size: 48, pixels: back.PIC.back, palette: back.PIC.palette },
+      playerMon: { size: 48, pixels: mine.PIC.back, palette: mine.PIC.palette },
     };
     const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: 0 });
     const name = POKEMON[species].name;
