@@ -7,7 +7,7 @@ import { FONT_CODES } from '../generated/font.js';
 
 // charmap.asm has single glyphs for the contractions 'd 'l 'm 'r 's 't 'v: "It's" is three tiles, not four.
 const CONTRACTIONS = new Set(Object.keys(FONT_CODES).filter((k) => k.length === 2 && k[0] === "'"));
-const TOKENS = ['<COLON>', '<PK>', '<MN>', '<DOT>'];             // single-tile codes written with several characters: the clock's colon, "PK" and "MN", the naming screen's underline
+const TOKENS = ['<COLON>', '<PK>', '<MN>', '<PO>', '<KE>', '<DOT>'];   // single-tile codes written with several characters: the clock's colon, the small "PK" "MN" "PO" "KE" glyphs, the naming screen's underline
 /** Split a string into the tiles the game prints, one per character code. */
 export function tiles(string) {
   const out = [];
@@ -30,8 +30,8 @@ export function expandTokens(s, { playerName, rivalName }) {
     .replace(/<MOM>/g, 'MOM')
     .replace(/<TRAINER>/g, 'TRAINER')
     .replace(/<……>/g, '……')                // two characters (SixDotsChar)
-    .replace(/<PKMN>/g, 'PKMN')
-    .replace(/<POKE>/g, 'POKé')
+    .replace(/<PKMN>/g, '<PK><MN>')            // PlacePKMNText
+    .replace(/<POKE>/g, '<PO><KE>')            // PlacePOKEText: two small glyphs, unlike # which prints the letters POKé
     .replace(/<PC>|<TM>|<ROCKET>/g, (t) => t.slice(1, -1))
     .replace(/<BSP>/g, ' ')
     .replace(/<WBR>/g, '')

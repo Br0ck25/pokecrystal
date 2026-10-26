@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
-import { renderText, tiles, tileLength, takeTiles } from './text.js';
+import { renderText, tiles, tileLength, takeTiles, expandTokens } from './text.js';
 import { SCRIPTS as shared } from '../generated/scripts/_text.js';
 import { SCRIPTS as playersHouse } from '../generated/scripts/PlayersHouse1F.js';
 
@@ -66,4 +66,11 @@ test("contractions are single tiles, as in charmap.asm ('s is one glyph)", () =>
   assert.equal(takeTiles("It's", 3), "It's");
   assert.equal(takeTiles("It's", 2), 'It');
   assert.deepEqual(tiles("'x"), ["'", 'x']);
+});
+
+test('<POKE> and <PKMN> print two small glyphs each, # prints the letters POKé (home/text.asm PlacePOKE, PlacePKMN, PlacePOKe)', () => {
+  const names = { playerName: 'X', rivalName: 'Y' };
+  assert.deepEqual(tiles(expandTokens('<POKE>GEAR', names)), ['<PO>', '<KE>', 'G', 'E', 'A', 'R']);
+  assert.deepEqual(tiles(expandTokens('Party <PKMN>', names)).slice(-2), ['<PK>', '<MN>']);
+  assert.equal(expandTokens('#DEX', names), 'POKéDEX');
 });

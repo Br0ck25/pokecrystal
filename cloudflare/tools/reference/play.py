@@ -51,7 +51,7 @@ for s in steps:
         for ev in c.get('set', []): set_event(ev, True)
         group, num = ids[c['id']]
         ref.warp_in(group, num, c['warp'], c.get('settle', 300))
-        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
+        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'party': c.get('party', 0), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
     elif 'wait' in s:
         ref.tick(s['wait'])
     elif 'shot' in s:

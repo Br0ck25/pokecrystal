@@ -17,6 +17,8 @@ const fs = require('fs');
         for (const pair of e.scene.split(',').filter(Boolean)) { const [n, i] = pair.split(':'); g.state.scenes[n] = Number(i); }
         for (const f of e.clearFlags) g.state.flags.delete(f);
         for (const f of e.flags) g.state.flags.add(f);
+        for (const f of e.engine ?? []) g.state.engineFlags.add(f);          // e.g. ENGINE_POKEGEAR, ENGINE_POKEDEX
+        while (g.state.party.length < (e.party ?? 0)) g.state.party.push({ species: 'CYNDAQUIL', level: 5 });
         if (e.prevLandmark) g.prevLandmark = e.prevLandmark;
         await g.enterMap(e.map, e.x, e.y, 'down');
         while (g.loading) await new Promise((r) => setTimeout(r, 2));

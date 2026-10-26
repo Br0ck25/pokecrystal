@@ -4,8 +4,8 @@
 import { renderText, expandTokens } from '../script/text.js';
 import { SCRIPTS as sharedText } from '../generated/scripts/_text.js';
 
-/** Strings of StartMenu.*String; "#" is the POKé charmap entry and <PLAYER> the player's name. */
-const LABELS = { POKEDEX: 'POKéDEX', POKEMON: 'POKéMON', PACK: 'PACK', STATUS: null, SAVE: 'SAVE', OPTION: 'OPTION', EXIT: 'EXIT', POKEGEAR: 'POKéGEAR' };
+/** Strings of StartMenu.*String; "#" is the POKé charmap entry, <PO><KE> (what <POKE> prints) the two small glyphs and <PLAYER> the player's name. */
+const LABELS = { POKEDEX: 'POKéDEX', POKEMON: 'POKéMON', PACK: 'PACK', STATUS: null, SAVE: 'SAVE', OPTION: 'OPTION', EXIT: 'EXIT', POKEGEAR: '<PO><KE>GEAR' };
 
 /** StartMenu.*Desc: the two lines shown bottom-left while the menu account option is on (it is on in a new game). */
 const DESCRIPTIONS = {

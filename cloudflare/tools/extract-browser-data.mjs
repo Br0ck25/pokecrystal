@@ -268,7 +268,7 @@ function decorations() {
 function fontData() {
   const codes = {};
   for (const m of text('constants/charmap.asm').matchAll(/^\tcharmap "([^"]+)",\s+\$([0-9a-f]{2})/gm)) {
-    if (!m[1].startsWith('<') || ['<COLON>', '<PK>', '<MN>'].includes(m[1])) codes[m[1]] = parseInt(m[2], 16);
+    if (!m[1].startsWith('<') || ['<COLON>', '<PK>', '<MN>', '<PO>', '<KE>'].includes(m[1])) codes[m[1]] = parseInt(m[2], 16);
   }
   return {
     font: bin('gfx/font/font.png').toString('base64'),
