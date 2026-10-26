@@ -250,7 +250,13 @@ export class BattleScreen {
   partyBalls(out, colors, tiles, texts, put) {
     put(18, 10, 0x73); put(18, 11, 0x5c); for (let x = 10; x < 18; x++) put(x, 11, 0x76); put(9, 11, 0x6f);
     const balls = [0, 1, 2, 3, 4, 5].map((i) => { const m = this.battle.party[i]; return !m ? 3 : m.hp === 0 ? 2 : m.status ? 1 : 0; });
-    out.push({ colors, tiles, texts }, { colors: BALL_PALETTE, tiles: balls.map((b, i) => [11 + i, 10, BALL_TILES[b], BALL_PALETTE]) });
+    const ballTiles = balls.map((b, i) => [11 + i, 10, BALL_TILES[b], BALL_PALETTE]);
+    if (this.trainerBattle && !this.enemyHud) {                         // ShowOTTrainerMonsRemaining: the trainer's party, right to left from column 8
+      put(1, 2, 0x6d); put(1, 3, 0x74); for (let x = 2; x < 10; x++) put(x, 3, 0x76); put(10, 3, 0x78);
+      const party = this.battle.enemyParty;
+      for (let i = 0; i < 6; i++) { const m = party[i]; ballTiles.push([8 - i, 2, BALL_TILES[!m ? 3 : (m === this.battle.sides[1].mon ? this.battle.sides[1].hp : m.hp) === 0 ? 2 : m.status ? 1 : 0], BALL_PALETTE]); }
+    }
+    out.push({ colors, tiles, texts }, { colors: BALL_PALETTE, tiles: ballTiles });
     return out;
   }
 
