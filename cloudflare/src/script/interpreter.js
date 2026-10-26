@@ -8,6 +8,8 @@ import { renderText } from './text.js';
 import { EVENTS } from '../generated/events.js';
 import { NEW_GAME_DECORATIONS } from '../generated/decorations.js';
 import { FRUIT_TREE_ITEMS } from '../generated/fruit-trees.js';
+import { POKEMON } from '../generated/pokemon.js';
+import { monGender } from './gender.js';
 import { receiveItem, tossItem, itemName, pocketOf, POCKET_NAMES } from './bag.js';
 
 export const DIRECTIONS = ['DOWN', 'UP', 'LEFT', 'RIGHT'];
@@ -151,7 +153,19 @@ export function* runScript(ctx, startLabel) {
         state.scriptVar = tossItem(state, args[0], Number(args[1] ?? 1)) ? 1 : 0;
         break;
       }
-      case 'givepoke': state.party.push({ species: args[0], level: Number(args[1]), item: args[2] }); state.scriptVar = 1; break;
+      case 'givepoke': {
+        // Script_givepoke -> GivePoke: a gift without a nickname/OT argument is "caught", so the player is asked about a nickname
+        const species = args[0], speciesName = POKEMON[species].name;
+        const mon = { species, level: Number(args[1]), item: args[2], dvs: [Math.floor(Math.random() * 256), Math.floor(Math.random() * 256)] };
+        state.party.push(mon);
+        if (!args[3] || args[3] === '0') {
+          state.buffers.wStringBuffer1 = speciesName;
+          yield showText('_CaughtAskNicknameText');
+          if (yield { type: 'yesorno' }) mon.nickname = (yield { type: 'effect', name: 'namemon', args: [species, monGender(species, mon.dvs)] }) || speciesName;   // InitName: blank keeps the species name
+        }
+        state.scriptVar = 1;
+        break;
+      }
       case 'getstring': state.buffers[args[0].replace('STRING_BUFFER_', 'wStringBuffer')] = findString(args[1]); break;
       case 'getmonname': state.buffers[args[0].replace('STRING_BUFFER_', 'wStringBuffer')] = args[1] === 'FROM_MEM' ? String(state.scriptVar) : args[1]; break;
       case 'getitemname': state.buffers[args[0].replace('STRING_BUFFER_', 'wStringBuffer')] = itemName(args[1] === 'USE_SCRIPT_VAR' ? state.scriptVar : args[1]); break;

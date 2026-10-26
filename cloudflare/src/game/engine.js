@@ -9,6 +9,8 @@ import { runScript, createScriptState } from '../script/interpreter.js';
 import { startTextWait, stepTextWait, TEXT_FRAMES_PER_CHAR } from '../script/textwait.js';
 import { startMenuItems, saveFlow, moveCursor } from './menu.js';
 import { serializeSave, parseSave } from './save.js';
+import { NamingScreen } from './naming.js';
+import { POKEMON } from '../generated/pokemon.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
 import { TileAnimator } from '../maps/tile-anim.js';
 import { COLLISION_PERMISSIONS, COLLISION_VALUES } from '../generated/collision.js';
@@ -471,6 +473,7 @@ export class Game {
         if (!mover.step && !mover.sleep && !(mover.queue && mover.queue.length)) { runner.wait = null; this.advanceRunner(undefined); }
         break;
       }
+      case 'naming': { const done = wait.screen.update(input); if (done) { runner.wait = null; this.advanceRunner(done.name); } break; }
       case 'frames': if (--wait.left <= 0) { runner.wait = null; if (wait.emote) this.emote = null; this.advanceRunner(undefined); } break;
       default: throw new Error(`unknown wait ${wait.kind}`);
     }
@@ -558,6 +561,11 @@ export class Game {
       case 'playmusic': case 'musicfadeout': case 'cry': return undefined;                 // audio is not ported yet
       case 'pokepic': this.pokepic = args[0] === 'USE_SCRIPT_VAR' ? String(this.state.scriptVar) : args[0]; return undefined;   // engine/events/pokepic.asm
       case 'closepokepic': this.pokepic = null; return undefined;
+      case 'namemon': {                                           // engine/pokemon/move_mon.asm InitNickname: the naming screen takes the whole screen
+        if (instant) return undefined;
+        const [species, gender] = args;
+        return { wait: { kind: 'naming', screen: new NamingScreen({ mon: { species, name: POKEMON[species].name, gender } }) } };
+      }
       case 'reanchormap': case 'addcellnum': case 'itemnotify':
         return undefined;                                         // audio and presentation are not ported yet
       default:

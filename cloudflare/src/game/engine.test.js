@@ -203,3 +203,33 @@ test('music and cry commands never open the Pokémon picture box', async () => {
   g.applyEffect({ name: 'closepokepic', args: [] }, { instant: false });
   assert.equal(g.pokepic, null);
 });
+
+test('a starter received from Elm asks about a nickname: NO keeps the species name, YES opens the Pokémon naming screen', async () => {
+  const pick = async (answerYes, typed) => {
+    const g = await newGame('ELMS_LAB', 6, 4, 'up');
+    g.state.scenes.ElmsLab = 2;
+    g.startScript('CyndaquilPokeBallScript', { caller: g.objects.find((o) => o.id === 'ELMSLAB_POKE_BALL1') });
+    let naming = null, questions = 0;
+    for (let i = 0; i < 6000 && g.runner; i++) {
+      const wait = g.runner.wait;
+      if (wait?.kind === 'naming') {
+        naming ??= wait.screen;
+        g.update(typed.length ? { a: true } : { start: true });
+        if (typed.length) typed.shift(); else g.update({ a: true });
+        continue;
+      }
+      if (wait?.kind === 'yesno') { g.update({ dir: ++questions === 1 || answerYes ? 'up' : 'down', a: true }); continue; }      // the first question is Elm's "take this one?"
+      g.update({ a: Boolean(wait && (wait.kind === 'button' || (wait.kind === 'text' && wait.ready))) });
+    }
+    assert.equal(g.runner, null);
+    return { mon: g.state.party[0], naming };
+  };
+  const no = await pick(false, []);
+  assert.equal(no.naming, null);
+  assert.equal(no.mon.nickname, undefined);
+  const blank = await pick(true, []);
+  assert.deepEqual([blank.naming.mon.species, blank.naming.maxLength], ['CYNDAQUIL', 10]);
+  assert.equal(blank.mon.nickname, 'CYNDAQUIL', 'a blank name keeps the species name');
+  const typed = await pick(true, [1, 1]);
+  assert.equal(typed.mon.nickname, 'AA');
+});

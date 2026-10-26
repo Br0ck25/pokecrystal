@@ -68,6 +68,7 @@ export function describeScene(game) {
   }
   const yesno = wait?.kind === 'yesno' ? { cursor: wait.cursor, left: wait.x, top: 7, right: wait.x + 5, bottom: 11 } : null;
   const panels = [];                                                    // boxes of text drawn under the dialogue box
+  if (wait?.kind === 'naming') return { camera, sprites: [], panels: wait.screen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: game.fade, mapId: game.world.id };
   if (game.menu) panels.push(startMenuView(game.state, game.menu.cursor, game.menu.hollow));
   if (game.savingInfo) panels.push(saveInfoView(game.state));
   const b = game.blackout;

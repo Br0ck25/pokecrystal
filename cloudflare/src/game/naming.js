@@ -1,17 +1,23 @@
 // The naming screen for the player's name (engine/menus/naming_screen.asm, NAME_PLAYER): a 9x5 board of characters
 // with a cursor; A enters a character, B deletes, START jumps to END, SELECT switches upper/lower case.
-import { NAME_INPUT, PREDEF_PALETTES } from '../generated/intro.js';
+import { NAME_INPUT, PREDEF_PALETTES, MON_ICONS, ICON_OBJ_PALETTE } from '../generated/intro.js';
 import { directionRepeat } from './menu.js';
 import { tiles } from '../script/text.js';
 
-const MAX_LENGTH = 7;                    // PLAYER_NAME_LENGTH - 1
+const PLAYER_LENGTH = 7;                 // PLAYER_NAME_LENGTH - 1
+const MON_LENGTH = 10;                   // MON_NAME_LENGTH - 1
 const ENTRY = { x: 5, y: 6 };            // StoreSpriteIconParams: where the name is placed
 
 export class NamingScreen {
-  /** gender: 'MALE' | 'FEMALE' picks the icon colors; the name starts empty (the underline sits on the first slot). */
-  constructor({ gender = 'MALE' } = {}) {
+  /**
+   * gender: 'MALE' | 'FEMALE' picks the player icon's colors. mon: { species, name, gender } names a Pokémon instead (NAME_MON).
+   * The name starts empty (the underline sits on the first slot).
+   */
+  constructor({ gender = 'MALE', mon = null } = {}) {
     this.gender = gender;
-    this.entry = ['<DOT>', ...Array(MAX_LENGTH - 1).fill('→')];      // NamingScreen_InitNameEntry
+    this.mon = mon;
+    this.maxLength = mon ? MON_LENGTH : PLAYER_LENGTH;
+    this.entry = ['<DOT>', ...Array(this.maxLength - 1).fill('→')];  // NamingScreen_InitNameEntry
     this.length = 0;
     this.lower = false;                  // wNamingScreenLetterCase
     this.cx = 0;                         // cursor column 0-8 and row 0-4 (SPRITEANIMSTRUCT_VAR1 / VAR2)
@@ -59,9 +65,9 @@ export class NamingScreen {
     if (zone === 1) { this.lower = !this.lower; return null; }
     if (zone === 2) { this.delete(); return null; }
     if (zone === 3) return { name: this.name() };
-    if (this.length < MAX_LENGTH) {                                 // NamingScreen_TryAddCharacter
+    if (this.length < this.maxLength) {                                 // NamingScreen_TryAddCharacter
       this.entry[this.length++] = this.currentChar();
-      if (this.length < MAX_LENGTH) this.entry[this.length] = '<DOT>';
+      if (this.length < this.maxLength) this.entry[this.length] = '<DOT>';
       else { this.cx = 8; this.cy = 4; }                            // the string is full: on to END
     } else { this.cx = 8; this.cy = 4; }
     return null;
@@ -71,7 +77,7 @@ export class NamingScreen {
     if (!this.length) return;
     this.length--;
     this.entry[this.length] = '<DOT>';
-    if (this.length + 1 < MAX_LENGTH) this.entry[this.length + 1] = '→';
+    if (this.length + 1 < this.maxLength) this.entry[this.length + 1] = '→';
   }
 
   name() { return this.entry.slice(0, this.length).join(''); }
@@ -82,7 +88,11 @@ export class NamingScreen {
     const texts = [];
     const border = { colors, texts: Array.from({ length: 18 }, (_, y) => [0, y, '■'.repeat(20)]) };
     const panel = { colors, texts, clears: [[1, 1, 18, 6], [1, 8, 18, 7], [1, 16, 18, 1]] };   // ClearBox calls of NamingScreen_InitText
-    texts.push([5, 2, 'YOUR NAME?'], [ENTRY.x, ENTRY.y, this.entry.join('')]);
+    if (this.mon) {                                                 // NamingScreen .Pokemon
+      const glyph = { MALE: '♂', FEMALE: '♀' }[this.mon.gender];
+      texts.push([5, 2, `${this.mon.name}'S`], [5, 4, 'NICKNAME?'], ...(glyph ? [[1, 2, glyph]] : []));
+    } else texts.push([5, 2, 'YOUR NAME?']);
+    texts.push([ENTRY.x, ENTRY.y, this.entry.join('')]);
     this.board().forEach((row, i) => texts.push([2, 8 + 2 * i, row]));
     // The cursor is a 9x9 outline around a letter, or a 40x9 one around lower/UPPER, DEL and END (OAMData_TextEntryCursor[Big]).
     const bottom = this.cy === 4;
@@ -90,7 +100,9 @@ export class NamingScreen {
     panel.cursorBox = bottom ? [left, top - 1, left + 39, top + 7] : [left - 1, top - 1, left + 7, top + 7];
     // SPRITE_ANIM_OBJ_RED_WALK / BLUE_WALK: stand, step, stand, mirrored step, 8 frames each
     const phase = (this.frame >> 3) & 3;
-    panel.sprites = [{ sprite: this.gender === 'FEMALE' ? 'SPRITE_KRIS' : 'SPRITE_CHRIS', palette: this.gender === 'FEMALE' ? 'BLUE' : 'RED',
+    // the Pokémon's menu icon alternates its two frames every 8 frames (SPRITE_ANIM_FRAMESET_PARTY_MON)
+    if (this.mon) panel.sprites = [{ icon: MON_ICONS.sheets[MON_ICONS.species[this.mon.species]][(this.frame >> 3) & 1], colors: ICON_OBJ_PALETTE, x: 16, y: 12 }];
+    else panel.sprites = [{ sprite: this.gender === 'FEMALE' ? 'SPRITE_KRIS' : 'SPRITE_CHRIS', palette: this.gender === 'FEMALE' ? 'BLUE' : 'RED',
       row: phase % 2 ? 3 : 0, mirror: phase === 3, x: 16, y: 12 }];
     return [border, panel];
   }

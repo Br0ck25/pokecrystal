@@ -308,7 +308,23 @@ export class Renderer {
   }
 
   /** A sprite sheet frame at pixel (x, y) in a palette named RED/BLUE...: { sprite, palette, row, mirror, x, y }. */
-  drawSpriteAt({ sprite, palette, row = 0, mirror = false, x, y }) {
+  drawSpriteAt({ sprite, palette, row = 0, mirror = false, x, y, icon, colors }) {
+    if (icon) {                                                       // a 16x16 picture of palette indices (menu icons); index 0 is see-through
+      const key = `icon|${icon}|${colors}`;
+      let canvas = this.picImages.get(key);
+      if (!canvas) {
+        canvas = makeCanvas(16, 16);
+        const c = canvas.getContext('2d'), image = c.createImageData(16, 16);
+        for (let i = 0; i < 256; i++) {
+          const index = icon.charCodeAt(i) - 48;
+          if (index) image.data.set([...colors[index].map(to8), 255], i * 4);
+        }
+        c.putImageData(image, 0, 0);
+        this.picImages.set(key, canvas);
+      }
+      this.ctx.drawImage(canvas, x, y);
+      return;
+    }
     const sheet = this.coloredSprite(sprite, PALETTE_NAMES.indexOf(palette));
     if (!sheet) return;
     const c = this.ctx;
