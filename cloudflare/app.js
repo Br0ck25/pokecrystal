@@ -179,6 +179,7 @@ function tick(input) {
     else if (choice) beginGame(choice.state ? { start: 'new', state: choice.state } : choice).catch((e) => showError(e.message));
   } else if (game) game.update(input);
 }
+window.__drawSync = () => renderer.draw(game);   // tools/reference: one frame without the sprite-decode pauses of __draw
 window.__step = tick;                  // tools/reference drives the frames itself under ?manual=1
 let lastTime = 0;
 let accumulator = 0;

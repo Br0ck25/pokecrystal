@@ -8,7 +8,6 @@ for (const o of obs) {
   const e = POKEMON[names[o.enemy[0]]];
   if (o.after.exp === o.before.exp) continue;                         // the player lost or ran
   let gained = Math.floor((e.baseExp * o.enemy[1]) / 7);
-  gained += gained >> 1;                                              // the planted Pokémon has another OT ID: traded boost
   const base = [e.stats.hp, e.stats.atk, e.stats.def, e.stats.spd, e.stats.sat];
   const good = o.after.exp - o.before.exp === gained && base.every((b, i) => o.after.statExp[i] - o.before.statExp[i] === b);
   good ? ok++ : bad++;

@@ -115,7 +115,7 @@ export class Battle {
         if (this.sides[0].hp === 0 || this.sides[1].hp === 0) break;
         if (t === 1 && (yield* this.tryEnemyFlee())) return { result: 'fled' };
         this.turn = t;
-        if (!(t === 0 && this.skipPlayerTurn)) yield* this.doTurn();
+        if (!(t === 0 && this.skipPlayerTurn)) { yield* this.doTurn(); if (!this.turnEnded) yield { wait: 28 }; }   // measured: 28 frames pass after a move before the next text
         if (this.sides[1].hp === 0 || this.sides[0].hp === 0) break;
         yield* this.residual(t);
         if (this.sides[t].hp === 0) break;
@@ -339,7 +339,8 @@ Battle.prototype.commands = {
   },
   *moveanim() {
     if (this.attackMissed) { yield { wait: 40 }; return; }
-    yield { anim: this.user.move.name, user: this.turn };
+    yield { wait: 21 };                                        // measured: the animation starts 21 frames after the move's name is typed
+    yield { anim: this.user.move.name, user: this.turn, frames: 110 };
   },
   *failuretext() {
     if (!this.attackMissed) return;

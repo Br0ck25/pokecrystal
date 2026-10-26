@@ -56,7 +56,8 @@ export class BattleScreen {
     this.mode = 'intro';
     this.wait = startTextWait(renderText(intro, { block: (l) => TEXT[l], vars: {}, playerName, rivalName: '' }));
     this.result = null;
-    this.shown = { 0: battle.sides[0].hp, 1: battle.sides[1].hp };       // HP the bars show
+    this.shown = { 0: battle.sides[0].hp, 1: battle.sides[1].hp };       // HP the digits show
+    this.px = { 0: hpPixels(battle.sides[0].hp, battle.sides[0].maxHp), 1: hpPixels(battle.sides[1].hp, battle.sides[1].maxHp) };   // pixels the bars show
     this.held = { lastDir: null, repeat: 0 };
     this.cursor = 0;
     this.moveCursor = 0;
@@ -114,13 +115,14 @@ export class BattleScreen {
     }
   }
 
+  /** AnimateHPBar: the bar moves one pixel every 2 frames; the digits follow. */
   stepHp() {
-    const a = this.hpAnim, side = a.side ?? a.hp;
-    const max = this.battle.sides[side].maxHp;
-    const target = hpPixels(a.to, max);
-    const now = hpPixels(this.shown[side], max);
-    if (now === target) { this.shown[side] = a.to; this.advance(); return; }
-    this.shown[side] += now < target ? 1 : -1;
+    const a = this.hpAnim, side = a.hp, max = this.battle.sides[side].maxHp;
+    const from = hpPixels(a.from, max), to = hpPixels(a.to, max);
+    if (this.px[side] === to) { this.shown[side] = a.to; this.advance(); return; }
+    if (this.frame % 2) return;
+    this.px[side] += to > from ? 1 : -1;
+    this.shown[side] = Math.round(a.from + ((a.to - a.from) * (this.px[side] - from)) / (to - from));
   }
 
   updateMenu(input) {
@@ -184,7 +186,7 @@ export class BattleScreen {
     out.push({ colors, tiles, texts });
     // HP bars in their palettes
     for (const [side, x, y, end] of this.sentOut ? [[1, 2, 2, 0], [0, 10, 9, 1]] : this.mode === 'intro' ? [] : [[1, 2, 2, 0]]) {
-      const mon = this.battle.sides[side], pixels = hpPixels(this.shown[side], mon.maxHp), pal = PREDEF_PALETTES[hpColor(pixels)];
+      const pixels = this.px[side], pal = PREDEF_PALETTES[hpColor(pixels)];
       out.push({ colors: pal, tiles: barTiles(pixels, end).map((n, i) => [x + i, y, tile(n), pal]) });
     }
     return out;

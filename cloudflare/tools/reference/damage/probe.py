@@ -23,6 +23,7 @@ def plant(c):
         for i, ch in enumerate([0x93, 0x84, 0x92, 0x93, 0x50]): ref.wr(tbl + '+%d' % i, ch)
     ref.wr(P + 'Species', c['speciesId']); ref.wr(P + 'Item', c['itemId'])
     for i, m in enumerate(c['moveIds']): ref.wr(P + 'Moves+%d' % i, m); ref.wr(P + 'PP+%d' % i, 30 if m else 0)
+    ref.wr(P + 'ID', ref.rd('wPlayerID')); ref.wr(P + 'ID+1', ref.rd('wPlayerID+1'))      # the player's own Pokémon: no disobedience
     ref.wr(P + 'DVs', c['dvs'][0]); ref.wr(P + 'DVs+1', c['dvs'][1])
     for i in range(3): ref.wr(P + 'Exp+%d' % i, (c['exp'] >> (16 - 8 * i)) & 255)
     ref.wr(P + 'Level', c['level']); ref.wr(P + 'Status', 0)
