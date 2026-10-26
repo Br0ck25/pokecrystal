@@ -61,6 +61,11 @@ export function renderText(commands, env) {
           lines[row] += env.vars[args[0]];
           break;
         }
+        case 'text_decimal': {                                     // PrintNum, left-aligned (measured: "Throw away 2")
+          if (!(args[0] in env.vars)) throw new Error(`text_decimal ${args[0]} has no value`);
+          lines[row] += String(env.vars[args[0]]);
+          break;
+        }
         case 'text_far': {
           const far = env.block(args[0]);
           if (!far) throw new Error(`text_far ${args[0]}: no such text`);
@@ -70,7 +75,7 @@ export function renderText(commands, env) {
         case 'done': push(null); return true;
         case 'prompt': push('prompt'); return true;
         case 'text_end': return true;
-        case 'text_pause': case 'sound_item': break;
+        case 'text_pause': case 'sound_item': case 'text_start': break;
         default: throw new Error(`unsupported text command ${name}`);
       }
     }

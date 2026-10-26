@@ -76,6 +76,26 @@
         "opt_frame2": 0,
         "opt_cancel": 0
       }
+    },
+    {
+      "script": "pack",
+      "budgets": {
+        "m0": 0,
+        "pack0": 0,
+        "pack1": 0,
+        "balls": 0,
+        "keys": 0,
+        "tm": 0,
+        "keys2": 0,
+        "keys3": 0,
+        "balls2": 0,
+        "ballsub": 0,
+        "ballsub2": 0,
+        "toss_q": 0,
+        "toss_q2": 0,
+        "toss_yn": 0,
+        "tossed": 35
+      }
     }
   ]
 }

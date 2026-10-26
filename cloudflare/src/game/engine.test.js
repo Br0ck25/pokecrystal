@@ -288,3 +288,30 @@ test('OPTION: START opens it, left/right change the settings, text speed sets th
   assert.equal(g.optionScreen, null);
   assert.ok(g.menu, 'back in the start menu');
 });
+
+test('PACK: pockets list in the order received, left/right switches pockets, TOSS asks a quantity and removes the items', async () => {
+  const g = await newGame('PLAYERS_HOUSE_2F', 3, 3);
+  Object.assign(g.state.items, { POTION: 5, ANTIDOTE: 3, POKE_BALL: 10, BICYCLE: 1 });
+  run(g, 1, { start: true });
+  g.menu.cursor = 0;                                            // PACK
+  run(g, 1, { a: true });
+  const pack = g.packScreen;
+  assert.deepEqual(pack.list.map((e) => e.item), ['POTION', 'ANTIDOTE']);
+  run(g, 1, { dir: 'right' }); run(g, 20, {});
+  assert.deepEqual(pack.list.map((e) => e.item), ['POKE_BALL']);
+  run(g, 1, { dir: 'left' }); run(g, 20, {});
+  run(g, 1, { a: true });                                       // POTION: USE GIVE TOSS QUIT
+  assert.deepEqual(pack.sub.items, ['USE', 'GIVE', 'TOSS', 'QUIT']);
+  pack.sub.cursor = 2;
+  run(g, 1, { a: true });
+  assert.equal(pack.phase, 'quantity');
+  run(g, 1, { dir: 'up' }); run(g, 20, {});
+  run(g, 1, { dir: 'up' }); run(g, 20, {});
+  assert.equal(pack.quantity, 3);
+  run(g, 1, { a: true });
+  run(g, 1, { a: true });                                       // YES
+  assert.equal(g.state.items.POTION, 2);
+  for (let i = 0; i < 400 && pack.phase === 'text'; i++) run(g, 1, { a: i % 2 === 0 });
+  run(g, 1, { b: true });
+  assert.equal(g.packScreen, null);
+});

@@ -65,6 +65,7 @@ export function describeScene(game) {
     const { x, y } = actorPixels(a);
     return { x, y: y + SPRITE_Y_OFFSET, wide: (Math.floor(a.step.frame / 2) + 1) & 4 ? 1 : 0 };
   });
+  if (game.packScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.packScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
   if (game.optionScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.optionScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
   const wait = game.runner?.wait;
   let textbox = null;

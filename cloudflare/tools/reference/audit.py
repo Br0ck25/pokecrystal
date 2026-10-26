@@ -34,7 +34,9 @@ class Ref:
                 ba, n = l.split()[:2]; b, ad = ba.split(':'); s.sym[n] = (int(b, 16), int(ad, 16))
             except ValueError: pass
     def key(s, n):
+        n, _, off = n.partition('+')                  # "wItems+3" is the fourth byte of wItems
         b, ad = s.sym[n]
+        ad += int(off or 0)
         return (b, ad) if 0xD000 <= ad < 0xE000 else ad
     def rd(s, n): return s.pb.memory[s.key(n)]
     def wr(s, n, v): s.pb.memory[s.key(n)] = v
