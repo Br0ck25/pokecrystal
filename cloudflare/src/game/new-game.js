@@ -186,8 +186,8 @@ export class NewGame {
     if (v.pic) out.push({ colors: DIPLOMA, pic: this.picSpec(v.pic) });
     if (v.sprite) out.push({ colors: DIPLOMA, sprites: [{ sprite: this.gender === 'FEMALE' ? 'SPRITE_KRIS' : 'SPRITE_CHRIS', palette: this.gender === 'FEMALE' ? 'BLUE' : 'RED', row: 0, x: 64, y: 60 }] });
     if (v.text) {
-      const { lines, prompt } = textLines(v.text);
-      out.push({ colors, box: [0, 12, 19, 17], texts: [[1, 14, lines[0]], [1, 16, lines[1]]], prompt });
+      const { lines, prompt, shift = 0 } = textLines(v.text);
+      out.push({ colors, box: [0, 12, 19, 17], texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]], prompt });
     }
     if (v.menu) {
       const m = v.menu;

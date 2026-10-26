@@ -58,6 +58,9 @@ def plant_party(mons):
         st = m['stats']
         for off, v in [(34, m['hp']), (36, st['hp']), (38, st['atk']), (40, st['def']), (42, st['spd']), (44, st['sat']), (46, st['sdf'])]: w(off, v >> 8); w(off + 1, v & 255)
     ref.pb.memory[sb, sa + len(mons)] = 255
+battle = {'started': False}
+bb, ba = ref.sym['BattleIntro']
+ref.pb.hook_register(bb, ba, lambda ctx: battle.__setitem__('started', True), None)
 BUTTONS = {'left', 'right', 'up', 'down', 'a', 'b', 'start', 'select'}
 for s in steps:
     if 'hold' in s:
@@ -72,7 +75,51 @@ for s in steps:
         for ev in c.get('set', []): set_event(ev, True)
         group, num = ids[c['id']]
         ref.warp_in(group, num, c['warp'], c.get('settle', 300))
-        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'playerId': ref.rd('wPlayerID') << 8 | ref.rd('wPlayerID+1'), 'party': c.get('party', 0), 'plant': c.get('plant', []), 'items': c.get('items', {}), 'settle': c.get('settle', 0), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
+        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'playerId': ref.rd('wPlayerID') << 8 | ref.rd('wPlayerID+1'), 'party': c.get('party', 0), 'plant': c.get('plant', []), 'items': c.get('items', {}), 'settle': c.get('settle', 0), 'enemyMonLevel': ref.rd('wEnemyMonLevel'), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
+    elif 'sync' in s:                                  # {"sync": "battle", "tap": "a"}: tap A every 40 frames until the battle starts (BattleIntro); both sides then sit at transition frame 0
+        # {"sync": "battle", "walk": ["left", "right"]}: walk a tile (16 frames) at a time in that order until a wild battle starts; the app is told the species, level and DVs
+        for i in range(s.get('limit', 4000)):
+            if s.get('tap') and i % 40 == 0: ref.pb.button_press(s['tap'])
+            if s.get('tap') and i % 40 == 3: ref.pb.button_release(s['tap'])
+            if s.get('walk') and i % 16 == 0:
+                if i: ref.pb.button_release(s['walk'][(i // 16 - 1) % len(s['walk'])])
+                ref.pb.button_press(s['walk'][(i // 16) % len(s['walk'])])
+            ref.tick(1)
+            if battle['started']: break
+        else: raise RuntimeError('the battle never started')
+        if s.get('tap'): ref.pb.button_release(s['tap'])
+        if s.get('walk'):
+            ref.pb.button_release(s['walk'][(i // 16) % len(s['walk'])])
+            s['frames'] = i + 1
+            species_id, level = ref.rd('wTempWildMonSpecies'), ref.rd('wCurPartyLevel')
+            snap = io.BytesIO(); ref.pb.save_state(snap)                        # look ahead for the DVs the ROM rolls, then come back
+            menu = {'f': False}; mb, ma = ref.sym['BattleMenu']; ref.pb.hook_register(mb, ma, lambda ctx: menu.__setitem__('f', True), None)
+            for j in range(3000):
+                if j % 40 == 0: ref.pb.button_press('a')
+                if j % 40 == 3: ref.pb.button_release('a')
+                ref.tick(1)
+                if menu['f']: break
+            dvs = [ref.rd('wEnemyMonDVs'), ref.rd('wEnemyMonDVs+1')]
+            ref.pb.hook_deregister(mb, ma)
+            snap.seek(0); ref.pb.load_state(snap)
+            names = [m.group(1) for m in re.finditer(r'^\s*const (\w+)', open(os.path.join(REPO, 'constants/pokemon_constants.asm')).read().split('DEF NUM_POKEMON')[0], re.M)]
+            s['force'] = {'species': names[species_id - 1], 'level': level, 'dvs': dvs}
+            print('  wild', s['force'])
+        ref.tick(1)
+    elif 'mash' in s:                                  # {"mash": "a", "shots": {"label": frame, ...}}: tap A every 40 frames (3 down) and shoot at the given frames after this step began
+        def tap_at(i):
+            if i < s.get('holdFrom', 0): return
+            if 'holdUntil' in s:
+                if i == s.get('holdFrom', 0): ref.pb.button_press(s['mash'])
+                elif i == s['holdUntil']: ref.pb.button_release(s['mash'])
+                return
+            if i % 40 == s.get('phase', 0): ref.pb.button_press(s['mash'])
+            elif i % 40 == (s.get('phase', 0) + 3) % 40: ref.pb.button_release(s['mash'])
+        i = 0
+        for label, f in sorted(s['shots'].items(), key=lambda kv: kv[1]):
+            while i < f: tap_at(i); ref.tick(1); i += 1
+            tap_at(i); roms[label] = ref.shot(); i += 1
+        ref.pb.button_release(s['mash'])
     elif 'wait' in s:
         ref.tick(s['wait'])
     elif 'dump' in s:                                  # {"dump": ["wPartyMon1Species", 48]}: print RAM bytes (ROM side only)

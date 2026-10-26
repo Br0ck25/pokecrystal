@@ -196,7 +196,7 @@ export class PackScreen {
       { colors: pal[3], texts: [[7, cursorRow, this.phase === 'list' ? '▶' : '▷']] },
     ];
     const message = this.message();
-    out.push({ box: [0, 12, 19, 17], texts: message ? [[1, 14, message.lines[0]], [1, 16, message.lines[1]]] : [[1, 14, description[0] ?? ''], [1, 16, description[1] ?? '']], prompt: message?.prompt });
+    out.push({ box: [0, 12, 19, 17], texts: message ? [[1, 14 + (message.shift ?? 0), message.lines[0]], [1, 16 + (message.shift ?? 0), message.lines[1]]] : [[1, 14, description[0] ?? ''], [1, 16, description[1] ?? '']], prompt: message?.prompt });
     if (this.phase === 'submenu') {
       const n = this.sub.items.length, top = 11 - 2 * n;
       out.push({ box: [13, top, 19, 11], texts: this.sub.items.map((label, i) => [15, top + 1 + 2 * i, label]), cursor: [14, top + 1 + 2 * this.sub.cursor, '▶'] });

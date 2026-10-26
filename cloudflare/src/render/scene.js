@@ -49,22 +49,25 @@ export function describeScene(game) {
   const player = actorPixels(game.player);
   const camera = { x: player.x - PLAYER_SCREEN_X, y: player.y - PLAYER_SCREEN_Y };
   // Lower OAM slots are drawn on top, and the player is slot 0, so draw the objects from the last to the first.
-  const sprites = game.visibleObjects().slice().reverse().map((o) => {
+  const shown = game.transition?.view.sprites ?? 'all';                // RespawnPlayerAndOpponent hides everyone else during a battle transition
+  const objects = shown === 'all' ? game.visibleObjects() : shown === 'fighters' ? game.visibleObjects().filter((o) => o === game.transition.opponent) : [];
+  const sprites = objects.slice().reverse().map((o) => {
     const def = o.def;
     return spriteEntry(game, game.spriteOf(def), objectPaletteIndex({ sprite: game.spriteOf(def), palette: def.palette }), o);
   });
   const hero = playerSprite(game.state);
-  sprites.push(spriteEntry(game, hero, objectPaletteIndex({ sprite: hero, palette: '0' }), game.player));
+  if (shown !== 'none') sprites.push(spriteEntry(game, hero, objectPaletteIndex({ sprite: hero, palette: '0' }), game.player));
   // Every hop spawns a shadow that stays on the ground under the jumper (SpawnShadow, MovementFunction_Shadow: 14 pixels down, 12 for sideways hops)
-  const shadows = [game.player, ...game.visibleObjects()].filter((a) => a.step?.kind === 'walk' && a.step.jump).map((a) => {
+  const shadows = shown !== 'all' ? [] : [game.player, ...game.visibleObjects()].filter((a) => a.step?.kind === 'walk' && a.step.jump).map((a) => {
     const { x, y } = actorPixels(a);
     return { x, y: y + SPRITE_Y_OFFSET + (a.facing === 'up' || a.facing === 'down' ? 14 : 12) };
   });
   // The grass a step into tall grass shakes at the walker's feet: two blades, swapping pose every 4 loops (SetFacingGrassShake)
-  const rustles = [game.player, ...game.visibleObjects()].filter((a) => a.step?.kind === 'walk' && a.step.rustle && a.step.frame < a.step.frames - 2).map((a) => {
+  const rustles = shown !== 'all' ? [] : [game.player, ...game.visibleObjects()].filter((a) => a.step?.kind === 'walk' && a.step.rustle && a.step.frame < a.step.frames - 2).map((a) => {
     const { x, y } = actorPixels(a);
     return { x, y: y + SPRITE_Y_OFFSET, wide: (Math.floor(a.step.frame / 2) + 1) & 4 ? 1 : 0 };
   });
+  if (game.transition) return { camera, sprites, shadows, rustles, panels: [], pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, transition: game.transition.view, mapId: game.world.id };
   if (game.battleScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.battleScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
   if (game.partyScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.partyScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
   if (game.packScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.packScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };

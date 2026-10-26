@@ -12,6 +12,7 @@ import { tiles } from '../script/text.js';
 import { titleFrame } from './title-frame.js';
 import { MAP_ENTRY_SIGN } from '../generated/landmarks.js';
 import { NAMING_GLYPHS } from '../generated/intro.js';
+import { BATTLE_TRANSITION } from '../generated/battle-transition.js';
 
 const to8 = (c) => Math.round((c * 255) / 31);
 const textColors = TEXT_PALETTE.map((rgb) => rgb.map(to8));
@@ -361,7 +362,7 @@ export class Renderer {
       if (panel.cursor) this.drawText(panel.cursor[2], panel.cursor[0], panel.cursor[1], theme.fonts);
       if (panel.cursorBox) { const [x0, y0, x1, y1] = panel.cursorBox; c.fillStyle = '#000'; c.fillRect(x0, y0, x1 - x0 + 1, 1); c.fillRect(x0, y1, x1 - x0 + 1, 1); c.fillRect(x0, y0, 1, y1 - y0 + 1); c.fillRect(x1, y0, 1, y1 - y0 + 1); }
       for (const sprite of panel.sprites ?? []) this.drawSpriteAt(sprite);
-      if (panel.prompt && ((frame >> 4) & 1)) this.drawText('▼', 18, 17, theme.fonts);
+      if (panel.promptNow || (panel.prompt && ((frame >> 4) & 1))) this.drawText('▼', 18, 17, theme.fonts);
     }
   }
 
@@ -491,6 +492,45 @@ export class Renderer {
     this.drawPanels(intro.menuPanels ? intro.menuPanels(now) : intro.panels(), { bgp: intro.bgp ?? null, frame: intro.frame ?? 0 });
   }
 
+  layerContext() {
+    this.layer ??= makeCanvas(W, H);
+    const bg = this.layer.getContext('2d', { willReadFrequently: true });
+    bg.fillStyle = '#000';
+    bg.fillRect(0, 0, W, H);
+    return bg;
+  }
+
+  /**
+   * The battle transition's effect on the drawn background (engine/battle/battle_transition.asm): `bgp` shades every color index (the flash),
+   * `pal7` puts every tile in the trainer-battle palette, `cells` are tiles the transition wrote (squares, black), `scx` scrolls each scanline.
+   * Color indexes are recovered from the map's own palettes, since the map is drawn already colored.
+   */
+  applyTransition(ctx, tr, world) {
+    if (tr.black) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); return; }
+    const palettes = mapBgPalettes(world.id);
+    const bgp = tr.bgp ?? [0, 1, 2, 3];
+    const trainer = BATTLE_TRANSITION.palettes.day.map((rgb) => rgb.map(to8));
+    const lookup = new Map();
+    palettes.forEach((palette, p) => palette.forEach((rgb, i) => { const key = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]; if (!lookup.has(key)) lookup.set(key, [p, i]); }));
+    const src = ctx.getImageData(0, 0, W, H), out = ctx.createImageData(W, H);
+    const shade = (p, i) => (tr.pal7 ? trainer : palettes[p])[bgp[i]];
+    const put = (x, y, rgb) => { const o = (y * W + x) * 4; out.data[o] = rgb[0]; out.data[o + 1] = rgb[1]; out.data[o + 2] = rgb[2]; out.data[o + 3] = 255; };
+    for (let y = 0; y < H; y++) {
+      const dx = tr.scx ? tr.scx[y] : 0;
+      for (let x = 0; x < W; x++) {
+        const sx = x + dx;
+        if (sx < 0 || sx >= W) { put(x, y, shade(0, 3)); continue; }
+        const cell = tr.cells[(y >> 3) * 20 + (sx >> 3)];
+        if (cell) { put(x, y, shade(0, Number(BATTLE_TRANSITION.tiles[cell - 1][(y & 7) * 8 + (sx & 7)]))); continue; }
+        const o = (y * W + sx) * 4;
+        const found = lookup.get((src.data[o] << 16) | (src.data[o + 1] << 8) | src.data[o + 2]);
+        if (found && (tr.bgp || tr.pal7)) put(x, y, shade(found[0], found[1]));
+        else put(x, y, [src.data[o], src.data[o + 1], src.data[o + 2]]);
+      }
+    }
+    ctx.putImageData(out, 0, 0);
+  }
+
   draw(game) {
     this.setFrame(game.state.options?.frame ?? 0);
     const scene = describeScene(game);
@@ -502,12 +542,14 @@ export class Renderer {
     if (!this.sheets.has(world.id)) return;
     if (game.tileAnim.changed) { game.tileAnim.base = (id) => this.baseTile(world, id); this.applyTileAnimation(world, game.tileAnim); game.tileAnim.changed = false; }
     const { camera } = scene;
+    const bg = scene.transition ? this.layerContext() : c;               // a battle transition edits the background pixels, not the sprites
     // The map and, outside it, the border block.
     for (let by = Math.floor(camera.y / 32); by <= Math.floor((camera.y + H - 1) / 32); by++) {
       for (let bx = Math.floor(camera.x / 32); bx <= Math.floor((camera.x + W - 1) / 32); bx++) {
-        c.drawImage(this.metatile(world, world.blockIdAt(bx * 2, by * 2)), bx * 32 - camera.x, by * 32 - camera.y);
+        bg.drawImage(this.metatile(world, world.blockIdAt(bx * 2, by * 2)), bx * 32 - camera.x, by * 32 - camera.y);
       }
     }
+    if (scene.transition) { this.applyTransition(bg, scene.transition, world); c.drawImage(this.layer, 0, 0); }
     for (const s of scene.shadows) this.drawShadow(s.x - camera.x, s.y - camera.y);
     for (const s of scene.sprites) {
       const sheet = this.coloredSprite(s.sprite, s.paletteIndex);
@@ -525,8 +567,8 @@ export class Renderer {
     if (scene.sign) this.drawSign(scene.sign, mapBgPalettes(world.id)[7]);
     if (scene.textbox) {
       this.drawBox(0, 12, 19, 17);
-      this.drawText(scene.textbox.lines[0], 1, 14);
-      this.drawText(scene.textbox.lines[1], 1, 16);
+      this.drawText(scene.textbox.lines[0], 1, 14 + (scene.textbox.shift ?? 0));
+      this.drawText(scene.textbox.lines[1], 1, 16 + (scene.textbox.shift ?? 0));
       if (scene.textbox.prompt && ((game.frame >> 4) & 1)) this.drawText('▼', 18, 17);   // on the box's bottom border row (measured)
     }
     if (scene.yesno) {

@@ -16,6 +16,7 @@ import { PartyScreen } from './party.js';
 import { TrainerCardScreen } from './trainer-card.js';
 import { Battle } from '../battle/battle.js';
 import { BattleScreen } from '../battle/screen.js';
+import { BattleTransition, transitionKind } from './battle-transition.js';
 import { createMon, healParty } from '../script/mon.js';
 import { SPAWN_POINTS, HOME_SPAWN } from '../generated/spawns.js';
 import * as sharedText from '../generated/scripts/_text.js';
@@ -74,6 +75,8 @@ export class Game {
     this.optionScreen = null;         // the OPTION screen, opened from the start menu
     this.cardScreen = null;           // the trainer card (STATUS)
     this.battleScreen = null;         // a battle in progress (src/battle/screen.js)
+    this.transition = null;           // the flash and wipe before it (battle-transition.js); the screen takes over when it ends
+    this.enemyMonLevel = 0;           // wEnemyMonLevel: what the last battle left, which the transition's "stronger" test reads
     this.wildCooldown = 5;            // wWildEncounterCooldown: SetUpFiveStepWildEncounterCooldown on entering a map
     this.menu = null;                 // the open start menu: { cursor, lastDir, repeat }
     this.randomByte = () => Math.floor(Math.random() * 256);     // Random; tests replace it
@@ -257,6 +260,7 @@ export class Game {
   update(input = {}) {
     if (this.loading) return;
     this.frame++;
+    if (this.transition) { this.updateTransition(); return; }
     this.tileAnim.step();
     this.state.playFrames = (this.state.playFrames ?? 0) + 1;     // wGameTime*, counted while playing
     if (this.fade) { this.fade.frame++; if (this.fade.frame >= this.fade.frames) this.fade = null; }
@@ -299,9 +303,8 @@ export class Game {
   }
 
   /** BattleStart for a wild Pokémon: load the pictures, then the battle screen takes over until it reports a result. */
-  async startWildBattle({ species, level }) {
+  async startWildBattle({ species, level, dvs = [this.randomByte(), this.randomByte()] }) {
     this.loading = true;
-    const dvs = [this.randomByte(), this.randomByte()];
     const enemy = createMon({ species, level, dvs, id: 0 });
     const lead = this.state.party.find((m) => m.hp > 0);
     (this.state.dexSeen ??= new Set()).add(species);
@@ -309,7 +312,7 @@ export class Game {
     const pics = await this.battleArt([species]);
     const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: badgeBits(this.state), state: this.state, shiftStyle: options(this.state).battleShift });
     const name = POKEMON[species].name;
-    this.battleScreen = new BattleScreen({ battle, state: this.state, pics, intro: [['text', 'Wild '], ['text', name], ['line', 'appeared!'], ['prompt']], lead });
+    this.beginBattle(new BattleScreen({ battle, state: this.state, pics, intro: [['text', 'Wild '], ['text', name], ['line', 'appeared!'], ['prompt']], lead }), { trainer: false });
     this.loading = false;
   }
 
@@ -322,14 +325,31 @@ export class Game {
     const info = { name: trainer.name, className: trainer.className, cls, canLose: request.canLose, reward: trainer.reward, ai: trainer.ai, items: trainer.items, flags: trainer.flags, win: request.win, loss: request.loss };
     const battle = new Battle({ player: this.state.party, enemy: trainer.party, wild: false, random: this.randomByte, playerId: this.state.playerId, badges: badgeBits(this.state), state: this.state, trainerInfo: info, shiftStyle: options(this.state).battleShift });
     const intro = [['text', `${trainer.className} ${trainer.name}`], ['line', 'wants to battle!'], ['prompt']];
-    this.battleScreen = new BattleScreen({ battle, state: this.state, pics, intro, trainer: true });
+    this.beginBattle(new BattleScreen({ battle, state: this.state, pics, intro, trainer: true }), { trainer: true });
     this.loading = false;
+  }
+
+  /** FindFirstAliveMonAndStartBattle: the transition plays, then the battle screen. */
+  beginBattle(screen, { trainer }) {
+    const lead = this.state.party.find((m) => m.hp > 0);
+    const kind = transitionKind({ environment: this.world.environment, leadLevel: lead.level, enemyLevel: this.enemyMonLevel });
+    this.transition = new BattleTransition({ trainer, ...kind, random: this.randomByte });
+    this.transition.opponent = trainer ? this.runner?.caller ?? this.lastTalked ?? null : null;
+    this.pendingBattle = screen;
+  }
+
+  updateTransition() {
+    if (!this.transition.update()) return;
+    this.transition = null;
+    this.battleScreen = this.pendingBattle;
+    this.pendingBattle = null;
   }
 
   updateBattle(input) {
     const result = this.battleScreen.update({ ...input, delay: TEXT_DELAYS[options(this.state).textSpeed] });
     if (!result) return;
     for (const u of this.battleScreen.unported) this.unported.add(u);
+    this.enemyMonLevel = this.battleScreen.battle.sides[1].level;
     this.battleScreen = null;
     const runner = this.battleRunner;
     this.battleRunner = null;

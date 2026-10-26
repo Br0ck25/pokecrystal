@@ -29,11 +29,49 @@ const fs = require('fs');
           for (const m of e.plant) { const mon = createMon({ species: m.species, level: m.level, dvs: m.dvs, id: m.id, item: m.itemName ?? null }); Object.assign(mon, { moves: m.moves, pp: m.pp, exp: m.exp, hp: m.hp, nickname: 'TEST', status: m.status ?? 0 }); mon.stats = { ...m.stats }; g.state.party.push(mon); }
         }
         if (e.prevLandmark) g.prevLandmark = e.prevLandmark;
+        if (e.enemyMonLevel !== undefined) g.enemyMonLevel = e.enemyMonLevel;
         await g.enterMap(e.map, e.x, e.y, 'down');
         while (g.loading) await new Promise((r) => setTimeout(r, 2));
         for (let i = 0; i < (e.settle ?? 0); i++) g.update({});                  // the ROM idles this long after the warp too
         if (e.tileAnim) { g.tileAnim.index = e.tileAnim[0]; g.tileAnim.timer = e.tileAnim[1]; }   // the real game's animation phase
       }, s.enter);
+    } else if (s.sync) {                                                                 // the same taps of A (or steps) until the battle transition starts
+      await page.evaluate(async (s) => {
+        const g = window.game;
+        const wait = async () => { while (g.loading) await new Promise((r) => setTimeout(r, 2)); };
+        if (s.walk) {
+          g.randomByte = () => 255;                                                      // no encounter of its own
+          for (let i = 0; i < s.frames - 2; i++) { await wait(); g.update({ dir: s.walk[Math.floor(i / 16) % s.walk.length] }); }
+          const { species, level, dvs } = s.force;
+          g.randomByte = (() => { let n = 0; return () => (n = (n * 5 + 3) & 255); })();
+          await g.startWildBattle({ species, level, dvs });
+        } else {
+          for (let i = 0; i < (s.limit ?? 4000); i++) {
+            await wait();
+            g.update(s.tap && i % 40 === 0 ? { a: true, aHeld: true } : s.tap && i % 40 < 3 ? { aHeld: true } : {});
+            if (g.transition) break;
+          }
+        }
+        if (!g.transition) throw new Error('the battle never started');
+        g.update({});                                                                    // transition frame 0
+      }, s);
+    } else if (s.mash) {                                                                 // the same taps of A, shooting at the given frames
+      const shots = Object.entries(s.shots).sort((x, y) => x[1] - y[1]);
+      let i = 0;
+      for (const [label, f] of shots) {
+        const done = await page.evaluate(async ([from, to, press]) => {
+          const g = window.game;
+          const input = (i) => (i % 40 === 0 ? { a: true, aHeld: true } : i % 40 < 3 ? { aHeld: true } : {});
+          for (let i = from; i < to; i++) { while (g.loading) await new Promise((r) => setTimeout(r, 2)); g.update(input(i)); }
+          while (g.loading) await new Promise((r) => setTimeout(r, 2));
+          g.update(input(to)); await window.__draw();
+          return to + 1;
+        }, [i, f, s.mash]);
+        i = done;
+        console.log(`  [${label}] app mash`);
+        const png = await page.evaluate(() => document.querySelector('#map').toDataURL('image/png'));
+        fs.writeFileSync(`${outDir}/play_${label}.png`, Buffer.from(png.split(',')[1], 'base64'));
+      }
     } else if (s.hold || s.press || s.wait) {
       await page.evaluate(async (s) => {
         const g = window.game;

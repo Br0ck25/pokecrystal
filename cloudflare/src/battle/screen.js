@@ -21,6 +21,15 @@ const HP_BAR_TILES = 6;
 // The trainer's picture, in tiles moved left after each step of SlideBattlePicOut (measured from the real game; it is gone after the sixth).
 const SLIDE_SHIFTS = [1, 3, 4, 6, 7, 9];
 const tile = (n) => HUD_TILES[n];
+// BattleIntroSlidingPics and what follows, in frames from the first one (measured from the real game, a trainer battle): the pictures
+// slide in for 73 frames as silhouettes (the enemy from the left, the player's back as sprites from the right, 2 pixels a frame), then
+// the colors load, the Poké Ball rows of the HUDs appear and the text starts.
+// The text rows reach the screen when the VBlank copies their third of the tilemap, every third frame (measured: frame 262 + 3n of the
+// transition), whatever the printing speed in between.
+const TEXT_COPY_PHASE = 1;
+const INPUT_LATENCY = 3;
+const ARROW_FRAMES = 18;                  // the ▼ shows this long, then hides as long (the blink loop runs at CPU speed, so it is not a round 16)
+const SLIDE_FRAMES = 73, COLOR_AT = 81, BALLS_AT = 120, BORDERS_AT = 122, TEXT_AT = 121;
 
 /** hpBarTiles for a bar of `pixels` pixels (DrawBattleHPBar): 6 tiles, then the end tile. */
 function barTiles(pixels, end) {
@@ -57,7 +66,9 @@ export class BattleScreen {
     this.pics = pics;
     this.gen = battle.run();
     this.frame = 0;
-    this.mode = 'intro';
+    this.inputs = Array.from({ length: INPUT_LATENCY }, () => ({}));
+    this.t = 0;                                                        // frames since the screen appeared (the first white frame)
+    this.mode = 'enter';
     this.wait = startTextWait(renderText(intro, { block: (l) => TEXT[l], vars: {}, playerName, rivalName: '' }));
     this.result = null;
     this.shown = { 0: battle.sides[0].hp, 1: battle.sides[1].hp };       // HP the digits show
@@ -83,8 +94,19 @@ export class BattleScreen {
   /** One frame; returns the battle's result when it is over, else null. */
   update(input) {
     this.frame++;
+    this.inputs.push(input);                                           // the game reads the buttons INPUT_LATENCY frames after they go down (measured)
+    const result = this.step(this.inputs.shift());
+    if (this.frame % 3 === TEXT_COPY_PHASE && this.wait) this.copied = { wait: this.wait, index: this.wait.index, chars: this.wait.chars };
+    return result;
+  }
+
+  step(input) {
     switch (this.mode) {
+      case 'enter':
+        if (++this.t >= TEXT_AT) this.mode = 'intro';
+        break;
       case 'intro':
+        if (this.t < BORDERS_AT) this.t++;
         if (stepTextWait(this.wait, input)) this.advance();
         break;
       case 'text':
@@ -127,7 +149,7 @@ export class BattleScreen {
         this.shown[1] = side.hp; this.px[1] = hpPixels(side.hp, side.maxHp);
         continue;
       }
-      if (value.enemyHudClear) { this.enemyHud = false; continue; }
+      if (value.enemyHudClear) { this.enemyHud = false; this.ballsGone = this.frame; continue; }
       if (value.trainerSlideIn) { this.enemyPic = this.pics.enemy; this.enemyGone = false; this.enemyHud = false; this.enemySlide = 0; continue; }
       if (value.trainerWinText || value.trainerLossText) {
         const commands = value.trainerWinText ? this.battle.trainerInfo.win : this.battle.trainerInfo.loss;
@@ -248,13 +270,15 @@ export class BattleScreen {
 
   /** DrawPlayerPartyIconHUDBorder + StageBallTilesData: one ball per party slot, 6 slots. */
   partyBalls(out, colors, tiles, texts, put) {
-    put(18, 10, 0x73); put(18, 11, 0x5c); for (let x = 10; x < 18; x++) put(x, 11, 0x76); put(9, 11, 0x6f);
+    const gone = this.ballsGone === undefined ? -1 : this.frame - this.ballsGone;     // ClearBox of both HUDs: the balls first, the enemy's border a frame later, the player's after that
+    if (gone < 2) { put(18, 10, 0x73); put(18, 11, 0x5c); for (let x = 10; x < 18; x++) put(x, 11, 0x76); put(9, 11, 0x6f); }
     const balls = [0, 1, 2, 3, 4, 5].map((i) => { const m = this.battle.party[i]; return !m ? 3 : m.hp === 0 ? 2 : m.status ? 1 : 0; });
-    const ballTiles = balls.map((b, i) => [11 + i, 10, BALL_TILES[b], BALL_PALETTE]);
+    const ballTiles = gone >= 0 ? [] : balls.map((b, i) => [11 + i, 10, BALL_TILES[b], BALL_PALETTE]);
     if (this.trainerBattle && !this.enemyHud) {                         // ShowOTTrainerMonsRemaining: the trainer's party, right to left from column 8
-      put(1, 2, 0x6d); put(1, 3, 0x74); for (let x = 2; x < 10; x++) put(x, 3, 0x76); put(10, 3, 0x78);
+      const bordered = this.t >= BORDERS_AT || (this.mode !== 'enter' && this.mode !== 'intro');   // the enemy's border comes two frames after the balls
+      if (bordered && gone < 1) { put(1, 2, 0x6d); put(1, 3, 0x74); for (let x = 2; x < 10; x++) put(x, 3, 0x76); put(10, 3, 0x78); }
       const party = this.battle.enemyParty;
-      for (let i = 0; i < 6; i++) { const m = party[i]; ballTiles.push([8 - i, 2, BALL_TILES[!m ? 3 : (m === this.battle.sides[1].mon ? this.battle.sides[1].hp : m.hp) === 0 ? 2 : m.status ? 1 : 0], BALL_PALETTE]); }
+      if (gone < 0) for (let i = 0; i < 6; i++) { const m = party[i]; ballTiles.push([8 - i, 2, BALL_TILES[!m ? 3 : (m === this.battle.sides[1].mon ? this.battle.sides[1].hp : m.hp) === 0 ? 2 : m.status ? 1 : 0], BALL_PALETTE]); }
     }
     out.push({ colors, tiles, texts }, { colors: BALL_PALETTE, tiles: ballTiles });
     return out;
@@ -270,17 +294,28 @@ export class BattleScreen {
     return out;
   }
 
+  /** The text as the last tilemap copy left it. */
+  shownText() {
+    const c = this.copied, w = this.wait;
+    return c && c.wait === w && c.index === w.index ? { ...w, chars: c.chars } : w;
+  }
+
   /** What the canvas draws, bottom first. */
   panels() {
     const [player, enemy] = this.battle.sides;
     const out = [{ fill: 0 }];
-    if (!this.enemyGone) out.push({ pic: { ...this.enemyPic, x: 12 + this.enemyPic.offX + this.enemySlide, y: this.enemyPic.offY } });
-    if (this.sentOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut ? this.pics.playerMons[this.playerSpecies] : this.pics.player), x: this.sentOut ? 2 : 2 - this.slide, y: 6 } });
-    out.push(...this.hudPanels());
+    const entering = this.t < BORDERS_AT && (this.mode === 'enter' || this.mode === 'intro');
+    const k = Math.min(this.t, SLIDE_FRAMES - 1), gray = entering && this.t < COLOR_AT ? { palette: PREDEF_PALETTES.BLACKOUT } : {};
+    const enemyX = entering ? 12 + this.enemyPic.offX - (144 - 2 * k) / 8 : 12 + this.enemyPic.offX + this.enemySlide;
+    const playerX = entering ? (k < SLIDE_FRAMES - 1 ? 160 - 2 * (k + 1) : 16) / 8 : this.sentOut ? 2 : 2 - this.slide;
+    if (!this.enemyGone) out.push({ pic: { ...this.enemyPic, ...gray, x: enemyX, y: this.enemyPic.offY } });
+    if (this.sentOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut ? this.pics.playerMons[this.playerSpecies] : this.pics.player), ...gray, x: playerX, y: 6 } });
+    if (!entering || this.t >= BALLS_AT) out.push(...this.hudPanels());
     out.push({ box: [0, 12, 19, 17] });
     if ((this.mode === 'text' || this.mode === 'intro') && this.wait) {
-      const { lines, prompt } = textLines(this.wait);
-      out.push({ texts: [[1, 14, lines[0]], [1, 16, lines[1]]], prompt });
+      const { lines, prompt, shift } = textLines(this.shownText());
+      if (prompt) this.readyAt ??= this.frame; else this.readyAt = undefined;
+      out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]], promptNow: prompt && (this.frame - this.readyAt) % (2 * ARROW_FRAMES) < ARROW_FRAMES });
     }
     if (this.mode === 'party') return this.partyScreen.panels();
     if (this.mode === 'pack') return this.packScreen.panels();

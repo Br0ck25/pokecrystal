@@ -331,7 +331,9 @@ test('wild encounters: none without a Pokémon, five steps of cooldown, then a b
   for (let i = 0; i < 2; i++) { walk('right'); walk('left'); }
   assert.equal(g.battleScreen, null, 'the cooldown has not run out');
   walk('right');
-  for (let i = 0; i < 100 && !g.battleScreen; i++) await new Promise((r) => setTimeout(r, 10));
+  for (let i = 0; i < 100 && !g.transition && !g.battleScreen; i++) await new Promise((r) => setTimeout(r, 10));
+  assert.ok(g.transition, 'the battle transition plays first');
+  for (let i = 0; i < 1000 && !g.battleScreen; i++) g.update({});
   assert.ok(g.battleScreen, 'a battle started');
   assert.equal(g.battleScreen.battle.sides[1].species, 'PIDGEY');
 });

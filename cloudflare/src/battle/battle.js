@@ -123,20 +123,25 @@ export class Battle {
       yield { wait: 6 };
       yield { enemyHud: true };
       yield { wait: 40 };
-    } else {                                             // the trainer's pic leaves, the first Pokémon is sent out (timings not measured yet)
-      yield { wait: 6 };
+    } else {                                             // measured: the box clears, 3 frames later the HUD, a frame on the trainer's pic slides out
+      yield { wait: 3 };
+      yield { enemyHudClear: true };
       yield { enemyTrainerOut: true };
+      yield { wait: 13 };
       yield this.say('BattleText_EnemySentOut');
+      yield { wait: 28 };
+      yield { anim: 'SEND_OUT_MON', user: 1, frames: 26 };            // the ball flies and opens (not drawn yet)
       yield { enemySendOut: true, species: this.sides[1].species };
+      yield { wait: 119 };                                            // the picture's own animation and cry
       yield { enemyHud: true };
-      yield { wait: 40 };
+      yield { wait: 39 };
     }
     yield { slideOut: true };
     yield* this.sendOutText();
     yield { wait: 30 };
     yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
     yield { sendOut: 0, species: this.sides[0].species };
-    yield { wait: 17 };
+    yield { wait: this.wild ? 17 : 64 };               // the real game holds here for the Pokémon's cry (CHIKORITA's, in the trainer battle measured); wild battles not re-measured
     for (;;) {
       this.sides.forEach((s) => { s.sub.flinched = false; });
       this.curDamage = 0;

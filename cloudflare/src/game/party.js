@@ -236,8 +236,8 @@ export class PartyScreen {
     out.push({ colors: PARTY_MENU_BG, texts: [[0, cursorRow, hollow ? '▷' : '▶'], ...(this.phase === 'switch' ? [[0, 1 + 2 * (this.switchFrom - 1), '▷']] : [])], sprites: icons });
     if (this.talk) {
       const t = this.talk, box = { box: [0, 12, 19, 17] };
-      const { lines, prompt } = textLines(t.wait ?? t.shown);
-      out.push({ ...box, texts: [[1, 14, lines[0]], [1, 16, lines[1]]], prompt: t.wait ? prompt : false });
+      const { lines, prompt, shift = 0 } = textLines(t.wait ?? t.shown);
+      out.push({ ...box, texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]], prompt: t.wait ? prompt : false });
       if (t.yesno !== undefined) out.push({ box: [14, 7, 19, 11], texts: [[16, 8, 'YES'], [16, 10, 'NO']], cursor: [15, 8 + 2 * t.yesno, '▶'] });
       return out;
     }
