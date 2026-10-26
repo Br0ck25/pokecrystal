@@ -31,3 +31,4 @@ Regression run: `npm run regress -- --build DIR --out DIR [--only menu,mom]` rep
 Damage oracle (`damage/`): `node damage/cases.mjs > OUT/cases.json`, `BATTLES=5 python3 damage/probe.py --build DIR --out OUT` plants a party Pokémon in RAM (species, item, moves, badges),
 random-walks Route 29 into wild battles and records each hit (`wCurDamage`, crit flag, `wTypeModifier`, both mons' stats), then `node damage/verify.mjs OUT` checks that `src/battle/damage.js`
 can produce exactly that damage (some roll of 217..255, or the target's HP when the hit overkills). The last run matched 64 of 67 hits; the rest were 10-HP losses of MAROWAK that no attack explains.
+`damage/exp_probe.py` + `damage/exp_verify.mjs OUT` do the same for experience: the ROM's EXP and stat EXP gains after wild wins matched the formulas of `src/battle/experience.js` in 21 of 21 battles (the planted Pokémon has a foreign OT ID, so the traded 1.5x boost applies).
