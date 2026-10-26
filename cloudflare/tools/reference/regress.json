@@ -262,6 +262,17 @@
         "t538": 313,
         "t540": 0
       }
+    },
+    {
+      "script": "pokegear",
+      "budgets": {
+        "m0": 0,
+        "m1": 0,
+        "clock": 0,
+        "map": 30,
+        "phone": 15,
+        "radio": 10
+      }
     }
   ]
 }

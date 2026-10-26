@@ -640,7 +640,7 @@ export class Game {
     else if (item === 'POKEMON') this.partyScreen = new PartyScreen(this.state);
     else if (item === 'PACK') this.packScreen = new PackScreen(this.state);
     else if (item === 'STATUS') this.cardScreen = new TrainerCardScreen(this.state);
-    else if (item === 'POKEGEAR') this.gearScreen = new PokegearScreen(this.state);
+    else if (item === 'POKEGEAR') this.gearScreen = new PokegearScreen(this.state, { noPhone: this.world.noPhone, landmark: this.world.landmark });
     else if (item === 'OPTION') this.optionScreen = new OptionsScreen(options(this.state));
     else this.unported.add(`start menu ${item}`);
   }
