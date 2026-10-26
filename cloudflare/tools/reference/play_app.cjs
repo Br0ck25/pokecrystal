@@ -30,6 +30,11 @@ const fs = require('fs');
         }
         if (e.prevLandmark) g.prevLandmark = e.prevLandmark;
         if (e.enemyMonLevel !== undefined) g.enemyMonLevel = e.enemyMonLevel;
+        if (e.dex) {                                                                  // species numbers seen / caught (the ROM side sets wPokedexSeen/Caught)
+          const names = Object.keys((await import('/src/generated/pokemon.js')).POKEMON);
+          for (const n of e.dex.seen) g.state.dexSeen.add(names[n - 1]);
+          for (const n of e.dex.caught) g.state.dexCaught.add(names[n - 1]);
+        }
         if (e.clock) g.state.clock = e.clock;                                         // the time the Pokégear shows
         await g.enterMap(e.map, e.x, e.y, 'down');
         while (g.loading) await new Promise((r) => setTimeout(r, 2));

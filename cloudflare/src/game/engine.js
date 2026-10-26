@@ -15,6 +15,7 @@ import { PackScreen } from './pack.js';
 import { PartyScreen } from './party.js';
 import { TrainerCardScreen } from './trainer-card.js';
 import { PokegearScreen } from './pokegear.js';
+import { PokedexScreen } from './pokedex.js';
 import { Battle } from '../battle/battle.js';
 import { BattleScreen } from '../battle/screen.js';
 import { BattleTransition, transitionKind } from './battle-transition.js';
@@ -76,6 +77,7 @@ export class Game {
     this.optionScreen = null;         // the OPTION screen, opened from the start menu
     this.cardScreen = null;           // the trainer card (STATUS)
     this.gearScreen = null;           // the Pokégear
+    this.dexScreen = null;            // the Pokédex
     this.battleScreen = null;         // a battle in progress (src/battle/screen.js)
     this.transition = null;           // the flash and wipe before it (battle-transition.js); the screen takes over when it ends
     this.enemyMonLevel = 0;           // wEnemyMonLevel: what the last battle left, which the transition's "stronger" test reads
@@ -279,6 +281,7 @@ export class Game {
     if (this.optionScreen) { if (this.optionScreen.update(input)) this.optionScreen = null; return; }
     if (this.cardScreen) { if (this.cardScreen.update(input)) this.cardScreen = null; return; }
     if (this.gearScreen) { if (this.gearScreen.update(input)) this.gearScreen = null; return; }
+    if (this.dexScreen) { if (this.dexScreen.update(input)) this.dexScreen = null; return; }
     if (this.menu) { this.updateMenu(input); return; }
     if (this.player.step) return;
     this.idleEvents(input);
@@ -640,6 +643,7 @@ export class Game {
     else if (item === 'POKEMON') this.partyScreen = new PartyScreen(this.state);
     else if (item === 'PACK') this.packScreen = new PackScreen(this.state);
     else if (item === 'STATUS') this.cardScreen = new TrainerCardScreen(this.state);
+    else if (item === 'POKEDEX') this.dexScreen = new PokedexScreen(this.state);
     else if (item === 'POKEGEAR') this.gearScreen = new PokegearScreen(this.state, { noPhone: this.world.noPhone, landmark: this.world.landmark });
     else if (item === 'OPTION') this.optionScreen = new OptionsScreen(options(this.state));
     else this.unported.add(`start menu ${item}`);

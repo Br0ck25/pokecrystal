@@ -73,6 +73,7 @@ export function describeScene(game) {
   if (game.packScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.packScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
   if (game.optionScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.optionScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
   if (game.gearScreen?.panels().length) return { camera, sprites: [], shadows: [], rustles: [], panels: game.gearScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
+  if (game.dexScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.dexScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
   if (game.cardScreen) return { camera, sprites: [], shadows: [], rustles: [], panels: game.cardScreen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: null, mapId: game.world.id };
   const wait = game.runner?.wait;
   let textbox = null;
@@ -88,7 +89,7 @@ export function describeScene(game) {
   const yesno = wait?.kind === 'yesno' ? { cursor: wait.cursor, left: wait.x, top: 7, right: wait.x + 5, bottom: 11 } : null;
   const panels = [];                                                    // boxes of text drawn under the dialogue box
   if (wait?.kind === 'naming') return { camera, sprites: [], shadows: [], rustles: [], panels: wait.screen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: game.fade, mapId: game.world.id };
-  if (game.menu && !game.gearScreen?.panels().length) panels.push(startMenuView(game.state, game.menu.cursor, game.menu.hollow));
+  if (game.menu && !game.gearScreen?.panels().length && !game.dexScreen) panels.push(startMenuView(game.state, game.menu.cursor, game.menu.hollow));
   if (game.savingInfo) panels.push(saveInfoView(game.state));
   const b = game.blackout;
   const black = b ? b.from + (b.to - b.from) * (b.frame / b.frames) : 0;       // 0 clear .. 1 black

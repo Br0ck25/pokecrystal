@@ -350,6 +350,8 @@ export class Renderer {
   drawPanels(panels, { bgp = null, frame = 0 } = {}) {
     const c = this.ctx;
     for (const panel of panels) {
+      c.save();
+      if (panel.dx) c.translate(panel.dx, 0);                                                // a scrolled background
       const base = panel.colors ? panel.colors.map((rgb) => rgb.map(to8)) : textColors;      // panel colors are the game's 5-bit RGB
       const colors = bgp ? bgp.map((i) => base[i]) : base;
       const theme = colors === textColors ? { colors, fonts: [this.font, this.fontExtra], frame: this.frame } : this.theme(colors);
@@ -363,6 +365,7 @@ export class Renderer {
       if (panel.cursorBox) { const [x0, y0, x1, y1] = panel.cursorBox; c.fillStyle = '#000'; c.fillRect(x0, y0, x1 - x0 + 1, 1); c.fillRect(x0, y1, x1 - x0 + 1, 1); c.fillRect(x0, y0, 1, y1 - y0 + 1); c.fillRect(x1, y0, 1, y1 - y0 + 1); }
       for (const sprite of panel.sprites ?? []) this.drawSpriteAt(sprite);
       if (panel.promptNow || (panel.prompt && ((frame >> 4) & 1))) this.drawText('▼', 18, 17, theme.fonts);
+      c.restore();
     }
   }
 
@@ -400,7 +403,7 @@ export class Renderer {
       import(`../generated/${name}.js`).then(({ PIC }) => this.picModules.set(name, spec.species ? { size: PIC.size, pixels: PIC.front, palette: PIC.palette } : PIC)).catch(() => {});
     }
     const pic = this.picModules.get(name);
-    return pic && spec.pixels ? { ...pic, pixels: spec.pixels } : pic;     // the shrinking frames reuse the player's colors
+    return pic && (spec.pixels || spec.palette) ? { ...pic, ...(spec.pixels && { pixels: spec.pixels }), ...(spec.palette && { palette: spec.palette }) } : pic;     // the shrinking frames reuse the player's colors, the Pokédex list its green ones
   }
 
   /** A sprite sheet frame at pixel (x, y) in a palette named RED/BLUE...: { sprite, palette, row, mirror, x, y }. */
