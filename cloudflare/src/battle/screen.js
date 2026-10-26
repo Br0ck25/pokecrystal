@@ -3,6 +3,7 @@
 // Not ported yet: the battle transition, the sliding intro, move animations, the PKMN and PACK menus, exp bar animation.
 import { HUD_TILES, BALL_TILES, BALL_PALETTE } from '../generated/battle-ui.js';
 import { PREDEF_PALETTES } from '../generated/intro.js';
+import { STATS_SCREEN } from '../generated/stats-screen.js';
 import { TEXT_PALETTE } from '../generated/font.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { MOVES } from '../generated/moves.js';
@@ -11,6 +12,7 @@ import { renderText } from '../script/text.js';
 import { startTextWait, stepTextWait, textLines } from '../script/textwait.js';
 import { directionRepeat } from '../game/menu.js';
 import { PicAnimation } from '../game/pic-anim.js';
+import { BattleAnimation, animationId } from './anim/animation.js';
 import { PartyScreen } from '../game/party.js';
 import { PackScreen } from '../game/pack.js';
 import { NamingScreen } from '../game/naming.js';
@@ -19,6 +21,7 @@ import { monGender } from '../script/gender.js';
 import { expAtLevel } from '../script/mon.js';
 
 const HP_BAR_TILES = 6;
+const EXP_PALETTE = [[31, 31, 31], ...STATS_SCREEN.expBarPalette, [0, 0, 0]];      // PAL_BATTLE_BG_EXP
 // The trainer's picture, in tiles moved left after each step of SlideBattlePicOut (measured from the real game; it is gone after the sixth).
 const SLIDE_SHIFTS = [1, 3, 4, 6, 7, 9];
 const tile = (n) => HUD_TILES[n];
@@ -127,6 +130,7 @@ export class BattleScreen {
         if (this.timer % 3 === 0 && this.timer / 3 < SLIDE_SHIFTS.length) this[this.slideEnemy ? 'enemySlide' : 'slide'] = SLIDE_SHIFTS[this.timer / 3];
         if (++this.timer >= 22) { if (this.slideEnemy) this.enemyGone = true; else this.trainerGone = true; this.advance(); }
         break;
+      case 'anim': if (this.animation.update()) { this.picOut = this.animation.sentOut; this.animation = null; this.advance(); } break;
       case 'hp': this.stepHp(); break;
       case 'menu': this.updateMenu(input); break;
       case 'yesno': this.updateYesNo(input); break;
@@ -141,6 +145,8 @@ export class BattleScreen {
 
   /** Resume the battle until it yields something that takes time. */
   advance(answer) {
+    if (this.mode === 'text') this.boxText = true;                       // the text stays on the screen through waits and animations ...
+    else if (this.mode === 'intro') this.boxText = false;                // ... except the first one, which the box clears
     for (;;) {
       const { value, done } = this.gen.next(answer);
       answer = undefined;
@@ -157,7 +163,7 @@ export class BattleScreen {
         this.shown[1] = side.hp; this.px[1] = hpPixels(side.hp, side.maxHp);
         continue;
       }
-      if (value.enemyHudClear) { this.enemyHud = false; this.ballsGone = this.frame; continue; }
+      if (value.enemyHudClear) { this.enemyHud = false; this.ballsGone = this.frame; this.boxText = false; continue; }
       if (value.trainerSlideIn) { this.enemyPic = this.pics.enemy; this.enemyGone = false; this.enemyHud = false; this.enemySlide = 0; continue; }
       if (value.trainerWinText || value.trainerLossText) {
         const commands = value.trainerWinText ? this.battle.trainerInfo.win : this.battle.trainerInfo.loss;
@@ -166,11 +172,15 @@ export class BattleScreen {
         this.mode = 'text';
         return;
       }
-      if (value.anim !== undefined) { this.unported.add(`battle animation: ${value.anim}`); this.timer = value.frames ?? 20; this.mode = 'wait'; return; }
+      if (value.anim !== undefined) {
+        const id = value.kind ? undefined : animationId(value.anim);
+        if (id !== undefined) { this.startAnimation(id, value); return; }
+        this.unported.add(`battle animation: ${value.anim}`); this.timer = value.frames ?? 20; this.mode = 'wait'; return;
+      }
       if (value.hp !== undefined) { this.hpAnim = value; this.mode = 'hp'; return; }
       if (value.menuIdle) { this.menuIdle = true; continue; }
-      if (value.ask === 'action') { this.menuIdle = false; this.mode = 'menu'; this.wait = null; return; }
-      if (value.sendOut !== undefined) { this.sentOut = true; this.playerSpecies = value.species; continue; }
+      if (value.ask === 'action') { this.menuIdle = false; this.mode = 'menu'; this.wait = null; this.boxText = false; return; }
+      if (value.sendOut !== undefined) { this.sentOut = true; this.picOut = false; this.boxText = false; this.playerSpecies = value.species; continue; }
       if (value.faint !== undefined) { if (value.faint === 0) { this.sentOut = false; this.trainerGone = true; } else this.enemyGone = true; this.timer = 40; this.mode = 'wait'; return; }
       if (value.recall !== undefined || value.hudClear !== undefined) { this.sentOut = false; this.trainerGone = true; continue; }
       if (value.ask === 'yesno') { this.yesno = 0; this.mode = 'yesno'; return; }
@@ -179,6 +189,17 @@ export class BattleScreen {
       if (value.exp || value.levelUp) continue;
       this.unported.add(`battle event: ${JSON.stringify(Object.keys(value))}`);
     }
+  }
+
+  /** A battle animation (the game's own engine, src/battle/anim): the pictures as they are on the screen now, or, for a send-out, as the engine will bring them in. */
+  startAnimation(id, { anim, user }) {
+    const [player, enemy] = this.battle.sides;
+    const sendOut = anim === 'SEND_OUT_MON';
+    const enemySide = { pic: sendOut && user === 1 ? this.pics.enemyMons[enemy.species] : this.enemyPic, shown: !this.enemyGone && !(sendOut && user === 1) };
+    const playerSide = { pic: this.pics.playerMons[this.playerSpecies ?? player.species] ?? this.pics.player, shown: this.sentOut && !(sendOut && user === 0) };
+    if (sendOut && user === 0) playerSide.pic = this.pics.playerMons[player.species] ?? this.pics.player;
+    this.animation = new BattleAnimation({ id, user, enemy: enemySide, player: playerSide, random: this.battle.random, sentOut: sendOut && user === 0 });
+    this.mode = 'anim';
   }
 
   /** AnimateHPBar: the bar moves one pixel every 2 frames; the digits follow. */
@@ -250,7 +271,7 @@ export class BattleScreen {
   }
 
   // ---- drawing ------------------------------------------------------------------------------------------------
-  hudPanels() {
+  hudPanels(show = {}) {
     const [player, enemy] = this.battle.sides;
     const out = [];
     const colors = TEXT_PALETTE;
@@ -259,12 +280,13 @@ export class BattleScreen {
     const put = (x, y, n) => tiles.push([x, y, tile(n), colors]);
     const level = (x, y, n) => { if (n >= 100) texts.push([x, y, String(n)]); else { put(x, y, 0x6e); texts.push([x + 1, y, String(n)]); } };    // PrintLevel: <LV>, then the digits left-aligned
     // enemy HUD (DrawEnemyHUD runs once the "appeared" text is done)
-    const eh = this.enemyHud && !this.enemyGone;
+    const eh = this.enemyHud && !this.enemyGone && show.enemy !== false;
     if (eh) texts.push([1, 0, enemy.name]);
     const eg = monGender(enemy.species, enemy.mon.dvs);
     if (eh) texts.push([9, 1, eg === 'MALE' ? '♂' : eg === 'FEMALE' ? '♀' : ' ']);
     if (eh) { level(eg ? 6 : 5, 1, enemy.level); put(1, 2, 0x6d); put(1, 3, 0x74); for (let x = 2; x < 10; x++) put(x, 3, 0x76); put(10, 3, 0x78); }
     if (!this.sentOut) return eh ? this.finishHud(out, colors, texts, tiles) : this.partyBalls(out, colors, tiles, texts, put);   // ShowPlayerMonsRemaining, until DrawEnemyHUD
+    if (show.player === false) return this.finishHud(out, colors, texts, tiles, show);
     // player HUD
     texts.push([10, 7, player.name]);
     const pg = monGender(player.species, player.mon.dvs);
@@ -272,10 +294,9 @@ export class BattleScreen {
     level(pg ? 14 : 13, 8, player.level);
     put(18, 10, 0x73); put(18, 11, 0x77); for (let x = 10; x < 18; x++) put(x, 11, 0x76); put(9, 11, 0x6f);
     put(18, 9, 0x73);
-    const exp = expTiles(expBarPixels(player.mon));
-    exp.forEach((t, i) => put(17 - i, 11, t));
+    this.expTiles = expTiles(expBarPixels(player.mon)).map((t, i) => [17 - i, 11, tile(t), EXP_PALETTE]);
     texts.push([11, 10, `${String(this.shown[0]).padStart(3, ' ')}/${String(player.maxHp).padStart(3, ' ')}`]);
-    return this.finishHud(out, colors, texts, tiles);
+    return this.finishHud(out, colors, texts, tiles, show);
   }
 
   /** DrawPlayerPartyIconHUDBorder + StageBallTilesData: one ball per party slot, 6 slots. */
@@ -294,10 +315,11 @@ export class BattleScreen {
     return out;
   }
 
-  finishHud(out, colors, texts, tiles) {
+  finishHud(out, colors, texts, tiles, show = {}) {
     out.push({ colors, tiles, texts });
+    if (this.sentOut && show.player !== false) out.push({ tiles: this.expTiles });
     // HP bars in their palettes
-    for (const [side, x, y, end] of [...(this.enemyHud && !this.enemyGone ? [[1, 2, 2, 0]] : []), ...(this.sentOut ? [[0, 10, 9, 1]] : [])]) {
+    for (const [side, x, y, end] of [...(this.enemyHud && !this.enemyGone && show.enemy !== false ? [[1, 2, 2, 0]] : []), ...(this.sentOut && show.player !== false ? [[0, 10, 9, 1]] : [])]) {
       const pixels = this.px[side], pal = PREDEF_PALETTES[hpColor(pixels)];
       out.push({ colors: pal, tiles: barTiles(pixels, end).map((n, i) => [x + i, y, tile(n), pal]) });
     }
@@ -322,22 +344,44 @@ export class BattleScreen {
   }
 
   /** What the canvas draws, bottom first. */
+  /** The screen during a battle animation: its own HUDs and text box (unless the engine blanked them), the engine's pictures, scroll and objects. */
+  animationPanels() {
+    const a = this.animation, remap = a.remap();
+    const out = [{ fill: 0, remap }];
+    out.push(...this.hudPanels({ enemy: a.hud(1), player: a.hud(0) }).map((panel) => ({ ...panel, remap })));
+    out.push({ box: [0, 12, 19, 17], remap });
+    if (this.boxText && this.wait) {
+      const { lines, shift } = textLines(this.shownText());
+      out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]], remap });
+    }
+    out.push({ tiles: a.cells() });
+    const scroll = a.scroll();
+    if (scroll) out.push({ scroll });
+    out.push({ sprites: a.sprites() });
+    return out;
+  }
+
   panels() {
+    if (this.animation) return this.animationPanels();
     const [player, enemy] = this.battle.sides;
     const out = [{ fill: 0 }];
     const entering = this.t < this.timing.borders && (this.mode === 'enter' || this.mode === 'intro');
     const k = Math.min(this.t, SLIDE_FRAMES - 1), gray = entering && this.t < COLOR_AT ? { palette: PREDEF_PALETTES.BLACKOUT } : {};
     const enemyX = entering ? 12 + this.enemyPic.offX - (144 - 2 * k) / 8 : 12 + this.enemyPic.offX + this.enemySlide;
-    const playerX = entering ? (k < SLIDE_FRAMES - 1 ? 160 - 2 * (k + 1) : 16) / 8 : this.sentOut ? 2 : 2 - this.slide;
+    const playerX = entering ? (k < SLIDE_FRAMES - 1 ? 160 - 2 * (k + 1) : 16) / 8 : this.sentOut || this.picOut ? 2 : 2 - this.slide;
     const enemyPixels = this.picAnim && !this.picAnim.done ? this.picAnim.pixels(this.enemyPic) : this.enemyPic.pixels;
     if (!this.enemyGone) out.push({ pic: { ...this.enemyPic, pixels: enemyPixels, ...gray, x: enemyX, y: this.enemyPic.offY } });
-    if (this.sentOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut ? this.pics.playerMons[this.playerSpecies] : this.pics.player), ...gray, x: playerX, y: 6 } });
+    if (this.sentOut || this.picOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut || this.picOut ? this.pics.playerMons[this.playerSpecies ?? player.species] : this.pics.player), ...gray, x: playerX, y: 6 } });
     if (!entering || this.t >= this.timing.balls) out.push(...this.hudPanels());
     out.push({ box: [0, 12, 19, 17] });
     if ((this.mode === 'text' || this.mode === 'intro') && this.wait) {
       const { lines, prompt, shift } = textLines(this.shownText());
       if (prompt) this.readyAt ??= this.frame; else this.readyAt = undefined;
       out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]], promptNow: prompt && (this.frame - this.readyAt) % (2 * ARROW_FRAMES) < ARROW_FRAMES });
+    }
+    if (this.boxText && this.wait && (this.mode === 'wait' || this.mode === 'hp' || this.mode === 'slide')) {
+      const { lines, shift } = textLines(this.shownText());
+      out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]] });
     }
     if (this.mode === 'party') return this.partyScreen.panels();
     if (this.mode === 'pack') return this.packScreen.panels();

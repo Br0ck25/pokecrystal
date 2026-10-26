@@ -58,6 +58,28 @@ def plant_party(mons):
         st = m['stats']
         for off, v in [(34, m['hp']), (36, st['hp']), (38, st['atk']), (40, st['def']), (42, st['spd']), (44, st['sat']), (46, st['sdf'])]: w(off, v >> 8); w(off + 1, v & 255)
     ref.pb.memory[sb, sa + len(mons)] = 255
+TRACE = os.environ.get('ANIM_TRACE')               # a directory: dump the RAM when each battle animation starts and at every frame of it (for src/battle/anim's machine)
+if TRACE:
+    os.makedirs(TRACE, exist_ok=True)
+    trace = {'n': 0, 'frames': None}
+    def ram_image(banks=(1, 2, 3, 4, 5, 6, 7)):
+        pb = ref.pb
+        out = bytearray(pb.memory[0xC000:0xD000])
+        for bank in banks: out += bytes(pb.memory[bank, a] for a in range(0xD000, 0xE000))
+        out += bytes(pb.memory[0xFF80:0xFFFF]) + b'\0' + bytes(pb.memory[0xFF00:0xFF80])
+        return bytes(out)
+    def anim_start(ctx):
+        n = trace['n']; trace['n'] += 1
+        open(os.path.join(TRACE, f'anim{n}_start.bin'), 'wb').write(ram_image())
+        trace['frames'] = open(os.path.join(TRACE, f'anim{n}_frames.bin'), 'wb')
+        json.dump({'id': ref.rd('wFXAnimID') | ref.rd('wFXAnimID+1') << 8, 'turn': ref.rd('hBattleTurn'), 'param': ref.rd('wBattleAnimParam')}, open(os.path.join(TRACE, f'anim{n}.json'), 'w'))
+    def anim_frame(ctx):
+        if trace['frames']: trace['frames'].write(ram_image((5,)))
+    def anim_end(ctx):
+        if trace['frames']: trace['frames'].close(); trace['frames'] = None
+    b1, a1 = ref.sym['PlayBattleAnim']; ref.pb.hook_register(b1, a1, anim_start, None)
+    b2, a2 = ref.sym['BattleAnimDelayFrame']; ref.pb.hook_register(b2, a2, anim_frame, None)
+    b3, a3 = ref.sym['BattleAnimRunScript.done']; ref.pb.hook_register(b3, a3, anim_end, None)
 battle = {'started': False}
 bb, ba = ref.sym['BattleIntro']
 ref.pb.hook_register(bb, ba, lambda ctx: battle.__setitem__('started', True), None)

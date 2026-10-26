@@ -353,8 +353,10 @@ export class Renderer {
       c.save();
       if (panel.dx) c.translate(panel.dx, 0);                                                // a scrolled background
       const base = panel.colors ? panel.colors.map((rgb) => rgb.map(to8)) : textColors;      // panel colors are the game's 5-bit RGB
-      const colors = bgp ? bgp.map((i) => base[i]) : base;
+      const remap = panel.remap ?? bgp;
+      const colors = remap ? remap.map((i) => base[i]) : base;
       const theme = colors === textColors ? { colors, fonts: [this.font, this.fontExtra], frame: this.frame } : this.theme(colors);
+      if (panel.scroll) this.applyScroll(panel.scroll, colors[0]);
       if (panel.fill !== undefined) { c.fillStyle = `rgb(${colors[panel.fill === true ? 0 : panel.fill]})`; c.fillRect(0, 0, W, H); }
       for (const [x, y, w, h] of [panel.clear, ...(panel.clears ?? [])].filter(Boolean)) { c.fillStyle = `rgb(${colors[0]})`; c.fillRect(x * 8, y * 8, w * 8, h * 8); }
       for (const [x, y, pixels, tileColors, transparent] of panel.tiles ?? []) this.drawTile(x, y, pixels, tileColors, transparent);
@@ -366,6 +368,23 @@ export class Renderer {
       for (const sprite of panel.sprites ?? []) this.drawSpriteAt(sprite);
       if (panel.promptNow || (panel.prompt && ((frame >> 4) & 1))) this.drawText('▼', 18, 17, theme.fonts);
       c.restore();
+    }
+  }
+
+  /** Scroll every line of what is drawn so far (the background): `scroll.x[y]` / `scroll.y[y]` is the game's SCX / SCY for line y; what scrolls in is `fill`. */
+  applyScroll(scroll, fill) {
+    const c = this.ctx;
+    this.layer ??= makeCanvas(W, H);
+    const copy = this.layer.getContext('2d');
+    copy.imageSmoothingEnabled = false;
+    copy.clearRect(0, 0, W, H);
+    copy.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height, 0, 0, W, H);
+    c.fillStyle = `rgb(${fill})`;
+    c.fillRect(0, 0, W, H);
+    for (let y = 0; y < H; y++) {
+      const sx = scroll.x[y], sy = y + scroll.y[y], width = W - Math.abs(sx);
+      if (sy < 0 || sy >= H || width <= 0) continue;
+      c.drawImage(this.layer, Math.max(0, sx), sy, width, 1, Math.max(0, -sx), y, width, 1);
     }
   }
 

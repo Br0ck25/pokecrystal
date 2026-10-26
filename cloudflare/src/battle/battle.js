@@ -130,7 +130,7 @@ export class Battle {
       yield { wait: 13 };
       yield this.say('BattleText_EnemySentOut');
       yield { wait: 28 };
-      yield { anim: 'SEND_OUT_MON', user: 1, frames: 26 };            // the ball flies and opens (not drawn yet)
+      yield { anim: 'SEND_OUT_MON', user: 1 };
       yield { enemySendOut: true, species: this.sides[1].species };
       yield { wait: 119 };                                            // the picture's own animation and cry
       yield { enemyHud: true };
@@ -138,10 +138,11 @@ export class Battle {
     }
     yield { slideOut: true };
     yield* this.sendOutText();
-    yield { wait: 30 };
-    yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
+    yield { wait: 21 };
+    yield { anim: 'SEND_OUT_MON', user: 0 };
+    yield { wait: 18 };                                // the cry (measured with CHIKORITA out)
     yield { sendOut: 0, species: this.sides[0].species };
-    yield { wait: this.wild ? 13 : 25 };               // measured with CHIKORITA out: the menu is drawn (the trainer's AI runs first), and its cursor comes later
+    yield { wait: this.wild ? 14 : 25 };               // measured with CHIKORITA out: the menu is drawn (the trainer's AI runs first), and its cursor comes later
     yield { menuIdle: true };
     yield { wait: this.wild ? 47 : 41 };
     for (;;) {
@@ -426,8 +427,9 @@ export class Battle {
     this.participants.add(index);
     yield { hudClear: 0 };
     yield* this.sendOutText();
-    yield { wait: 30 };
-    yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
+    yield { wait: 21 };
+    yield { anim: 'SEND_OUT_MON', user: 0 };
+    yield { wait: 16 };
     yield { sendOut: 0, species: this.sides[0].species };
     if (spikes) yield* this.spikesDamage(0);
   }
