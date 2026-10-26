@@ -36,7 +36,10 @@ export function submenuFor(item) {
 }
 
 export class PackScreen {
-  constructor(state) {
+  /** battle: true turns USE into a choice (`chosen`) for the battle to act on, and closes the pack. */
+  constructor(state, { battle = false } = {}) {
+    this.battle = battle;
+    this.chosen = null;
     this.state = state;
     const memory = (state.pack ??= { pocket: 0, cursor: [1, 1, 1, 1], scroll: [0, 0, 0, 0] });
     this.memory = memory;
@@ -69,7 +72,7 @@ export class PackScreen {
   update(input) {
     this.frame++;
     if (this.phase === 'list') return this.updateList(input);
-    if (this.phase === 'submenu') { this.updateSubmenu(input); return false; }
+    if (this.phase === 'submenu') return this.updateSubmenu(input);
     if (this.phase === 'quantity') { this.updateQuantity(input); return false; }
     if (this.phase === 'yesno') { this.updateYesNo(input); return false; }
     if (this.phase === 'text') { if (stepTextWait(this.text, input)) { this.text = null; this.shown = null; this.phase = 'list'; this.normalize(); } return false; }
@@ -91,7 +94,7 @@ export class PackScreen {
     if (input.select) this.unported.add('pack: SELECT switches items');
     if (input.a) {
       if (this.selected >= size) return true;                             // CANCEL
-      this.sub = { items: submenuFor(this.list[this.selected].item), cursor: 0 };
+      this.sub = { items: this.battle ? ['USE', 'QUIT'] : submenuFor(this.list[this.selected].item), cursor: 0 };
       this.phase = 'submenu';
     }
     return false;
@@ -100,9 +103,10 @@ export class PackScreen {
   updateSubmenu(input) {
     const s = this.sub, dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
     if (dir) s.cursor = (s.cursor + (dir === 'up' ? -1 : 1) + s.items.length) % s.items.length;
-    if (input.b) { this.phase = 'list'; this.sub = null; return; }
-    if (!input.a) return;
+    if (input.b) { this.phase = 'list'; this.sub = null; return false; }
+    if (!input.a) return false;
     const choice = s.items[s.cursor];
+    if (this.battle && choice === 'USE') { this.chosen = this.list[this.selected].item; return true; }
     if (choice === 'TOSS') {
       this.entry = this.list[this.selected];
       this.quantity = 1;
@@ -112,6 +116,7 @@ export class PackScreen {
       this.phase = 'list';
     }
     this.sub = null;
+    return false;
   }
 
   /** BuySellToss_InterpretJoypad: up/down change the number by one (wrapping), left/right by ten. */

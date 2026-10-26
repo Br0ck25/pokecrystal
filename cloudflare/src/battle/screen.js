@@ -11,6 +11,8 @@ import { renderText } from '../script/text.js';
 import { startTextWait, stepTextWait, textLines } from '../script/textwait.js';
 import { directionRepeat } from '../game/menu.js';
 import { PartyScreen } from '../game/party.js';
+import { PackScreen } from '../game/pack.js';
+import { NamingScreen } from '../game/naming.js';
 import { hpPixels, hpColor, displayName } from '../game/party.js';
 import { monGender } from '../script/gender.js';
 import { expAtLevel } from '../script/mon.js';
@@ -49,8 +51,9 @@ export class BattleScreen {
    * battle: a Battle; pics: { enemy: {size, pixels, palette}, player: {size, pixels, palette} } already decoded;
    * options: { textDelay (frames per tile) }; intro: the "appeared" text commands shown first.
    */
-  constructor({ battle, pics, intro, playerName = '' }) {
+  constructor({ battle, pics, intro, playerName = '', state = null }) {
     this.battle = battle;
+    this.state = state;
     this.pics = pics;
     this.gen = battle.run();
     this.frame = 0;
@@ -94,6 +97,8 @@ export class BattleScreen {
       case 'menu': this.updateMenu(input); break;
       case 'yesno': this.updateYesNo(input); break;
       case 'party': this.updateParty(input); break;
+      case 'pack': this.updatePack(input); break;
+      case 'naming': { const done = this.naming.update(input); if (done) { this.mode = 'running'; this.advance(done.name); } break; }
       case 'moves': this.updateMoves(input); break;
       default: break;
     }
@@ -117,6 +122,7 @@ export class BattleScreen {
       if (value.faint !== undefined) { if (value.faint === 0) { this.sentOut = false; this.trainerGone = true; } else this.enemyGone = true; this.timer = 40; this.mode = 'wait'; return; }
       if (value.recall !== undefined || value.hudClear !== undefined) { this.sentOut = false; this.trainerGone = true; continue; }
       if (value.ask === 'yesno') { this.yesno = 0; this.mode = 'yesno'; return; }
+      if (value.ask === 'nickname') { this.naming = new NamingScreen({ mon: { species: value.species, name: POKEMON[value.species].name, gender: 'MALE' } }); this.mode = 'naming'; return; }
       if (value.ask === 'party') { this.openParty(value.forced); return; }
       if (value.exp || value.levelUp) continue;
       this.unported.add(`battle event: ${JSON.stringify(Object.keys(value))}`);
@@ -151,6 +157,16 @@ export class BattleScreen {
     this.advance({ action: 'switch', index: chosen });
   }
 
+  updatePack(input) {
+    if (!this.packScreen.update(input)) return;
+    const { chosen } = this.packScreen;
+    for (const u of this.packScreen.unported) this.unported.add(u);
+    this.packScreen = null;
+    if (chosen === null) { this.mode = 'menu'; return; }
+    this.mode = 'running';
+    this.advance({ action: 'item', item: chosen });
+  }
+
   updateYesNo(input) {
     const dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
     if (dir) this.yesno ^= 1;
@@ -167,7 +183,8 @@ export class BattleScreen {
     if (!input.a) return;
     if (this.cursor === 0) { this.mode = 'moves'; this.moveCursor = this.battle.sides[0].curMoveNum ?? 0; return; }
     if (this.cursor === 3) { this.mode = 'running'; this.advance({ action: 'run' }); return; }
-    if (this.cursor === 1) this.openParty(false); else this.unported.add('battle: PACK');
+    if (this.cursor === 1) this.openParty(false);
+    else { this.packScreen = new PackScreen(this.state, { battle: true }); this.mode = 'pack'; }
   }
 
   updateMoves(input) {
@@ -239,6 +256,8 @@ export class BattleScreen {
       out.push({ texts: [[1, 14, lines[0]], [1, 16, lines[1]]], prompt });
     }
     if (this.mode === 'party') return this.partyScreen.panels();
+    if (this.mode === 'pack') return this.packScreen.panels();
+    if (this.mode === 'naming') return this.naming.panels();
     if (this.mode === 'yesno') out.push({ box: [14, 7, 19, 11], texts: [[16, 8, 'YES'], [16, 10, 'NO']], cursor: [15, 8 + 2 * this.yesno, '▶'] });
     if (this.mode === 'menu' || this.mode === 'moves') {
       out.push({ box: [8, 12, 19, 17], texts: [[10, 14, 'FIGHT'], [16, 14, '<PK><MN>'], [10, 16, 'PACK'], [16, 16, 'RUN']],

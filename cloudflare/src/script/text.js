@@ -73,10 +73,13 @@ export function renderText(commands, env) {
           break;
         }
         case 'done': push(null); return true;
-        case 'prompt': push('prompt'); return true;
+        case 'prompt': case 'text_promptbutton': push('prompt'); return true;
         case 'text_end': return true;
+        case 'text_low': row = 1; break;                           // the cursor goes to the second line
         case 'text_pause': case 'sound_item': case 'text_start': break;
-        default: throw new Error(`unsupported text command ${name}`);
+        default:
+          if (name.startsWith('sound_')) break;                      // sound effects and fanfares are not played
+          throw new Error(`unsupported text command ${name}`);
       }
     }
     return false;

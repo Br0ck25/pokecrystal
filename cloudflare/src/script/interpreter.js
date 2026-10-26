@@ -26,6 +26,8 @@ export function createScriptState(overrides = {}) {
     buffers: {},                 // wStringBufferN contents
     items: {},                   // item name -> count
     party: [],                   // { species, level, item }
+    dexSeen: new Set(),          // wPokedexSeen / wPokedexCaught: species constants
+    dexCaught: new Set(),
     timeOfDay: 'DAY',
     money: 3000,                 // wMoney (NewGame)
     playerName: 'CHRIS',

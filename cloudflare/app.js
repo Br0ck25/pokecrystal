@@ -129,6 +129,7 @@ async function start() {
         return mon;
       });
     }
+    for (const pair of (query.get('items') ?? '').split(',').filter(Boolean)) { const [item, n] = pair.split(':'); game.state.items[item] = Number(n); }   // ?items=POKE_BALL:5,POTION:2
     const [species, level] = query.get('battle').split(':');
     await game.startWildBattle({ species, level: Number(level) });
   }

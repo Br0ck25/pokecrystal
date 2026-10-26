@@ -91,3 +91,28 @@ test('a fainted Pokémon is replaced from the party after "Use next POKéMON?", 
   assert.ok(texts(evs).some((t) => /ome back/i.test(t)), 'the withdraw text');
   assert.ok(texts(evs).some((t) => /Enemy RATTATA/.test(t)), 'the enemy moved during the switch turn');
 });
+
+test('a ball catches by the formula: a weakened sleeping Pokémon is caught, the capture joins the party with its HP', () => {
+  const player = createMon({ species: 'CHIKORITA', level: 10, dvs: [155, 31], id: 1 });
+  const wild = createMon({ species: 'RATTATA', level: 3, dvs: [0x88, 0x88] });
+  wild.hp = 1;
+  wild.status = 3;
+  const state = { items: { POKE_BALL: 5 }, dexSeen: new Set(), dexCaught: new Set(), playerName: 'CHRIS', box: [] };
+  const battle = new Battle({ player: [player], enemy: wild, random: () => 0, playerId: 1, state });
+  const g = battle.run();
+  let r = g.next();
+  while (!r.value.ask) r = g.next();
+  r = g.next({ action: 'item', item: 'POKE_BALL' });
+  const seen = [];
+  while (!r.done) {
+    seen.push(r.value);
+    r = g.next(r.value.ask === 'yesno' ? false : undefined);
+  }
+  assert.equal(r.value.result, 'caught');
+  assert.equal(battle.party.length, 2);
+  assert.equal(battle.party[1].species, 'RATTATA');
+  assert.equal(battle.party[1].hp, 1);
+  assert.equal(state.items.POKE_BALL, 4);
+  assert.ok(state.dexCaught.has('RATTATA'));
+  assert.ok(texts(seen).some((t) => /Gotcha/.test(t)));
+});

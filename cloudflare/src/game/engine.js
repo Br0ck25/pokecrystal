@@ -276,6 +276,8 @@ export class Game {
     const dvs = [this.randomByte(), this.randomByte()];
     const enemy = createMon({ species, level, dvs, id: 0 });
     const lead = this.state.party.find((m) => m.hp > 0);
+    (this.state.dexSeen ??= new Set()).add(species);
+    this.state.dexCaught ??= new Set();
     const gender = this.state.playerGender === 'FEMALE' ? 'KRIS' : 'CHRIS';
     const [front, back] = await Promise.all([import(`../generated/pokemon/${species}.js`), import(`../generated/trainers/${gender}.js`)]);
     const partySpecies = [...new Set(this.state.party.map((m) => m.species))];
@@ -286,9 +288,9 @@ export class Game {
       player: { size: 48, pixels: back.PIC.back, palette: back.PIC.palette },
       playerMons: Object.fromEntries(partySpecies.map((sp, i) => [sp, { size: 48, pixels: mons[i].PIC.back, palette: mons[i].PIC.palette }])),
     };
-    const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: 0 });
+    const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: 0, state: this.state });
     const name = POKEMON[species].name;
-    this.battleScreen = new BattleScreen({ battle, pics, intro: [['text', 'Wild '], ['text', name], ['line', 'appeared!'], ['prompt']], lead });
+    this.battleScreen = new BattleScreen({ battle, state: this.state, pics, intro: [['text', 'Wild '], ['text', name], ['line', 'appeared!'], ['prompt']], lead });
     this.loading = false;
   }
 

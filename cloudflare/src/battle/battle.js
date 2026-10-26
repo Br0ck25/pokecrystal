@@ -18,6 +18,7 @@ import { installStatus } from './status.js';
 import { installEffects } from './effects.js';
 import { installBetween } from './between.js';
 import { installEffects2 } from './effects2.js';
+import { useBall } from './catching.js';
 
 export const STATUS = { SLP: 7, PSN: 1 << 3, BRN: 1 << 4, FRZ: 1 << 5, PAR: 1 << 6 };
 const BASE_STAGE = 7;
@@ -41,9 +42,10 @@ export function battleMon(mon, { name = mon.nickname ?? POKEMON[mon.species].nam
 
 export class Battle {
   /** player/enemy: party mon objects (src/script/mon.js); badges: Johto bits 0-7, Kanto bits 8-15. */
-  constructor({ player, enemy, wild = true, random, badges = 0, weather = 0, playerId = 0 }) {
+  constructor({ player, enemy, wild = true, random, badges = 0, weather = 0, playerId = 0, state = null }) {
     this.party = player;
     this.playerId = playerId;
+    this.state = state;                              // the game state (items, Pokédex, box) for balls and items
     this.trainer = !wild;
     this.sides = [battleMon(player.find((m) => m.hp > 0)), battleMon(enemy)];
     this.participants = new Set([player.indexOf(this.sides[0].mon)]);      // wBattleParticipantsNotFainted
@@ -117,6 +119,11 @@ export class Battle {
         const ran = yield* this.tryRun();
         if (ran === 'escaped') return { result: 'ran' };
         if (ran === 'menu') continue;
+        this.skipPlayerTurn = true;
+      } else if (choice.action === 'item') {
+        const used = yield* this.useItem(choice.item);
+        if (used.caught) return { result: 'caught', mon: used.mon, boxed: used.boxed };
+        if (!used.used) continue;
         this.skipPlayerTurn = true;
       } else if (choice.action === 'switch') {
         const done = yield* this.tryPlayerSwitch(choice.index);
@@ -202,6 +209,14 @@ export class Battle {
     const [sp, se] = [this.sides[0].stats.spd, this.sides[1].stats.spd];
     if (sp !== se) return sp > se;
     return this.random() <= percent(50);
+  }
+
+  /** Using an item from the pack in battle: balls only so far. Returns { used, caught?, mon? }; the item is spent when used. */
+  *useItem(item) {
+    if (ITEMS[item].pocket !== 'BALL') { this.unported.add(`battle item ${item}`); return { used: false }; }
+    const out = yield* useBall(this, item, { state: this.state });
+    if (out.used) { this.state.items[item]--; if (!this.state.items[item]) delete this.state.items[item]; }
+    return out;
   }
 
   /** TryToRunAwayFromBattle for a wild battle (no Smoke Ball): 'escaped', 'lostTurn' (the enemy acts) or 'menu' (back to the menu). */
