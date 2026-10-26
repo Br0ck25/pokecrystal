@@ -16,6 +16,7 @@ import { checkHit, rawAccuracy } from './accuracy.js';
 import { giveExperience } from './experience.js';
 import { installStatus } from './status.js';
 import { installEffects } from './effects.js';
+import { installBetween } from './between.js';
 
 export const STATUS = { SLP: 7, PSN: 1 << 3, BRN: 1 << 4, FRZ: 1 << 5, PAR: 1 << 6 };
 const BASE_STAGE = 7;
@@ -61,6 +62,7 @@ export class Battle {
     this.effectFailed = false;
     this.alreadyFailed = false;
     this.fleeAttempts = 0;
+    this.fled = false;
     this.skipPlayerTurn = false;
     this.unported = new Set();                       // things the battle needed that are not ported (held-item effects...)
   }
@@ -124,12 +126,15 @@ export class Battle {
         if (t === 1 && (yield* this.tryEnemyFlee())) return { result: 'fled' };
         this.turn = t;
         if (!(t === 0 && this.skipPlayerTurn)) { yield* this.doTurn(); if (!this.turnEnded) yield { wait: 28 }; }   // measured: 28 frames pass after a move before the next text
+        if (this.fled) return { result: 'ran' };
         if (this.sides[1].hp === 0 || this.sides[0].hp === 0) break;
         yield* this.residual(t);
         if (this.sides[t].hp === 0) break;
       }
-      if (this.sides[1].hp === 0) return yield* this.enemyFainted();
-      if (this.sides[0].hp === 0) { const end = yield* this.playerFainted(); if (end) return end; }
+      let end = yield* this.handleFaints();
+      if (end) return end;
+      end = yield* this.betweenTurns();
+      if (end) return end;
     }
   }
 
@@ -268,13 +273,7 @@ export class Battle {
   /** EndMoveEffect: the rest of the script is skipped. */
   endMoveEffect() { this.scriptEnded = true; }
 
-  // ---- ResidualDamage, faint --------------------------------------------------------------------------------------
-  *residual(t) {
-    const u = this.sides[t];
-    if (u.hp === 0) return;
-    if (u.status & (STATUS.PSN | STATUS.BRN)) throw new Error('unported: poison/burn damage');
-  }
-
+  // ---- faint ---------------------------------------------------------------------------------------------------
   /** HandleEnemyMonFaint for a wild battle: the faint text, experience for the Pokémon that fought, then the battle is over. */
   *enemyFainted() {
     yield this.say('BattleText_EnemyMonFainted');
@@ -600,3 +599,4 @@ Object.assign(Battle.prototype.commands, statCommands, {
 
 installStatus(Battle, STATUS);
 installEffects(Battle, STATUS);
+installBetween(Battle, STATUS);
