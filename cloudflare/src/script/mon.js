@@ -61,3 +61,12 @@ export function levelForExp(species, exp) {
   while (level < 100 && exp >= expAtLevel(species, level + 1)) level++;
   return level;
 }
+
+/** HealParty (engine/pokemon/heal_party.asm): full HP, no status, full PP. */
+export function healParty(party) {
+  for (const mon of party) {
+    mon.hp = mon.stats.hp;
+    mon.status = 0;
+    mon.pp = mon.moves.map((m) => MOVES[m].pp);
+  }
+}

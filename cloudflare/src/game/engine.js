@@ -15,7 +15,10 @@ import { PackScreen } from './pack.js';
 import { PartyScreen } from './party.js';
 import { Battle } from '../battle/battle.js';
 import { BattleScreen } from '../battle/screen.js';
-import { createMon } from '../script/mon.js';
+import { createMon, healParty } from '../script/mon.js';
+import { SPAWN_POINTS, HOME_SPAWN } from '../generated/spawns.js';
+import * as sharedText from '../generated/scripts/_text.js';
+import { renderText } from '../script/text.js';
 import { wildEncounter } from '../battle/wild.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
@@ -292,6 +295,28 @@ export class Game {
     if (!result) return;
     for (const u of this.battleScreen.unported) this.unported.add(u);
     this.battleScreen = null;
+    if (result.result === 'lose') this.startWhiteout();
+  }
+
+  /** Script_BattleWhiteout/Script_Whiteout: the text, a fade to white, healing, half the money, then the last Pokécenter's spawn point (or home). */
+  startWhiteout() {
+    const state = this.state;
+    const env = { block: (l) => sharedText.SCRIPTS[l], vars: state.buffers, playerName: state.playerName, rivalName: state.rivalName };
+    const flow = (function* () {
+      yield { type: 'text', screens: renderText([['text_far', '_WhitedOutText']], env) };
+      yield { type: 'waitbutton' };
+      yield { type: 'special', name: 'FadeOutToWhite' };
+      yield { type: 'effect', name: 'pause', args: [40] };
+    })();
+    this.startFlow(flow, 'Whiteout', () => {
+      healParty(state.party);
+      state.money = Math.floor(state.money / 2);
+      const spawn = state.blackout in SPAWN_POINTS ? state.blackout : HOME_SPAWN;
+      const [x, y] = SPAWN_POINTS[spawn];
+      this.blackout = null;
+      this.fade = { frame: 0, frames: 16 };
+      this.enterMap(spawn, x, y, 'down');
+    });
   }
 
   /** Advance an actor's step and start the next scripted movement from its queue (turns are instant). */
@@ -673,6 +698,10 @@ export class Game {
 
   applySpecial(name) {
     switch (name) {
+      case 'FadeOutToWhite': {
+        this.blackout = { from: 0, to: 1, frame: 0, frames: 16, white: true };
+        return { wait: { kind: 'frames', left: 16, fade: true } };
+      }
       case 'FadeOutToBlack': case 'FadeInFromBlack': {
         // palette fades take about 16 frames; the screen stays black between the two
         if (this.runner === null) return undefined;
@@ -680,7 +709,8 @@ export class Game {
         return { wait: { kind: 'frames', left: 16, fade: true } };
       }
       case 'ReloadSpritesNoPalettes': return undefined;
-      case 'HealParty': case 'HealMachineAnim': case 'RestartMapMusic': case 'StubbedTrainerRankings_Healings': return;
+      case 'HealParty': healParty(this.state.party); return;
+      case 'HealMachineAnim': case 'RestartMapMusic': case 'StubbedTrainerRankings_Healings': return;
       case 'ToggleDecorationsVisibility': return;                      // the interpreter sets the object flags
       case 'ToggleMaptileDecorations': {
         // engine/overworld/decorations.asm: write each owned decoration's block into the map.

@@ -532,7 +532,7 @@ export class Renderer {
       this.drawText('NO', y.left + 2, y.top + 3);
       this.drawText('▶', y.left + 1, y.top + 1 + 2 * y.cursor);
     }
-    if (scene.black > 0) { c.fillStyle = `rgba(0,0,0,${scene.black})`; c.fillRect(0, 0, W, H); }
+    if (scene.black > 0) { c.fillStyle = `rgba(${scene.white ? '255,255,255' : '0,0,0'},${scene.black})`; c.fillRect(0, 0, W, H); }
     if (scene.fade) {
       c.fillStyle = `rgba(255,255,255,${1 - scene.fade.frame / scene.fade.frames})`;
       c.fillRect(0, 0, W, H);

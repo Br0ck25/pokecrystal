@@ -12,7 +12,7 @@ function play(battle, limit = 200) {
     const { value, done } = gen.next(answer);
     if (done) return { events, result: value };
     events.push(value);
-    answer = value.ask ? { action: 'fight', slot: 0 } : undefined;
+    answer = value.ask ? { action: 'fight', slot: Math.max(0, battle.sides[0].pp.findIndex((p) => p > 0)) } : undefined;
   }
   throw new Error('battle did not end');
 }
@@ -52,4 +52,42 @@ test('running: a faster Pokémon always gets away, a slower one may fail and los
   assert.equal(run1(fast, () => 253).r.done, true);
   const failed = run1(slow, () => 253);
   assert.ok(texts(failed.events).some((t) => /Can't escape!/.test(t)));
+});
+
+test('a fainted Pokémon is replaced from the party after "Use next POKéMON?", and a chosen switch costs the turn', () => {
+  const weak = createMon({ species: 'CHIKORITA', level: 5, dvs: [155, 31], id: 1 });
+  weak.hp = 1;
+  const second = createMon({ species: 'CYNDAQUIL', level: 30, dvs: [0xff, 0xff], id: 1 });
+  const enemy = createMon({ species: 'RATTATA', level: 20, dvs: [0xff, 0xff] });
+  const battle = new Battle({ player: [weak, second], enemy, random: seeded(9), playerId: 1 });
+  const gen = battle.run();
+  const seen = [];
+  let answer, rounds = 0;
+  for (let i = 0; i < 600; i++) {
+    const { value, done } = gen.next(answer);
+    if (done) { seen.push({ done: value }); break; }
+    seen.push(value);
+    answer = undefined;
+    if (value.ask === 'action') { if (++rounds > 40) break; answer = { action: 'fight', slot: Math.max(0, battle.sides[0].pp.findIndex((p) => p > 0)) }; }
+    if (value.ask === 'yesno') answer = true;
+    if (value.ask === 'party') answer = 1;
+  }
+  assert.ok(seen.some((e) => e.faint === 0), 'the first Pokémon fainted');
+  assert.ok(texts(seen).some((t) => /Use next/.test(t)));
+  assert.ok(seen.some((e) => e.sendOut === 0 && e.species === 'CYNDAQUIL'), 'CYNDAQUIL was sent out');
+  assert.equal(battle.sides[0].mon, second);
+  assert.equal(seen.at(-1).done?.result, 'win');
+
+  const a = createMon({ species: 'CHIKORITA', level: 10, dvs: [155, 31], id: 1 }), b = createMon({ species: 'PIDGEY', level: 10, dvs: [0, 0], id: 1 });
+  const wild = createMon({ species: 'RATTATA', level: 3, dvs: [0, 0] });
+  const sw = new Battle({ player: [a, b], enemy: wild, random: seeded(4), playerId: 1 });
+  const g = sw.run();
+  let r = g.next();
+  while (!r.value.ask) r = g.next();
+  const evs = [];
+  r = g.next({ action: 'switch', index: 1 });
+  while (!r.done && !r.value.ask) { evs.push(r.value); r = g.next(); }
+  assert.equal(sw.sides[0].mon, b);
+  assert.ok(texts(evs).some((t) => /ome back/i.test(t)), 'the withdraw text');
+  assert.ok(texts(evs).some((t) => /Enemy RATTATA/.test(t)), 'the enemy moved during the switch turn');
 });

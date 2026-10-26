@@ -335,3 +335,19 @@ test('wild encounters: none without a Pokémon, five steps of cooldown, then a b
   assert.ok(g.battleScreen, 'a battle started');
   assert.equal(g.battleScreen.battle.sides[1].species, 'PIDGEY');
 });
+
+test('whiteout: the party is healed, half the money goes, and the player lands at the last spawn point (home by default)', async () => {
+  const g = await newGame('ROUTE_29', 31, 7, 'right');
+  const mon = createMon({ species: 'CHIKORITA', level: 5, dvs: [155, 31], id: 1 });
+  mon.hp = 0; mon.pp[0] = 3;
+  g.state.party = [mon];
+  g.state.money = 3001;
+  g.startWhiteout();
+  for (let i = 0; i < 400 && g.world.id === 'ROUTE_29'; i++) run(g, 1, { a: i % 10 === 0 });
+  for (let i = 0; i < 100 && g.loading; i++) await new Promise((r) => setTimeout(r, 5));
+  assert.equal(g.world.id, 'PLAYERS_HOUSE_2F');
+  assert.deepEqual([g.player.x, g.player.y], [3, 3]);
+  assert.equal(mon.hp, mon.stats.hp);
+  assert.equal(mon.pp[0], 35);
+  assert.equal(g.state.money, 1500);
+});

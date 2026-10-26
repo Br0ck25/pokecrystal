@@ -27,6 +27,7 @@ export function createScriptState(overrides = {}) {
     items: {},                   // item name -> count
     party: [],                   // { species, level, item }
     timeOfDay: 'DAY',
+    money: 3000,                 // wMoney (NewGame)
     playerName: 'CHRIS',
     rivalName: 'SILVER',
     ...overrides,

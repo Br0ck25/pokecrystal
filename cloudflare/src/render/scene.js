@@ -88,5 +88,5 @@ export function describeScene(game) {
   const b = game.blackout;
   const black = b ? b.from + (b.to - b.from) * (b.frame / b.frames) : 0;       // 0 clear .. 1 black
   const sign = game.sign && game.sign.frame >= 2 ? game.sign.name : null;     // shown from the second frame for 60 frames
-  return { camera, sprites, shadows, rustles, panels, pokepic: game.pokepic, sign, textbox, yesno, black, fade: game.fade, mapId: game.world.id };
+  return { camera, sprites, shadows, rustles, panels, pokepic: game.pokepic, sign, textbox, yesno, black, white: Boolean(b?.white), fade: game.fade, mapId: game.world.id };
 }

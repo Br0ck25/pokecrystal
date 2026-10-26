@@ -14,6 +14,8 @@ import { SCRIPTS as TEXT } from '../generated/scripts/_text.js';
 import { damageStats, damageCalc, criticalStage, isCritical, stab, damageVariation } from './damage.js';
 import { checkHit, rawAccuracy } from './accuracy.js';
 import { giveExperience } from './experience.js';
+import { installStatus } from './status.js';
+import { installEffects } from './effects.js';
 
 export const STATUS = { SLP: 7, PSN: 1 << 3, BRN: 1 << 4, FRZ: 1 << 5, PAR: 1 << 6 };
 const BASE_STAGE = 7;
@@ -60,6 +62,7 @@ export class Battle {
     this.alreadyFailed = false;
     this.fleeAttempts = 0;
     this.skipPlayerTurn = false;
+    this.unported = new Set();                       // things the battle needed that are not ported (held-item effects...)
   }
 
   get user() { return this.sides[this.turn]; }
@@ -68,7 +71,8 @@ export class Battle {
 
   // ---- text ---------------------------------------------------------------------------------------------------
   /** Resolve text_far chains and <USER>/<TARGET> of a shared text block. */
-  say(label, vars = {}) {
+  say(label, extra = {}) {
+    const vars = { wBattleMonNickname: this.sides[0].name, wEnemyMonNickname: this.sides[1].name, ...extra };
     const out = [];
     const walk = (cmds) => {
       for (const [name, ...args] of cmds) {
@@ -92,10 +96,10 @@ export class Battle {
     yield { enemyHud: true };
     yield { wait: 40 };
     yield { slideOut: true };
-    yield { text: [['text', `Go! ${this.sides[0].name}!`], ['done']] };        // SendOutMonText: the enemy is at full health
+    yield* this.sendOutText();
     yield { wait: 30 };
     yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
-    yield { sendOut: 0 };
+    yield { sendOut: 0, species: this.sides[0].species };
     yield { wait: 17 };
     for (;;) {
       this.sides.forEach((s) => { s.sub.flinched = false; });
@@ -107,6 +111,10 @@ export class Battle {
         if (ran === 'escaped') return { result: 'ran' };
         if (ran === 'menu') continue;
         this.skipPlayerTurn = true;
+      } else if (choice.action === 'switch') {
+        const done = yield* this.tryPlayerSwitch(choice.index);
+        if (!done) continue;
+        this.skipPlayerTurn = true;                      // the switch is the player's action; the enemy moves
       } else { this.fleeAttempts = 0; this.pickPlayerMove(choice.slot); }
       this.pickEnemyMove();
       const order = this.skipPlayerTurn ? [0, 1] : this.playerFirst() ? [0, 1] : [1, 0];
@@ -121,14 +129,20 @@ export class Battle {
         if (this.sides[t].hp === 0) break;
       }
       if (this.sides[1].hp === 0) return yield* this.enemyFainted();
-      if (this.sides[0].hp === 0) return yield* this.playerFainted();
+      if (this.sides[0].hp === 0) { const end = yield* this.playerFainted(); if (end) return end; }
     }
+  }
+
+  /** CheckPlayerHasUsableMoves: when no move has PP left (or is not disabled) the player Struggles. */
+  playerHasUsableMoves() {
+    const p = this.sides[0];
+    return p.moves.some((m, i) => m && p.pp[i] > 0 && m !== p.disabledMove);
   }
 
   pickPlayerMove(slot) {
     const p = this.sides[0];
-    p.curMoveNum = slot;
-    p.curMove = p.moves[slot];
+    if (!this.playerHasUsableMoves()) { p.curMoveNum = 0; p.curMove = 'STRUGGLE'; }
+    else { p.curMoveNum = slot; p.curMove = p.moves[slot]; }
     this.loadMove(0);
   }
 
@@ -226,15 +240,29 @@ export class Battle {
 
   *doMove() {
     this.curMoveEffect = this.user.move.effect;
-    const script = BATTLE.scripts[BATTLE.effects[this.user.move.effect]];
+    this.script = BATTLE.scripts[BATTLE.effects[this.user.move.effect]];
+    this.pc = 0;
     this.scriptEnded = false;
-    for (const [cmd, ...args] of script) {
+    while (this.pc < this.script.length && !this.scriptEnded) {
+      const [cmd, ...args] = this.script[this.pc++];
       if (cmd === 'endmove') break;
       const fn = this.commands[cmd];
       if (!fn) throw new Error(`unported battle command: ${cmd}`);
       yield* fn.call(this, ...args);
-      if (this.scriptEnded) break;
     }
+  }
+
+  /** SkipToBattleCommand: continue after the next `name` command of the script. */
+  skipTo(name) {
+    while (this.pc < this.script.length && this.script[this.pc][0] !== name) this.pc++;
+    this.pc++;
+  }
+
+  /** The loop-back of EndLoop: continue at the script's `critical` command. */
+  loopBackToCritical() {
+    let i = this.pc - 1;
+    while (i > 0 && this.script[i][0] !== 'critical') i--;
+    this.pc = i;
   }
 
   /** EndMoveEffect: the rest of the script is skipped. */
@@ -255,7 +283,74 @@ export class Battle {
     yield { wait: 60 };
     return { result: this.party.some((m) => m.hp > 0) ? 'win' : 'lose' };
   }
-  *playerFainted() { yield this.say('BattleText_MonFainted'); return { result: 'lose' }; }
+  /** HandlePlayerMonFaint for a wild battle: the faint text, then "Use next POKéMON?" and a forced choice, or the end. Returns a result or null to go on. */
+  *playerFainted() {
+    const index = this.party.indexOf(this.sides[0].mon);
+    this.participants.delete(index);
+    this.sides[0].mon.status = 0;
+    yield { faint: 0 };
+    yield this.say('BattleText_MonFainted');
+    if (this.sides[1].hp === 0) return yield* this.enemyFainted();
+    if (!this.party.some((m) => m.hp > 0)) return { result: 'lose' };
+    if (this.wild) {
+      yield this.say('BattleText_UseNextMon');
+      const yes = yield { ask: 'yesno' };
+      if (!yes) {                                           // NO: try to run, with the first party Pokémon's speed
+        const saved = this.sides[0].stats.spd;
+        this.sides[0].stats.spd = this.party[0].stats.spd;
+        const ran = yield* this.tryRun();
+        this.sides[0].stats.spd = saved;
+        if (ran === 'escaped') return { result: 'ran' };
+      }
+    }
+    const picked = yield { ask: 'party', forced: true };
+    yield* this.sendOut(picked);
+    return null;
+  }
+
+  /** SendOutMonText: the wording depends on how much health the enemy has left. */
+  *sendOutText() {
+    const e = this.sides[1];
+    this.enemyHpAtSwitch = e.hp;
+    let label = '_GoMonText';
+    if (e.hp !== 0) {
+      const pct = Math.floor((e.hp * 25) / ((e.maxHp >> 2) & 0xff || 1));
+      label = pct >= 70 ? '_GoMonText' : pct >= 40 ? '_DoItMonText' : pct >= 10 ? '_GoForItMonText' : '_YourFoesWeakGetmMonText';
+    }
+    yield { text: [...this.say(label).text, ...this.say('_BattleMonNicknameText').text] };
+  }
+
+  /** WithdrawMonText: the wording depends on the damage done since the enemy was sent out. */
+  *withdrawText() {
+    const e = this.sides[1];
+    const pct = Math.floor(((this.enemyHpAtSwitch - e.hp) * 25) / ((e.maxHp >> 2) & 0xff || 1));
+    const label = pct === 0 ? '_ThatsEnoughComeBackText' : pct < 30 ? '_ComeBackText' : pct < 70 ? '_OKComeBackText' : '_GoodComeBackText';
+    yield { text: [...this.say('_BattleMonNickCommaText').text, ...this.say(label).text] };
+  }
+
+  /** TryPlayerSwitch: false when the choice is refused (already out, trapped, no will to fight), else the switch happens. */
+  *tryPlayerSwitch(index) {
+    const mon = this.party[index];
+    if (mon === this.sides[0].mon) { yield this.say('BattleText_MonIsAlreadyOut'); return false; }
+    if (this.sides[0].wrapCount || this.sides[1].sub.cantRun) { yield this.say('BattleText_MonCantBeRecalled'); return false; }
+    if (mon.hp === 0) return false;
+    yield* this.withdrawText();
+    yield { wait: 50 };
+    yield { recall: 0 };
+    yield* this.sendOut(index);
+    return true;
+  }
+
+  /** The new Pokémon takes the field: fresh battle state, stages reset, added to the participants. */
+  *sendOut(index) {
+    this.sides[0] = battleMon(this.party[index]);
+    this.participants.add(index);
+    yield { hudClear: 0 };
+    yield* this.sendOutText();
+    yield { wait: 30 };
+    yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
+    yield { sendOut: 0, species: this.sides[0].species };
+  }
 
   /** After a level up: the active Pokémon's battle stats from its new party stats. */
   refreshPlayerStats() {
@@ -296,6 +391,7 @@ Battle.prototype.commands = {
   *damagestats() {
     const u = this.user, t = this.target;
     this.curDamage = 0;
+    this.power = u.move.power;
     if (u.move.power === 0) return;
     this.damageInput = damageStats(
       { species: u.species, item: u.item, level: u.level, stats: u.stats, base: u.base, stages: u.stages },
@@ -306,7 +402,7 @@ Battle.prototype.commands = {
     const u = this.user;
     if (!this.damageInput) { this.curDamage = 0; return; }
     this.curDamage = damageCalc({
-      power: u.move.power, level: this.damageInput.level, attack: this.damageInput.attack, defense: this.damageInput.defense,
+      power: this.power, level: this.damageInput.level, attack: this.damageInput.attack, defense: this.damageInput.defense,
       effect: u.move.effect, moveType: u.move.type, userItem: u.item, critical: !!this.critical,
     });
     this.damageInput = null;
@@ -329,9 +425,9 @@ Battle.prototype.commands = {
     const r = checkHit({
       user: { accLevel: u.stages.acc, xAccuracy: u.sub.xAccuracy },
       target: { evaLevel: t.stages.eva, identified: t.sub.identified, flying: t.sub.flying, underground: t.sub.underground, protect: t.sub.protect, substitute: !!t.sub.substitute, asleep: !!(t.status & STATUS.SLP), item: t.item },
-      move: u.move, weather: this.weather, lockedOn: !!u.sub.lockOn, random: this.random,
+      move: u.move, weather: this.weather, lockedOn: !!t.sub.lockOn, random: this.random,
     });
-    if (r.lockOnUsed) u.sub.lockOn = false;
+    if (r.lockOnUsed) t.sub.lockOn = false;
     if (!r.hit) {
       if (u.move.effect !== 'EFFECT_JUMP_KICK') this.curDamage = 0;
       this.attackMissed = true;
@@ -501,3 +597,6 @@ Object.assign(Battle.prototype.commands, statCommands, {
     yield { text: [['text', this.fill("<TARGET>'s")], ['line', STAT_NAMES[this.loweredStat & 0xf]], ['text', " won't"], ['cont', 'drop anymore!'], ['prompt']] };
   },
 });
+
+installStatus(Battle, STATUS);
+installEffects(Battle, STATUS);
