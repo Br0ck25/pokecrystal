@@ -38,6 +38,9 @@ export const DIRECTIONS = {
 };
 const DIRECTION_NAMES = Object.keys(DIRECTIONS);
 const upper = (d) => d.toUpperCase();
+// wJohtoBadges then wKantoBadges (constants/ram_constants.asm), bit by bit
+const BADGES = ['ZEPHYR', 'HIVE', 'PLAIN', 'FOG', 'MINERAL', 'STORM', 'GLACIER', 'RISING', 'BOULDER', 'CASCADE', 'THUNDER', 'RAINBOW', 'SOUL', 'MARSH', 'VOLCANO', 'EARTH'];
+const badgeBits = (state) => BADGES.reduce((bits, name, i) => bits | (state.engineFlags.has(`ENGINE_${name}BADGE`) ? 1 << i : 0), 0);
 
 /** Frames for one square: measured, 1px per frame. */
 export const STEP_FRAMES = 16;
@@ -301,7 +304,7 @@ export class Game {
     (this.state.dexSeen ??= new Set()).add(species);
     this.state.dexCaught ??= new Set();
     const pics = await this.battleArt([species]);
-    const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: 0, state: this.state, shiftStyle: options(this.state).battleShift });
+    const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: badgeBits(this.state), state: this.state, shiftStyle: options(this.state).battleShift });
     const name = POKEMON[species].name;
     this.battleScreen = new BattleScreen({ battle, state: this.state, pics, intro: [['text', 'Wild '], ['text', name], ['line', 'appeared!'], ['prompt']], lead });
     this.loading = false;
@@ -314,7 +317,7 @@ export class Game {
     const trainer = trainerParty(cls, id);
     const pics = await this.battleArt(trainer.party.map((m) => m.species), cls);
     const info = { name: trainer.name, className: trainer.className, reward: trainer.reward, win: request.win, loss: request.loss };
-    const battle = new Battle({ player: this.state.party, enemy: trainer.party, wild: false, random: this.randomByte, playerId: this.state.playerId, badges: 0, state: this.state, trainerInfo: info, shiftStyle: options(this.state).battleShift });
+    const battle = new Battle({ player: this.state.party, enemy: trainer.party, wild: false, random: this.randomByte, playerId: this.state.playerId, badges: badgeBits(this.state), state: this.state, trainerInfo: info, shiftStyle: options(this.state).battleShift });
     const intro = [['text', `${trainer.className} ${trainer.name}`], ['line', 'wants to battle!'], ['prompt']];
     this.battleScreen = new BattleScreen({ battle, state: this.state, pics, intro, trainer: true });
     this.loading = false;
@@ -757,6 +760,7 @@ export class Game {
   }
 
   readVar(variable) {
+    if (variable === 'VAR_BADGES') return badgeBits(this.state).toString(2).replace(/0/g, '').length;
     if (variable === 'VAR_FACING') return upper(this.player.facing);
     this.unported.add(variable);
     return 0;

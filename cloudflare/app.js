@@ -120,7 +120,7 @@ async function start() {
     if (Number.isInteger(x) && Number.isInteger(y)) await game.enterMap(map, x, y, query.get('facing') ?? 'down');
   }
   await renderer.prepare(game.world);
-  if (query.get('battle')) {                // audit hook: ?battle=SPECIES:LEVEL[&mon=SPECIES:LEVEL] starts a wild battle (tools/reference/damage)
+  if (query.get('battle') || query.get('mon')) {      // audit hook: ?battle=SPECIES:LEVEL[&mon=SPECIES:LEVEL] starts a wild battle (tools/reference/damage); ?mon= alone only plants the party
     if (query.get('mon')) {
       game.state.party = query.get('mon').split(',').map((spec) => {
         const [species, level, nickname, moves] = spec.split(':');
@@ -130,8 +130,10 @@ async function start() {
       });
     }
     for (const pair of (query.get('items') ?? '').split(',').filter(Boolean)) { const [item, n] = pair.split(':'); game.state.items[item] = Number(n); }   // ?items=POKE_BALL:5,POTION:2
-    const [species, level] = query.get('battle').split(':');
-    await game.startWildBattle({ species, level: Number(level) });
+    if (query.get('battle')) {
+      const [species, level] = query.get('battle').split(':');
+      await game.startWildBattle({ species, level: Number(level) });
+    }
   }
   status.textContent = HINT;
   status.dataset.kind = 'hint';
