@@ -550,6 +550,9 @@ function battleData() {
     metronomeExcepts: [...text('data/moves/metronome_exception_moves.asm').matchAll(/^\tdb (\w+)/gm)].map((m) => m[1]).filter((m) => m !== '-1'),
     typeBoostItems: Object.fromEntries([...text('data/types/type_boost_items.asm').matchAll(/^\tdb (HELD_\w+),\s+(\w+)/gm)].map((m) => [m[1], types[m[2]]])),
     badgeBoosts: [...text('data/types/badge_type_boosts.asm').matchAll(/^\tdb (\w+)\s+;/gm)].map((m) => types[m[1]]),   // Johto badges, then Kanto
+    effectOrder: [...text('constants/move_effect_constants.asm').matchAll(/^\tconst (EFFECT_\w+)/gm)].map((m) => m[1]),     // the numeric order the AI compares effects in
+    ai: Object.fromEntries(['constant_damage_effects', 'encore_moves', 'rain_dance_moves', 'reckless_moves', 'residual_moves', 'risky_effects', 'stall_moves', 'status_only_effects', 'sunny_day_moves', 'useful_moves']
+      .map((f) => [f.replace(/_(\w)/g, (_, c) => c.toUpperCase()), [...text(`data/battle/ai/${f}.asm`).matchAll(/^\tdb (\w+)/gm)].map((m) => m[1]).filter((m) => m !== '-1')])),
     weatherTypes: [...text('data/battle/weather_modifiers.asm').matchAll(/^\tdb (WEATHER_\w+),\s+(\w+),\s+(\w+)/gm)].map((m) => [WEATHER[m[1]], types[m[2]] ?? m[2], effectness[m[3]]]),
   };
 }

@@ -34,7 +34,7 @@ test('a trainer battle: the second Pokémon comes in after the first faints, win
   const player = createMon({ species: 'TYPHLOSION', level: 40, dvs: [0xff, 0xff], id: 1 });
   player.moves = ['FLAMETHROWER']; player.pp = [15];
   const state = { money: 3000, items: {} };
-  const battle = new Battle({ player: [player], enemy: t.party, wild: false, random: seeded(2), playerId: 1, state, trainerInfo: { name: t.name, className: t.className, reward: t.reward } });
+  const battle = new Battle({ player: [player], enemy: t.party, wild: false, random: seeded(2), playerId: 1, state, trainerInfo: { name: t.name, className: t.className, reward: t.reward, ai: t.ai, items: t.items, flags: t.flags } });
   const { events, result } = play(battle);
   assert.equal(result.result, 'win');
   assert.equal(result.trainerDefeated, true);

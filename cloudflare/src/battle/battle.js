@@ -20,12 +20,21 @@ import { installBetween } from './between.js';
 import { installEffects2 } from './effects2.js';
 import { useBall } from './catching.js';
 import { installTrainer } from './trainer.js';
+import { installAI } from './ai/index.js';
+import { installAIItems } from './ai/items.js';
 
 export const STATUS = { SLP: 7, PSN: 1 << 3, BRN: 1 << 4, FRZ: 1 << 5, PAR: 1 << 6 };
 const BASE_STAGE = 7;
 const NORMAL = 10;                                   // wTypeModifier: EFFECTIVE
 const typeId = (name) => BATTLE.types[name];
 const percent = (n) => Math.floor((n * 255) / 100);
+
+/** UpdateUsedMoves: the moves the player has used since this Pokémon came out (wPlayerUsedMoves, at most four). */
+function updateUsedMoves(side, move) {
+  if (side.usedMoves.includes(move)) return;
+  if (side.usedMoves.length === 4) side.usedMoves.shift();
+  side.usedMoves.push(move);
+}
 
 /** InitBattleMon / the enemy's copy: what the battle keeps of a party Pokémon. */
 export function battleMon(mon, { name = mon.nickname ?? POKEMON[mon.species].name } = {}) {
@@ -36,6 +45,7 @@ export function battleMon(mon, { name = mon.nickname ?? POKEMON[mon.species].nam
     stats: { atk: mon.stats.atk, def: mon.stats.def, spd: mon.stats.spd, sat: mon.stats.sat, sdf: mon.stats.sdf },
     base: { atk: mon.stats.atk, def: mon.stats.def, spd: mon.stats.spd, sat: mon.stats.sat, sdf: mon.stats.sdf },
     stages: { atk: BASE_STAGE, def: BASE_STAGE, spd: BASE_STAGE, sat: BASE_STAGE, sdf: BASE_STAGE, acc: BASE_STAGE, eva: BASE_STAGE },
+    usedMoves: [],
     sub: {},                                         // flinched, charged, recharge, endure, protect, identified, ...
     screens: {}, curMove: null, curMoveNum: 0, lastMove: null, move: null, turnsTaken: 0,
   };
@@ -51,6 +61,7 @@ export class Battle {
     this.trainerInfo = trainerInfo;                  // { name, className, reward } of a trainer battle
     this.enemyParty = wild ? [enemy] : enemy;        // a trainer's party; the active Pokémon is enemyParty[enemyIndex]
     this.enemyIndex = 0;
+    this.trainerItems = [...(trainerInfo?.items ?? [])].filter((i) => i && i !== 'NO_ITEM');   // wEnemyTrainerItem1/2
     this.shiftStyle = shiftStyle;                    // OPTION BATTLE SHIFT: no "Will you change POKéMON?" offer
     this.sides = [battleMon(player.find((m) => m.hp > 0)), battleMon(this.enemyParty[0])];
     this.participants = new Set([player.indexOf(this.sides[0].mon)]);      // wBattleParticipantsNotFainted
@@ -130,6 +141,7 @@ export class Battle {
       this.curDamage = 0;
       this.skipPlayerTurn = false;
       this.sides.forEach((s) => { s.sub.flinched = false; });
+      this.aiChooseMove();                                // AIChooseMove runs before the player picks (trainer battles only)
       const locked = this.isLockedIn(0) || this.sides[0].sub.bide;
       const choice = locked ? { action: 'locked' } : yield { ask: 'action' };
       if (choice.action === 'locked') this.loadMove(0);
@@ -151,11 +163,12 @@ export class Battle {
       if (this.isLockedIn(1) || this.sides[1].sub.bide) this.loadMove(1); else this.pickEnemyMove();
       const order = this.skipPlayerTurn ? [0, 1] : this.playerFirst() ? [0, 1] : [1, 0];
       this.enemyGoesFirst = order[0] === 1;
+      const enemyActed = this.wild ? false : yield* this.aiSwitchOrTryItem();       // the trainer may switch or use an item before either side moves
       for (const t of order) {
         if (this.sides[0].hp === 0 || this.sides[1].hp === 0) break;
         if (t === 1 && (yield* this.tryEnemyFlee())) return { result: 'fled' };
         this.turn = t;
-        if (!(t === 0 && this.skipPlayerTurn)) { yield* this.doTurn(); if (!this.turnEnded) yield { wait: 28 }; }   // measured: 28 frames pass after a move before the next text
+        if (!(t === 0 && this.skipPlayerTurn) && !(t === 1 && enemyActed)) { yield* this.doTurn(); if (!this.turnEnded) yield { wait: 28 }; }   // measured: 28 frames pass after a move before the next text
         if (this.fled) return { result: 'ran' };
         if (this.sides[1].hp === 0 || this.sides[0].hp === 0) break;
         yield* this.residual(t);
@@ -186,6 +199,7 @@ export class Battle {
   pickEnemyMove() {
     const e = this.sides[1];
     if (!e.moves.some((m, i) => m && e.pp[i] > 0)) { e.curMove = 'STRUGGLE'; e.curMoveNum = 0; }
+    else if (!this.wild) { /* the move was chosen by aiChooseMove */ }
     else {
       let c;
       do c = this.random() & 3; while (!e.moves[c] || e.pp[c] === 0);
@@ -399,7 +413,7 @@ export class Battle {
   }
 
   /** The new Pokémon takes the field: fresh battle state, stages reset, added to the participants. */
-  *sendOut(index) {
+  *sendOut(index, { spikes = true } = {}) {
     this.sides[0] = battleMon(this.party[index]);
     this.participants.add(index);
     yield { hudClear: 0 };
@@ -407,6 +421,7 @@ export class Battle {
     yield { wait: 30 };
     yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
     yield { sendOut: 0, species: this.sides[0].species };
+    if (spikes) yield* this.spikesDamage(0);
   }
 
   /** The player's switch after "Will you change POKéMON?": the same withdraw and send-out as a menu switch. */
@@ -433,7 +448,8 @@ Battle.prototype.commands = {
   *checkobedience() { /* only Pokémon from another trainer can disobey */ },
   *usedmovetext() {
     const u = this.user;
-    u.lastMove = u.curMove;
+    if (this.turn === 0) updateUsedMoves(u, u.move.name);
+    if (!u.charging) { u.lastMove = u.move.name; u.lastCounterMove = u.move.name; }     // UsedMoveText: not while the first turn of a two-turn move
     yield { text: [['text', this.fill('<USER>')], ['line', `used ${MOVES[u.move.name].name}!`], ['done']] };
   },
   *doturn() {
@@ -683,3 +699,5 @@ installEffects(Battle, STATUS);
 installBetween(Battle, STATUS);
 installEffects2(Battle, STATUS);
 installTrainer(Battle);
+installAI(Battle);
+installAIItems(Battle);

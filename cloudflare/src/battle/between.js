@@ -12,6 +12,16 @@ const quarter = (max) => Math.max(1, max >> 2);
 export function installBetween(Battle, STATUS) {
   Object.assign(Battle.prototype, {
     /** SubtractHPFromUser for `side`, with the HP bar. */
+    /** SpikesDamage: the Pokémon that just came out loses an eighth, unless it flies. */
+    *spikesDamage(side) {
+      const s = this.sides[side];
+      if (!s.screens.spikes || s.types.includes(BATTLE.types.FLYING)) return;
+      const saved = this.turn;
+      this.turn = side;
+      yield this.say('BattleText_UserHurtBySpikes');
+      yield* this.loseHp(side, eighth(s.maxHp));
+      this.turn = saved;
+    },
     *loseHp(side, amount) { yield* this.setHp(side, this.sides[side].hp - amount); },
 
     /** ResidualDamage: damage the Pokémon that just moved takes from its status. */

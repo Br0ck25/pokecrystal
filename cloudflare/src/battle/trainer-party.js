@@ -9,7 +9,7 @@ export function trainerParty(cls, id) {
   const entry = data?.trainers[data.ids.indexOf(id)];
   if (!entry) throw new Error(`no trainer ${cls} ${id}`);
   const party = entry.mons.map((m) => {
-    const mon = createMon({ species: m.species, level: m.level, dvs: [...data.dvs], id: 0, item: m.item ?? null });
+    const mon = createMon({ species: m.species, level: m.level, dvs: [...data.dvs], id: 0, item: m.item && m.item !== 'NO_ITEM' ? m.item : null });
     if (m.moves) {                       // TRAINERTYPE_MOVES: the listed moves, PP only for the slots up to the first empty one
       mon.moves = m.moves.filter((x) => x && x !== 'NO_MOVE');
       mon.pp = mon.moves.map((x) => MOVES[x].pp);

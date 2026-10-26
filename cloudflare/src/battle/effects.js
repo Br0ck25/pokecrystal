@@ -8,6 +8,15 @@ const NUM_ATTACKS = 251;
 const BASE_STAGE = 7;
 const moveNames = Object.keys(MOVES).sort((a, b) => MOVES[a].id - MOVES[b].id);
 
+/** HiddenPowerDamage: the base power and type from a Pokémon's DVs. */
+export function hiddenPower(dv) {
+  const power = Math.floor((5 * (((dv[0] >> 4) & 8) | ((dv[0] & 8) >> 1) | (((dv[1] >> 4) & 8) >> 2) | ((dv[1] & 8) >> 3)) + (dv[1] & 3)) / 2) + 31;
+  let type = ((dv[0] & 3) | (((dv[0] >> 4) & 3) << 2)) + 1;       // skip Normal
+  if (type >= BATTLE.types.BIRD) type++;
+  if (type >= 10) type += 10;                                         // skip the unused types
+  return { power, type };
+}
+
 export function installEffects(Battle, STATUS) {
   const C = Battle.prototype.commands;
   const fail = function* (self, label = 'ButItFailedText') { yield* self.animateFailedMove(); yield self.say(label); };
@@ -158,11 +167,7 @@ export function installEffects(Battle, STATUS) {
     *doubleminimizedamage() { if (this.target.minimized && this.curDamage) this.curDamage = Math.min(0xffff, this.curDamage * 2); },
     *hiddenpower() {
       if (this.attackMissed) return;
-      const dv = this.user.mon.dvs;
-      const power = Math.floor((5 * (((dv[0] >> 4) & 8) | ((dv[0] & 8) >> 1) | (((dv[1] >> 4) & 8) >> 2) | ((dv[1] & 8) >> 3)) + (dv[1] & 3)) / 2) + 31;
-      let type = ((dv[0] & 3) | (((dv[0] >> 4) & 3) << 2)) + 1;       // skip Normal
-      if (type >= BATTLE.types.BIRD) type++;
-      if (type >= 10) type += 10;                                         // skip the unused types
+      const { power, type } = hiddenPower(this.user.mon.dvs);
       this.user.move.type = type;
       yield* this.commands.damagestats.call(this);
       this.power = power;
@@ -299,19 +304,68 @@ export function installEffects(Battle, STATUS) {
       u.types = [pick, pick];
       yield { text: [['text', this.fill('<USER>')], ['line', 'transformed into'], ['cont', `${typeName(pick)} type!`], ['prompt']] };
     },
+    /** BattleCommand_ForceSwitch: Roar and Whirlwind. A wild battle ends; in a trainer battle the other side's next Pokémon is picked at random. */
     *forceswitch() {
+      const u = this.user, t = this.target;
+      const roar = u.move.name === 'ROAR';
+      const succeedWild = function* (self) {
+        yield* self.animateCurrentMove();
+        yield { wait: 20 };
+        yield self.say(roar ? 'FledInFearText' : 'BlownAwayText');
+        self.fled = true;
+        self.endMoveEffect();
+      };
+      if (this.attackMissed) { yield* failMove(this); return; }
+      const userLevel = u.level, targetLevel = t.level;
       if (this.wild) {
-        if (this.attackMissed) { yield* failMove(this); return; }
-        const t = this.target;
-        // Roar/Whirlwind on a wild Pokémon: it flees if the user's level is not lower
-        if (this.user.level < t.level) { yield* failMove(this); return; }
-        yield* this.animateCurrentMove();
-        yield { text: [['text', 'Wild '], ['text', t.name], ['line', 'fled!'], ['prompt']] };
-        this.fled = true;
-        this.endMoveEffect();
+        const [a, b] = [userLevel, targetLevel];                              // a user at least as strong as the target always succeeds
+        let ok = a >= b;
+        if (!ok) {
+          const c = a + b + 1;
+          let r;
+          do r = this.random(); while (r >= c);
+          ok = r >= (b >> 2);
+        }
+        if (!ok) { yield* failMove(this); return; }
+        yield* succeedWild(this);
         return;
       }
-      throw new Error('unported battle command: forceswitch (trainer)');
+      if (this.turn === 0) {                                                  // the player forces the trainer's Pokémon out
+        const alive = this.enemyParty.filter((_, i) => i !== this.enemyIndex && this.enemyHp(i) > 0);
+        if (!alive.length || !this.enemyGoesFirst) { yield* failMove(this); return; }
+        t.mon.hp = t.hp;
+        yield* this.animateCurrentMove();
+        yield { wait: 20 };
+        yield { enemyHudClear: true };
+        yield { wait: 20 };
+        let r;
+        for (;;) {
+          r = this.random() & 7;
+          if (r >= this.enemyParty.length || r === this.enemyIndex || this.enemyHp(r) === 0) continue;
+          break;
+        }
+        yield* this.enemyEntrance({ offer: false, index: r, quiet: true });
+        yield this.say('DraggedOutText');
+        yield* this.spikesDamage(1);
+        return;
+      }
+      const current = this.party.indexOf(t.mon);                              // the trainer's Pokémon forces the player's out
+      if (!this.party.some((m, i) => i !== current && m.hp > 0) || this.enemyGoesFirst) { yield* failMove(this); return; }
+      t.mon.hp = t.hp;
+      yield* this.animateCurrentMove();
+      yield { wait: 20 };
+      yield { hudClear: 0 };
+      yield { wait: 20 };
+      let r;
+      for (;;) {
+        r = this.random() & 7;
+        if (r >= this.party.length || r === current || this.party[r].hp === 0) continue;
+        break;
+      }
+      yield* this.sendOut(r, { spikes: false });
+      this.turn = 0;
+      yield this.say('DraggedOutText');
+      yield* this.spikesDamage(0);
     },
     *teleport() {
       if (!this.wild || this.turn !== 0) { yield* fail(this); return; }

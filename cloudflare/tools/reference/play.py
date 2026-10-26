@@ -31,6 +31,8 @@ def event_index(name):
         if m:
             if m.group(1) == name: return n
             n += 1
+        elif re.match(r'\s*const_skip', l): n += 1          # unused flags still take a bit
+        elif re.match(r'\s*const_next (\d+)', l): n = int(re.match(r'\s*const_next (\d+)', l).group(1))
     raise KeyError(name)
 def set_event(name, on):
     i = event_index(name); addr = ref.key('wEventFlags')

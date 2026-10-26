@@ -57,9 +57,9 @@ export function installTrainer(Battle) {
     },
 
     /** EnemySwitch/EnemySwitch_SetMode + ShowSetEnemyMonAndSendOutAnimation: the next Pokémon comes out; offer = the player may switch first (Shift style). */
-    *enemyEntrance({ offer }) {
+    *enemyEntrance({ offer, index: forced, quiet = false }) {
       this.sides[1].mon.hp = this.sides[1].hp;
-      const index = this.chooseEnemyMon();
+      const index = forced ?? this.chooseEnemyMon();
       const mon = this.enemyParty[index];
       const previous = this.enemyIndex;
       this.enemyIndex = index;
@@ -80,10 +80,10 @@ export function installTrainer(Battle) {
         }
       }
       yield { enemySendOut: true, species: side.species, previous };
-      yield this.say('BattleText_EnemySentOut');
-      yield { wait: 30 };
+      if (!quiet) { yield this.say('BattleText_EnemySentOut'); yield { wait: 30 }; }
       yield { enemyHud: true };
       this.participants = new Set([this.party.indexOf(this.sides[0].mon)]);
+      yield* this.spikesDamage(1);
       return playerSwitched;
     },
 
