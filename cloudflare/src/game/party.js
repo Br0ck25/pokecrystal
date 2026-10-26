@@ -10,7 +10,7 @@ import { directionRepeat } from './menu.js';
 const HP_BAR_PIXELS = 48;
 const FIELD_MOVES = ['CUT', 'FLY', 'SURF', 'STRENGTH', 'FLASH', 'WATERFALL', 'WHIRLPOOL', 'DIG', 'TELEPORT', 'SOFTBOILED', 'HEADBUTT', 'ROCK_SMASH', 'MILK_DRINK', 'SWEET_SCENT'];
 const BLANK_FRAMES = 28;                                   // the screen stays white while its graphics load (measured: the first icon appears ~29 frames after the A press)
-const STRINGS = { choose: 'Choose a #MON.', moveTo: 'Move to where?' };
+const STRINGS = { choose: 'Choose a #MON.', moveTo: 'Move to where?', which: 'Which #MON?' };
 
 /** The icon's two frames, with the held item or mail drawn over the lower left tile (the *WithItem framesets use tile $09 / $08 there). */
 export function iconFrames(mon) {
@@ -42,8 +42,14 @@ export function hpBarTiles(pixels) {
 export const submenuItems = (mon) => [...mon.moves.filter((m) => FIELD_MOVES.includes(m)).map((m) => ({ id: m, label: MOVES[m].name })),
   ...['STATS', 'SWITCH', 'MOVE', 'ITEM', 'CANCEL'].map((id) => ({ id, label: id }))];
 
+const BATTLE_SUBMENU = ['SWITCH', 'STATS', 'CANCEL'].map((id) => ({ id, label: id }));
+
 export class PartyScreen {
-  constructor(state) {
+  /** battle: { forced, active } turns it into the battle's PKMN menu (the choice ends up in `chosen`, a party index) */
+  constructor(state, { battle = null } = {}) {
+    this.battle = battle;
+    this.chosen = null;
+    this.message = null;                                    // a line of text over the box until A or B
     this.state = state;
     this.party = state.party;
     this.cursor = Math.min(state.partyCursor ?? 1, this.party.length + 1);        // wPartyMenuCursor, 1-based; the last row is CANCEL
@@ -56,32 +62,50 @@ export class PartyScreen {
   /** One frame; true when the screen is closed. */
   update(input) {
     this.frame++;
-    const rows = this.party.length + (this.phase === 'switch' ? 0 : 1);
-    if (this.phase === 'submenu') { this.updateSubmenu(input); return false; }
+    const rows = this.party.length + (this.phase === 'switch' || this.battle?.forced ? 0 : 1);
+    if (this.message) { if (input.a || input.b) this.message = null; return false; }
+    if (this.phase === 'submenu') return this.updateSubmenu(input);
     const dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
     if (dir && rows) this.cursor = ((this.cursor - 1 + (dir === 'up' ? -1 : 1) + rows) % rows) + 1;
-    if (input.b) return this.phase === 'switch' ? this.endSwitch() : this.close();
+    if (input.b) return this.battle?.forced ? false : this.phase === 'switch' ? this.endSwitch() : this.close();
     if (!input.a) return false;
     if (this.phase === 'switch') return this.finishSwitch();
-    if (this.cursor > this.party.length) return this.close();                     // CANCEL
+    if (this.cursor > this.party.length) return this.battle?.forced ? false : this.close();                     // CANCEL
     this.state.partyCursor = this.cursor;
-    this.sub = { items: submenuItems(this.party[this.cursor - 1]), cursor: 0 };
+    if (this.battle?.forced) return this.pick();
+    this.sub = { items: this.battle ? BATTLE_SUBMENU : submenuItems(this.party[this.cursor - 1]), cursor: 0 };
     this.phase = 'submenu';
     return false;
   }
 
   close() { this.state.partyCursor = this.cursor; return true; }
 
+  /** The battle's choice of a Pokémon: refused when it has fainted or is already out. */
+  pick() {
+    const mon = this.party[this.cursor - 1];
+    if (mon.hp === 0) { this.message = ['There\'s no will to', 'battle!']; this.phase = 'select'; this.sub = null; return false; }
+    if (this.battle.active === this.cursor - 1) { this.message = [`${displayName(mon)}`, 'is already out.']; this.phase = 'select'; this.sub = null; return false; }
+    this.chosen = this.cursor - 1;
+    return true;
+  }
+
   updateSubmenu(input) {
     const s = this.sub, dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
     if (dir) s.cursor = (s.cursor + (dir === 'up' ? -1 : 1) + s.items.length) % s.items.length;
-    if (input.b) { this.phase = 'select'; this.sub = null; return; }
-    if (!input.a) return;
+    if (input.b) { this.phase = 'select'; this.sub = null; return false; }
+    if (!input.a) return false;
     const { id } = s.items[s.cursor];
+    if (this.battle) {
+      if (id === 'SWITCH') return this.pick();
+      this.sub = null; this.phase = 'select';
+      if (id === 'STATS') this.unported.add('party: STATS');
+      return false;
+    }
     this.sub = null;
-    if (id === 'SWITCH' && this.party.length >= 2) { this.switchFrom = this.cursor; this.phase = 'switch'; return; }
+    if (id === 'SWITCH' && this.party.length >= 2) { this.switchFrom = this.cursor; this.phase = 'switch'; return false; }
     this.phase = 'select';
     if (id !== 'CANCEL' && id !== 'SWITCH') this.unported.add(`party: ${id}`);
+    return false;
   }
 
   endSwitch() { this.phase = 'select'; this.cursor = this.switchFrom; return false; }
@@ -115,12 +139,12 @@ export class PartyScreen {
       const right = this.phase === 'switch' ? hops || row === this.cursor : row === this.cursor;
       icons.push({ icon: iconFrames(mon)[this.iconFrame(pixels)], colors: ICON_OBJ_PALETTE, x: right ? 8 : 0, y: 4 + 16 * i + (hops ? this.bounce(pixels) : 0) });
     });
-    if (this.phase !== 'switch') text.push([1, 1 + 2 * n, 'CANCEL']);
+    if (this.phase !== 'switch' && !this.battle?.forced) text.push([1, 1 + 2 * n, 'CANCEL']);
     out.push({ colors: PARTY_MENU_BG, fill: 0, texts: text, tiles: lv }, ...tiles);
     const cursorRow = 1 + 2 * (this.cursor - 1);
     const hollow = this.phase === 'submenu' || this.phase === 'switch';
     out.push({ colors: PARTY_MENU_BG, texts: [[0, cursorRow, hollow ? '▷' : '▶'], ...(this.phase === 'switch' ? [[0, 1 + 2 * (this.switchFrom - 1), '▷']] : [])], sprites: icons });
-    out.push({ box: [0, 14, 19, 17], texts: this.phase === 'submenu' ? [] : [[1, 16, n ? (this.phase === 'switch' ? STRINGS.moveTo : STRINGS.choose).replace('#', 'POKé') : 'You have no <PK><MN>!']] });
+    out.push({ box: [0, 14, 19, 17], texts: this.message ? [[1, 15, this.message[0]], [1, 16, this.message[1]]] : this.phase === 'submenu' ? [] : [[1, 16, n ? (this.phase === 'switch' ? STRINGS.moveTo : this.battle?.forced ? STRINGS.which : STRINGS.choose).replace('#', 'POKé') : 'You have no <PK><MN>!']] });
     if (this.phase === 'submenu') {
       const items = this.sub.items, top = 18 - 2 * (items.length + 1);
       out.push({ box: [6, top, 19, 17], texts: items.map((it, i) => [8, top + 2 + 2 * i, it.label]), cursor: [7, top + 2 + 2 * this.sub.cursor, '▶'] });

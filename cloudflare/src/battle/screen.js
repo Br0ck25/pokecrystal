@@ -10,6 +10,7 @@ import { SCRIPTS as TEXT } from '../generated/scripts/_text.js';
 import { renderText } from '../script/text.js';
 import { startTextWait, stepTextWait, textLines } from '../script/textwait.js';
 import { directionRepeat } from '../game/menu.js';
+import { PartyScreen } from '../game/party.js';
 import { hpPixels, hpColor, displayName } from '../game/party.js';
 import { monGender } from '../script/gender.js';
 import { expAtLevel } from '../script/mon.js';
@@ -65,6 +66,7 @@ export class BattleScreen {
     this.hpAnim = null;
     this.timer = 0;
     this.pending = null;
+    this.enemyGone = false;
     this.enemyHud = false;                                             // DrawEnemyHUD has run
     this.slide = 0;                                                    // steps of the trainer's slide out of the screen
     this.trainerGone = false;
@@ -90,6 +92,8 @@ export class BattleScreen {
         break;
       case 'hp': this.stepHp(); break;
       case 'menu': this.updateMenu(input); break;
+      case 'yesno': this.updateYesNo(input); break;
+      case 'party': this.updateParty(input); break;
       case 'moves': this.updateMoves(input); break;
       default: break;
     }
@@ -109,7 +113,11 @@ export class BattleScreen {
       if (value.anim !== undefined) { this.unported.add(`battle animation: ${value.anim}`); this.timer = value.frames ?? 20; this.mode = 'wait'; return; }
       if (value.hp !== undefined) { this.hpAnim = value; this.mode = 'hp'; return; }
       if (value.ask === 'action') { this.mode = 'menu'; this.wait = null; return; }
-      if (value.sendOut !== undefined) { this.sentOut = true; continue; }
+      if (value.sendOut !== undefined) { this.sentOut = true; this.playerSpecies = value.species; continue; }
+      if (value.faint !== undefined) { if (value.faint === 0) { this.sentOut = false; this.trainerGone = true; } else this.enemyGone = true; this.timer = 40; this.mode = 'wait'; return; }
+      if (value.recall !== undefined || value.hudClear !== undefined) { this.sentOut = false; this.trainerGone = true; continue; }
+      if (value.ask === 'yesno') { this.yesno = 0; this.mode = 'yesno'; return; }
+      if (value.ask === 'party') { this.openParty(value.forced); return; }
       if (value.exp || value.levelUp) continue;
       this.unported.add(`battle event: ${JSON.stringify(Object.keys(value))}`);
     }
@@ -125,6 +133,31 @@ export class BattleScreen {
     this.shown[side] = Math.round(a.from + ((a.to - a.from) * (this.px[side] - from)) / (to - from));
   }
 
+  openParty(forced) {
+    const battle = this.battle;
+    this.partyScreen = new PartyScreen({ party: battle.party, partyCursor: battle.party.indexOf(battle.sides[0].mon) + 1 }, { battle: { forced, active: battle.party.indexOf(battle.sides[0].mon) } });
+    this.partyForced = forced;
+    this.mode = 'party';
+  }
+
+  updateParty(input) {
+    if (!this.partyScreen.update(input)) return;
+    const { chosen } = this.partyScreen;
+    for (const u of this.partyScreen.unported) this.unported.add(u);
+    this.partyScreen = null;
+    if (this.partyForced) { this.mode = 'running'; this.advance(chosen); return; }
+    if (chosen === null) { this.mode = 'menu'; return; }
+    this.mode = 'running';
+    this.advance({ action: 'switch', index: chosen });
+  }
+
+  updateYesNo(input) {
+    const dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
+    if (dir) this.yesno ^= 1;
+    if (input.b) { this.yesno = 1; }
+    if (input.a || input.b) { const yes = this.yesno === 0 && !input.b; this.mode = 'running'; this.advance(yes); }
+  }
+
   updateMenu(input) {
     const dir = directionRepeat(this.held, input.dir);
     if (dir === 'left' && this.cursor % 2 === 1) this.cursor--;
@@ -134,7 +167,7 @@ export class BattleScreen {
     if (!input.a) return;
     if (this.cursor === 0) { this.mode = 'moves'; this.moveCursor = this.battle.sides[0].curMoveNum ?? 0; return; }
     if (this.cursor === 3) { this.mode = 'running'; this.advance({ action: 'run' }); return; }
-    this.unported.add(this.cursor === 1 ? 'battle: PKMN' : 'battle: PACK');
+    if (this.cursor === 1) this.openParty(false); else this.unported.add('battle: PACK');
   }
 
   updateMoves(input) {
@@ -156,11 +189,12 @@ export class BattleScreen {
     const put = (x, y, n) => tiles.push([x, y, tile(n), colors]);
     const level = (x, y, n) => { if (n >= 100) texts.push([x, y, String(n)]); else { put(x, y, 0x6e); texts.push([x + 1, y, String(n)]); } };    // PrintLevel: <LV>, then the digits left-aligned
     // enemy HUD (DrawEnemyHUD runs once the "appeared" text is done)
-    if (this.enemyHud) texts.push([1, 0, enemy.name]);
+    const eh = this.enemyHud && !this.enemyGone;
+    if (eh) texts.push([1, 0, enemy.name]);
     const eg = monGender(enemy.species, enemy.mon.dvs);
-    if (this.enemyHud) texts.push([9, 1, eg === 'MALE' ? '♂' : eg === 'FEMALE' ? '♀' : ' ']);
-    if (this.enemyHud) { level(eg ? 6 : 5, 1, enemy.level); put(1, 2, 0x6d); put(1, 3, 0x74); for (let x = 2; x < 10; x++) put(x, 3, 0x76); put(10, 3, 0x78); }
-    if (!this.sentOut) return this.enemyHud ? this.finishHud(out, colors, texts, tiles) : this.partyBalls(out, colors, tiles, texts, put);   // ShowPlayerMonsRemaining, until DrawEnemyHUD
+    if (eh) texts.push([9, 1, eg === 'MALE' ? '♂' : eg === 'FEMALE' ? '♀' : ' ']);
+    if (eh) { level(eg ? 6 : 5, 1, enemy.level); put(1, 2, 0x6d); put(1, 3, 0x74); for (let x = 2; x < 10; x++) put(x, 3, 0x76); put(10, 3, 0x78); }
+    if (!this.sentOut) return eh ? this.finishHud(out, colors, texts, tiles) : this.partyBalls(out, colors, tiles, texts, put);   // ShowPlayerMonsRemaining, until DrawEnemyHUD
     // player HUD
     texts.push([10, 7, player.name]);
     const pg = monGender(player.species, player.mon.dvs);
@@ -185,7 +219,7 @@ export class BattleScreen {
   finishHud(out, colors, texts, tiles) {
     out.push({ colors, tiles, texts });
     // HP bars in their palettes
-    for (const [side, x, y, end] of this.sentOut ? [[1, 2, 2, 0], [0, 10, 9, 1]] : this.mode === 'intro' ? [] : [[1, 2, 2, 0]]) {
+    for (const [side, x, y, end] of [...(this.enemyHud && !this.enemyGone ? [[1, 2, 2, 0]] : []), ...(this.sentOut ? [[0, 10, 9, 1]] : [])]) {
       const pixels = this.px[side], pal = PREDEF_PALETTES[hpColor(pixels)];
       out.push({ colors: pal, tiles: barTiles(pixels, end).map((n, i) => [x + i, y, tile(n), pal]) });
     }
@@ -196,14 +230,16 @@ export class BattleScreen {
   panels() {
     const [player, enemy] = this.battle.sides;
     const out = [{ fill: 0 }];
-    out.push({ pic: { ...this.pics.enemy, x: 12 + this.pics.enemy.offX, y: this.pics.enemy.offY } });   // PadFrontpic: smaller pictures sit at the bottom
-    if (this.sentOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut ? this.pics.playerMon : this.pics.player), x: this.sentOut ? 2 : 2 - this.slide, y: 6 } });
+    if (!this.enemyGone) out.push({ pic: { ...this.pics.enemy, x: 12 + this.pics.enemy.offX, y: this.pics.enemy.offY } });   // PadFrontpic: smaller pictures sit at the bottom
+    if (this.sentOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut ? this.pics.playerMons[this.playerSpecies] : this.pics.player), x: this.sentOut ? 2 : 2 - this.slide, y: 6 } });
     out.push(...this.hudPanels());
     out.push({ box: [0, 12, 19, 17] });
     if ((this.mode === 'text' || this.mode === 'intro') && this.wait) {
       const { lines, prompt } = textLines(this.wait);
       out.push({ texts: [[1, 14, lines[0]], [1, 16, lines[1]]], prompt });
     }
+    if (this.mode === 'party') return this.partyScreen.panels();
+    if (this.mode === 'yesno') out.push({ box: [14, 7, 19, 11], texts: [[16, 8, 'YES'], [16, 10, 'NO']], cursor: [15, 8 + 2 * this.yesno, '▶'] });
     if (this.mode === 'menu' || this.mode === 'moves') {
       out.push({ box: [8, 12, 19, 17], texts: [[10, 14, 'FIGHT'], [16, 14, '<PK><MN>'], [10, 16, 'PACK'], [16, 16, 'RUN']],
         cursor: [this.mode === 'menu' ? 9 + 6 * (this.cursor % 2) : 9 + 6 * (this.cursor % 2), 14 + 2 * (this.cursor >> 1), this.mode === 'menu' ? '▶' : '▷'] });
