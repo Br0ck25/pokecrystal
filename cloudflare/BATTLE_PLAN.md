@@ -23,8 +23,8 @@ battle_transition.asm, trainer_huds.asm, anim_hp_bar.asm...), driven by the gene
 ## Status
 Done: `src/battle/damage.js` (DamageStats, DamageCalc, Critical, Stab with weather/badges/type chart, DamageVariation), checked against 67 ROM hits with `tools/reference/damage`. `src/battle/accuracy.js` (CheckHit; unit-tested only, not yet compared with the ROM). `src/battle/battle.js` (state, move order, wild move choice, CheckTurn, the NormalHit script, stat stage commands, faint, win) and `experience.js` (GiveExperiencePoints, level up, LearnMove), unit-tested only. Not ported yet: badge stat boosts, running, switching, items, catching, poison/burn/other status, most effect commands (the interpreter throws `unported battle command: X` for them), trainers/AI, all battle UI, wild encounters. Was: the turn loop, everything after step 1. Party Pokémon (stats, moves, exp) exist in `src/script/mon.js`.
 
-## To investigate
-- `tools/reference/damage/verify.mjs` leaves 3 of 67 ROM hits unexplained: a MAROWAK loses exactly 10 HP (wCurDamage 10, wTypeModifier 10, no STAB) while the enemy move shown is Tackle/Splash. Record the status and substatus bits at the event to see if it is a confusion hit or a harness mix-up.
+## Explained
+- The 3 unmatched ROM hits (a MAROWAK losing 10 HP) are BattleCommand_CheckObedience: the probe plants a Pokémon with a foreign OT ID, and with no badges it only obeys up to level 10, so a level 30 one sometimes "hurt itself in its confusion" (HitConfusion, effect_commands.asm:768). `checkobedience` is still a no-op in `battle.js`; port it (obedience levels by badge, the ignored-orders/loafing/sleep texts, HitConfusion) before traded Pokémon matter.
 
 ## Status (UI)
 - `src/battle/screen.js` shows a wild battle (HUDs, text box, FIGHT/RUN menu, move list) driven by `Battle.run()`; `Game.startWildBattle` opens it and `wild.js` + `Game.checkWildEncounter` trigger it on grass. `?battle=SPECIES:LEVEL&mon=SPECIES:LEVEL` opens one directly (tools).
