@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Battle } from './battle.js';
-import { createMon } from '../script/mon.js';
+import { createMon, expAtLevel } from '../script/mon.js';
 
 /** Drive a battle: the player always picks move slot 0. Returns the events and the result. */
 function play(battle, limit = 200) {
@@ -28,4 +28,18 @@ test('a level 5 CHIKORITA beats a level 3 RATTATA with TACKLE', () => {
   assert.ok(texts(events).some((t) => /used TACKLE!/.test(t)));
   assert.equal(enemy.hp, 0);
   assert.equal(player.pp[0], 35 - events.filter((e) => e.anim === 'TACKLE' && e.user === 0).length);
+});
+
+test('winning gives experience, stat experience and a level up with the moves of that level', () => {
+  const player = createMon({ species: 'CHIKORITA', level: 7, dvs: [155, 31], id: 1 });
+  player.exp = expAtLevel('CHIKORITA', 8) - 10;
+  const enemy = createMon({ species: 'PIDGEY', level: 8, dvs: [0x88, 0x88] });
+  const battle = new Battle({ player: [player], enemy, random: seeded(3), playerId: 1 });
+  const { events, result } = play(battle, 400);
+  assert.equal(result.result, 'win');
+  assert.ok(texts(events).some((t) => /CHIKORITA gained/.test(t)));
+  assert.ok(player.exp > expAtLevel('CHIKORITA', 8));
+  assert.equal(player.statExp.hp, 40);
+  assert.equal(player.level, 8);
+  assert.ok(player.moves.includes('RAZOR_LEAF'));
 });

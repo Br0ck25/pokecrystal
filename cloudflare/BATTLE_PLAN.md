@@ -21,7 +21,7 @@ battle_transition.asm, trainer_huds.asm, anim_hp_bar.asm...), driven by the gene
 5. Trainers: sight, parties, AI, rewards. Remaining effects. Animations last.
 
 ## Status
-Done: `src/battle/damage.js` (DamageStats, DamageCalc, Critical, Stab with weather/badges/type chart, DamageVariation), checked against 67 ROM hits with `tools/reference/damage`. `src/battle/accuracy.js` (CheckHit; unit-tested only, not yet compared with the ROM). Not ported yet: the turn loop, everything after step 1. Party Pokémon (stats, moves, exp) exist in `src/script/mon.js`.
+Done: `src/battle/damage.js` (DamageStats, DamageCalc, Critical, Stab with weather/badges/type chart, DamageVariation), checked against 67 ROM hits with `tools/reference/damage`. `src/battle/accuracy.js` (CheckHit; unit-tested only, not yet compared with the ROM). `src/battle/battle.js` (state, move order, wild move choice, CheckTurn, the NormalHit script, stat stage commands, faint, win) and `experience.js` (GiveExperiencePoints, level up, LearnMove), unit-tested only. Not ported yet: badge stat boosts, running, switching, items, catching, poison/burn/other status, most effect commands (the interpreter throws `unported battle command: X` for them), trainers/AI, all battle UI, wild encounters. Was: the turn loop, everything after step 1. Party Pokémon (stats, moves, exp) exist in `src/script/mon.js`.
 
 ## To investigate
 - `tools/reference/damage/verify.mjs` leaves 3 of 67 ROM hits unexplained: a MAROWAK loses exactly 10 HP (wCurDamage 10, wTypeModifier 10, no STAB) while the enemy move shown is Tackle/Splash. Record the status and substatus bits at the event to see if it is a confusion hit or a harness mix-up.

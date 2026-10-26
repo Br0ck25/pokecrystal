@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMon, expAtLevel, movesAtLevel } from './mon.js';
+import { createMon, expAtLevel, movesAtLevel, levelForExp, recalcStats } from './mon.js';
 import { monGender } from './gender.js';
 
 // Read from the real game's wPartyMon1 after Elm gave CHIKORITA: DVs 155,31 -> level 5, exp 135, HP 21, ATK 10, DEF 12, SPD 9, SAT 11, SDF 13.
@@ -23,4 +23,16 @@ test('gender follows the Attack and Speed DVs against the species ratio', () => 
   assert.equal(monGender('CHIKORITA', [155, 31]), 'MALE');
   assert.equal(monGender('CHIKORITA', [0x00, 0x00]), 'FEMALE');
   assert.equal(monGender('MAGNEMITE', [155, 31]), null);
+});
+
+test('levelForExp is the highest level whose experience is reached; recalcStats raises HP and current HP together', () => {
+  assert.equal(levelForExp('CHIKORITA', 135), 5);
+  assert.equal(levelForExp('CHIKORITA', 134), 4);
+  assert.equal(levelForExp('CHIKORITA', 10 ** 7), 100);
+  const mon = createMon({ species: 'CHIKORITA', level: 5, dvs: [155, 31] });
+  mon.hp = 10;
+  mon.level = 6;
+  recalcStats(mon);
+  assert.equal(mon.stats.hp, 23);
+  assert.equal(mon.hp, 12);
 });

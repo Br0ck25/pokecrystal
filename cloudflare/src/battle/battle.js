@@ -13,6 +13,7 @@ import { ITEMS } from '../generated/items.js';
 import { SCRIPTS as TEXT } from '../generated/scripts/_text.js';
 import { damageStats, damageCalc, criticalStage, isCritical, stab, damageVariation } from './damage.js';
 import { checkHit, rawAccuracy } from './accuracy.js';
+import { giveExperience } from './experience.js';
 
 export const STATUS = { SLP: 7, PSN: 1 << 3, BRN: 1 << 4, FRZ: 1 << 5, PAR: 1 << 6 };
 const BASE_STAGE = 7;
@@ -36,9 +37,12 @@ export function battleMon(mon, { name = POKEMON[mon.species].name } = {}) {
 
 export class Battle {
   /** player/enemy: party mon objects (src/script/mon.js); badges: Johto bits 0-7, Kanto bits 8-15. */
-  constructor({ player, enemy, wild = true, random, badges = 0, weather = 0 }) {
+  constructor({ player, enemy, wild = true, random, badges = 0, weather = 0, playerId = 0 }) {
     this.party = player;
+    this.playerId = playerId;
+    this.trainer = !wild;
     this.sides = [battleMon(player.find((m) => m.hp > 0)), battleMon(enemy)];
+    this.participants = new Set([player.indexOf(this.sides[0].mon)]);      // wBattleParticipantsNotFainted
     this.wild = wild;
     this.random = random;
     this.badges = badges;
@@ -62,12 +66,14 @@ export class Battle {
 
   // ---- text ---------------------------------------------------------------------------------------------------
   /** Resolve text_far chains and <USER>/<TARGET> of a shared text block. */
-  say(label) {
+  say(label, vars = {}) {
     const out = [];
     const walk = (cmds) => {
       for (const [name, ...args] of cmds) {
         if (name === 'text_far') walk(TEXT[args[0]]);
         else if (name === 'text_end' || name === 'text_start') continue;
+        else if (name === 'text_ram') out.push(['text', String(vars[args[0]])]);
+        else if (name === 'text_decimal') out.push(['text', String(vars[args[0]])]);   // left-aligned, as the game prints it
         else out.push([name, ...args.map((a) => this.fill(a))]);
       }
     };
@@ -205,8 +211,25 @@ export class Battle {
     if (u.status & (STATUS.PSN | STATUS.BRN)) throw new Error('unported: poison/burn damage');
   }
 
-  *enemyFainted() { yield this.say('BattleText_EnemyMonFainted'); return { result: 'win' }; }
+  /** HandleEnemyMonFaint for a wild battle: the faint text, experience for the Pokémon that fought, then the battle is over. */
+  *enemyFainted() {
+    yield this.say('BattleText_EnemyMonFainted');
+    if (this.sides[0].hp === 0) { yield this.say('BattleText_MonFainted'); this.participants.delete(this.party.indexOf(this.sides[0].mon)); }
+    if (this.party.some((m) => m.hp > 0)) yield* giveExperience(this, { participants: this.participants, playerId: this.playerId, trainer: this.trainer });
+    yield { wait: 60 };
+    return { result: this.party.some((m) => m.hp > 0) ? 'win' : 'lose' };
+  }
   *playerFainted() { yield this.say('BattleText_MonFainted'); return { result: 'lose' }; }
+
+  /** After a level up: the active Pokémon's battle stats from its new party stats. */
+  refreshPlayerStats() {
+    const p = this.sides[0];
+    p.level = p.mon.level;
+    p.maxHp = p.mon.stats.hp;
+    p.hp = p.mon.hp;
+    Object.assign(p.base, { atk: p.mon.stats.atk, def: p.mon.stats.def, spd: p.mon.stats.spd, sat: p.mon.stats.sat, sdf: p.mon.stats.sdf });
+    this.calcStats(p);
+  }
 }
 
 /** The effect commands, one per BattleCommand_* of effect_commands.asm that the NormalHit family uses. */

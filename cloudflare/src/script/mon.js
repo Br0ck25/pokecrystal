@@ -45,3 +45,19 @@ export function createMon({ species, level, dvs, id, item = null }) {
     happiness: BASE_HAPPINESS, status: 0, hp: stats.hp, stats,
   };
 }
+
+const STAT_EXP_KEY = { hp: 'hp', atk: 'atk', def: 'def', spd: 'spd', sat: 'spc', sdf: 'spc' };
+
+/** CalcMonStats: every stat of `mon` at its level and stat experience (the HP gained is added to the current HP, as a level up does). */
+export function recalcStats(mon) {
+  const maxBefore = mon.stats.hp;
+  for (const stat of Object.keys(mon.stats)) mon.stats[stat] = calcStat(mon.species, stat, mon.level, mon.dvs, mon.statExp[STAT_EXP_KEY[stat]]);
+  mon.hp += mon.stats.hp - maxBefore;
+}
+
+/** CalcLevel: the highest level (1-100) whose experience the mon has reached. */
+export function levelForExp(species, exp) {
+  let level = 1;
+  while (level < 100 && exp >= expAtLevel(species, level + 1)) level++;
+  return level;
+}
