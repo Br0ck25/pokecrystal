@@ -81,6 +81,7 @@ export class Game {
     this.ctx = await createScriptContext(world.name, this.state);
     this.world = world;
     this.tileAnim = new TileAnimator(world.tileset);
+    this.failedScripts = new Set();
     this.player = { x, y, facing, step: null, parity: this.player.parity, queue: [] };
     this.objects = world.objects.map((def, index) => ({
       def, index, id: def.id ?? `${world.name}#${index}`, x: def.x, y: def.y, facing: initialFacing(def),
@@ -368,6 +369,7 @@ export class Game {
   // ---- scripts --------------------------------------------------------------------------------------------------
 
   startScript(label, { caller = null, conditionalKind = null } = {}) {
+    if (this.failedScripts.has(label)) return;                   // a scene script that needs something not ported must not restart every frame
     const gen = runScript({ ...this.ctx, caller, conditionalKind }, label);
     this.runner = { gen, wait: null, caller, label };
     this.advanceRunner(undefined);
@@ -376,6 +378,7 @@ export class Game {
   advanceRunner(value) {
     try { this.advanceRunnerUnsafe(value); } catch (e) {
       this.unported.add(`${this.runner?.label}: ${e.message}`);
+      if (this.runner) this.failedScripts.add(this.runner.label);
       this.runner = null;                                         // abandon a script that needs something not ported
     }
   }
