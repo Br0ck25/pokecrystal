@@ -41,7 +41,7 @@ const fs = require('fs');
         const wait = async () => { while (g.loading) await new Promise((r) => setTimeout(r, 2)); };
         if (s.walk) {
           g.randomByte = () => 255;                                                      // no encounter of its own
-          for (let i = 0; i < s.frames - 2; i++) { await wait(); g.update({ dir: s.walk[Math.floor(i / 16) % s.walk.length] }); }
+          for (let i = 0; i < s.frames - 1; i++) { await wait(); g.update({ dir: s.walk[Math.floor(i / 16) % s.walk.length] }); }
           const { species, level, dvs } = s.force;
           g.randomByte = (() => { let n = 0; return () => (n = (n * 5 + 3) & 255); })();
           await g.startWildBattle({ species, level, dvs });

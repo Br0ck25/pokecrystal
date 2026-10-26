@@ -10,6 +10,7 @@ import { SCRIPTS as TEXT } from '../generated/scripts/_text.js';
 import { renderText } from '../script/text.js';
 import { startTextWait, stepTextWait, textLines } from '../script/textwait.js';
 import { directionRepeat } from '../game/menu.js';
+import { PicAnimation } from '../game/pic-anim.js';
 import { PartyScreen } from '../game/party.js';
 import { PackScreen } from '../game/pack.js';
 import { NamingScreen } from '../game/naming.js';
@@ -28,8 +29,11 @@ const tile = (n) => HUD_TILES[n];
 // transition), whatever the printing speed in between.
 const TEXT_COPY_PHASE = 1;
 const INPUT_LATENCY = 3;
+const MOVES_MENU_FRAMES = 4;              // FIGHT: the move list is drawn this long after the button (measured)
 const ARROW_FRAMES = 18;                  // the ▼ shows this long, then hides as long (the blink loop runs at CPU speed, so it is not a round 16)
-const SLIDE_FRAMES = 73, COLOR_AT = 81, BALLS_AT = 120, BORDERS_AT = 122, TEXT_AT = 121;
+const SLIDE_FRAMES = 73, COLOR_AT = 81;
+const TRAINER_TIMING = { balls: 120, borders: 122, text: 121 };      // when the Poké Ball rows, the HUD borders and the text come, in frames from the first
+const WILD_AFTER_ANIM = { balls: 3, borders: 4, text: 4 };           // and for a wild Pokémon, in frames after its picture's animation ends
 
 /** hpBarTiles for a bar of `pixels` pixels (DrawBattleHPBar): 6 tiles, then the end tile. */
 function barTiles(pixels, end) {
@@ -68,6 +72,8 @@ export class BattleScreen {
     this.frame = 0;
     this.inputs = Array.from({ length: INPUT_LATENCY }, () => ({}));
     this.t = 0;                                                        // frames since the screen appeared (the first white frame)
+    this.timing = battle.wild ? { balls: Infinity, borders: Infinity, text: Infinity } : TRAINER_TIMING;
+    this.picAnim = null;
     this.mode = 'enter';
     this.wait = startTextWait(renderText(intro, { block: (l) => TEXT[l], vars: {}, playerName, rivalName: '' }));
     this.result = null;
@@ -103,10 +109,12 @@ export class BattleScreen {
   step(input) {
     switch (this.mode) {
       case 'enter':
-        if (++this.t >= TEXT_AT) this.mode = 'intro';
+        this.t++;
+        if (this.battle.wild) this.stepPicAnim();
+        if (this.t >= this.timing.text) this.mode = 'intro';
         break;
       case 'intro':
-        if (this.t < BORDERS_AT) this.t++;
+        if (this.t < this.timing.borders) this.t++;
         if (stepTextWait(this.wait, input)) this.advance();
         break;
       case 'text':
@@ -160,7 +168,8 @@ export class BattleScreen {
       }
       if (value.anim !== undefined) { this.unported.add(`battle animation: ${value.anim}`); this.timer = value.frames ?? 20; this.mode = 'wait'; return; }
       if (value.hp !== undefined) { this.hpAnim = value; this.mode = 'hp'; return; }
-      if (value.ask === 'action') { this.mode = 'menu'; this.wait = null; return; }
+      if (value.menuIdle) { this.menuIdle = true; continue; }
+      if (value.ask === 'action') { this.menuIdle = false; this.mode = 'menu'; this.wait = null; return; }
       if (value.sendOut !== undefined) { this.sentOut = true; this.playerSpecies = value.species; continue; }
       if (value.faint !== undefined) { if (value.faint === 0) { this.sentOut = false; this.trainerGone = true; } else this.enemyGone = true; this.timer = 40; this.mode = 'wait'; return; }
       if (value.recall !== undefined || value.hudClear !== undefined) { this.sentOut = false; this.trainerGone = true; continue; }
@@ -224,13 +233,14 @@ export class BattleScreen {
     else if (dir === 'up' && this.cursor >= 2) this.cursor -= 2;
     else if (dir === 'down' && this.cursor < 2) this.cursor += 2;
     if (!input.a) return;
-    if (this.cursor === 0) { this.mode = 'moves'; this.moveCursor = this.battle.sides[0].curMoveNum ?? 0; return; }
+    if (this.cursor === 0) { this.mode = 'moves'; this.movesAt = this.frame + MOVES_MENU_FRAMES; this.moveCursor = this.battle.sides[0].curMoveNum ?? 0; return; }
     if (this.cursor === 3) { this.mode = 'running'; this.advance({ action: 'run' }); return; }
     if (this.cursor === 1) this.openParty(false);
     else { this.packScreen = new PackScreen(this.state, { battle: true }); this.mode = 'pack'; }
   }
 
   updateMoves(input) {
+    if (this.frame < this.movesAt) return;
     const side = this.battle.sides[0], count = side.moves.filter(Boolean).length;
     const dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
     if (dir === 'up') this.moveCursor = (this.moveCursor + count - 1) % count;
@@ -275,7 +285,7 @@ export class BattleScreen {
     const balls = [0, 1, 2, 3, 4, 5].map((i) => { const m = this.battle.party[i]; return !m ? 3 : m.hp === 0 ? 2 : m.status ? 1 : 0; });
     const ballTiles = gone >= 0 ? [] : balls.map((b, i) => [11 + i, 10, BALL_TILES[b], BALL_PALETTE]);
     if (this.trainerBattle && !this.enemyHud) {                         // ShowOTTrainerMonsRemaining: the trainer's party, right to left from column 8
-      const bordered = this.t >= BORDERS_AT || (this.mode !== 'enter' && this.mode !== 'intro');   // the enemy's border comes two frames after the balls
+      const bordered = this.t >= this.timing.borders || (this.mode !== 'enter' && this.mode !== 'intro');   // the enemy's border comes two frames after the balls
       if (bordered && gone < 1) { put(1, 2, 0x6d); put(1, 3, 0x74); for (let x = 2; x < 10; x++) put(x, 3, 0x76); put(10, 3, 0x78); }
       const party = this.battle.enemyParty;
       if (gone < 0) for (let i = 0; i < 6; i++) { const m = party[i]; ballTiles.push([8 - i, 2, BALL_TILES[!m ? 3 : (m === this.battle.sides[1].mon ? this.battle.sides[1].hp : m.hp) === 0 ? 2 : m.status ? 1 : 0], BALL_PALETTE]); }
@@ -294,6 +304,17 @@ export class BattleScreen {
     return out;
   }
 
+  /** A wild Pokémon's picture animates (with its cry) as soon as the colors load; the player's ball row and the text follow its end. */
+  stepPicAnim() {
+    if (this.t < COLOR_AT) return;
+    this.picAnim ??= new PicAnimation({ pic: this.enemyPic });
+    this.picAnim.update();
+    if (this.picAnim.done && this.timing.text === Infinity) {
+      const after = WILD_AFTER_ANIM;
+      this.timing = { balls: this.t + after.balls, borders: this.t + after.borders, text: this.t + after.text };
+    }
+  }
+
   /** The text as the last tilemap copy left it. */
   shownText() {
     const c = this.copied, w = this.wait;
@@ -304,13 +325,14 @@ export class BattleScreen {
   panels() {
     const [player, enemy] = this.battle.sides;
     const out = [{ fill: 0 }];
-    const entering = this.t < BORDERS_AT && (this.mode === 'enter' || this.mode === 'intro');
+    const entering = this.t < this.timing.borders && (this.mode === 'enter' || this.mode === 'intro');
     const k = Math.min(this.t, SLIDE_FRAMES - 1), gray = entering && this.t < COLOR_AT ? { palette: PREDEF_PALETTES.BLACKOUT } : {};
     const enemyX = entering ? 12 + this.enemyPic.offX - (144 - 2 * k) / 8 : 12 + this.enemyPic.offX + this.enemySlide;
     const playerX = entering ? (k < SLIDE_FRAMES - 1 ? 160 - 2 * (k + 1) : 16) / 8 : this.sentOut ? 2 : 2 - this.slide;
-    if (!this.enemyGone) out.push({ pic: { ...this.enemyPic, ...gray, x: enemyX, y: this.enemyPic.offY } });
+    const enemyPixels = this.picAnim && !this.picAnim.done ? this.picAnim.pixels(this.enemyPic) : this.enemyPic.pixels;
+    if (!this.enemyGone) out.push({ pic: { ...this.enemyPic, pixels: enemyPixels, ...gray, x: enemyX, y: this.enemyPic.offY } });
     if (this.sentOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut ? this.pics.playerMons[this.playerSpecies] : this.pics.player), ...gray, x: playerX, y: 6 } });
-    if (!entering || this.t >= BALLS_AT) out.push(...this.hudPanels());
+    if (!entering || this.t >= this.timing.balls) out.push(...this.hudPanels());
     out.push({ box: [0, 12, 19, 17] });
     if ((this.mode === 'text' || this.mode === 'intro') && this.wait) {
       const { lines, prompt, shift } = textLines(this.shownText());
@@ -321,11 +343,11 @@ export class BattleScreen {
     if (this.mode === 'pack') return this.packScreen.panels();
     if (this.mode === 'naming') return this.naming.panels();
     if (this.mode === 'yesno') out.push({ box: [14, 7, 19, 11], texts: [[16, 8, 'YES'], [16, 10, 'NO']], cursor: [15, 8 + 2 * this.yesno, '▶'] });
-    if (this.mode === 'menu' || this.mode === 'moves') {
+    if (this.mode === 'menu' || this.mode === 'moves' || this.menuIdle) {
       out.push({ box: [8, 12, 19, 17], texts: [[10, 14, 'FIGHT'], [16, 14, '<PK><MN>'], [10, 16, 'PACK'], [16, 16, 'RUN']],
-        cursor: [this.mode === 'menu' ? 9 + 6 * (this.cursor % 2) : 9 + 6 * (this.cursor % 2), 14 + 2 * (this.cursor >> 1), this.mode === 'menu' ? '▶' : '▷'] });
+        cursor: this.menuIdle ? undefined : [this.mode === 'menu' ? 9 + 6 * (this.cursor % 2) : 9 + 6 * (this.cursor % 2), 14 + 2 * (this.cursor >> 1), this.mode === 'menu' ? '▶' : '▷'] });
     }
-    if (this.mode === 'moves') {
+    if (this.mode === 'moves' && this.frame >= this.movesAt) {
       const cur = player.moves[this.moveCursor];
       out.push({ box: [4, 12, 19, 17], texts: [0, 1, 2, 3].map((i) => [6, 13 + i, player.moves[i] ? MOVES[player.moves[i]].name : '-']), cursor: [5, 13 + this.moveCursor, '▶'] });
       if (cur) out.push({ box: [0, 8, 10, 12], texts: [[1, 9, 'TYPE/'], [2, 10, MOVES[cur].type.replace('_TYPE', '')], [5, 11, `${player.pp[this.moveCursor]}/${MOVES[cur].pp}`]] });

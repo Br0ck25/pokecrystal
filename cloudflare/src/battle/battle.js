@@ -120,9 +120,9 @@ export class Battle {
     // measured in the real game after the "appeared" text: the box clears, the enemy HUD follows 6 frames later, 40 frames of DelayFrames,
     // the trainer slides out (22 frames), "Go! X!", 30 frames, the send-out animation (62 frames), the HUD, 17 frames to the menu
     if (this.wild) {
-      yield { wait: 6 };
+      yield { wait: 4 };
       yield { enemyHud: true };
-      yield { wait: 40 };
+      yield { wait: 39 };
     } else {                                             // measured: the box clears, 3 frames later the HUD, a frame on the trainer's pic slides out
       yield { wait: 3 };
       yield { enemyHudClear: true };
@@ -141,7 +141,9 @@ export class Battle {
     yield { wait: 30 };
     yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
     yield { sendOut: 0, species: this.sides[0].species };
-    yield { wait: this.wild ? 17 : 64 };               // the real game holds here for the Pokémon's cry (CHIKORITA's, in the trainer battle measured); wild battles not re-measured
+    yield { wait: this.wild ? 13 : 25 };               // measured with CHIKORITA out: the menu is drawn (the trainer's AI runs first), and its cursor comes later
+    yield { menuIdle: true };
+    yield { wait: this.wild ? 47 : 41 };
     for (;;) {
       this.sides.forEach((s) => { s.sub.flinched = false; });
       this.curDamage = 0;

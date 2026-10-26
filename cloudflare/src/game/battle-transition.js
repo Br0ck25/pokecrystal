@@ -12,7 +12,7 @@ import { BATTLE_TRANSITION as T } from '../generated/battle-transition.js';
 
 const WIDTH = 20, HEIGHT = 18;
 const SQUARE = 1, BLACK = 2;
-const IDLE_FRAMES = 23;                  // before StartTrainerBattle_DetermineWhichAnimation runs
+const IDLE_FRAMES = 23, WILD_IDLE_FRAMES = 22;     // before StartTrainerBattle_DetermineWhichAnimation runs (a frame less for a wild Pokémon: measured)
 const BALL_FRAMES = 3;                   // LoadPokeBallGraphics: palette load, tilemap copy, jumptable delay
 const FLASH_STAGES = 3;
 const SPIN_STEP_FRAMES = 3;              // two DelayFrames and the loop's own
@@ -48,7 +48,7 @@ export class BattleTransition {
 
   * run() {
     const v = this.view;
-    yield* this.wait(IDLE_FRAMES);
+    yield* this.wait(this.trainer ? IDLE_FRAMES : WILD_IDLE_FRAMES);
     yield;                                                                     // DetermineWhichAnimation
     if (this.trainer) {
       v.pal7 = true;

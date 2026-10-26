@@ -374,7 +374,7 @@ export class Renderer {
   drawPic(spec, bgp = null) {
     const pic = spec.pixels && spec.palette ? spec : this.loadedPic(spec);
     if (!pic) return;
-    const key = `${spec.species ?? spec.trainer ?? 'raw'}|${pic.pixels.length}|${pic.pixels.slice(0, 96)}|${pic.pixels.slice(-96)}|${pic.palette}|${bgp}`;
+    const key = `${spec.species ?? spec.trainer ?? 'raw'}|${pic.pixels}|${pic.palette}|${bgp}`;
     let canvas = this.picImages.get(key);
     if (!canvas) {
       canvas = makeCanvas(56, 56);

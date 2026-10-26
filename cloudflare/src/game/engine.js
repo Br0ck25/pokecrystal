@@ -292,7 +292,7 @@ export class Game {
       Promise.all(partySpecies.map((sp) => import(`../generated/pokemon/${sp}.js`))),
       Promise.all(fronts.map((sp) => import(`../generated/pokemon/${sp}.js`))),
     ]);
-    const front = (mod) => { const tiles = mod.PIC.size / 8; return { size: mod.PIC.size, pixels: mod.PIC.front, palette: mod.PIC.palette, offX: tiles < 7 ? 1 : 0, offY: 7 - tiles }; };   // PadFrontpic: smaller pictures sit at the bottom
+    const front = (mod) => { const tiles = mod.PIC.size / 8; return { size: mod.PIC.size, pixels: mod.PIC.front, front: mod.PIC.front, frames: mod.PIC.frames, anim: mod.PIC.anim, idle: mod.PIC.idle, palette: mod.PIC.palette, offX: tiles < 7 ? 1 : 0, offY: 7 - tiles }; };   // PadFrontpic: smaller pictures sit at the bottom
     const enemyMons = Object.fromEntries(fronts.map((sp, i) => [sp, front(frontMods[i])]));
     return {
       enemy: trainerArt ? { size: trainerArt.PIC.size, pixels: trainerArt.PIC.pixels, palette: trainerArt.PIC.palette, offX: 0, offY: 0 } : enemyMons[enemySpecies[0]],

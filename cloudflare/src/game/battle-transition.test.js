@@ -35,11 +35,11 @@ test('trainer transition: the Poké Ball and pal7 at frame 24, flashes from 28, 
   assert.equal(frames[104].sprites, 'fighters');
 });
 
-test('wild transition has no Poké Ball and starts flashing two frames earlier', () => {
+test('wild transition has no Poké Ball and starts flashing three frames earlier', () => {
   const frames = run({ trainer: false, cave: false, stronger: false });
   assert.equal(frames.some((f) => f.pal7), false);
-  assert.notEqual(frames[26].bgp, null);
-  assert.equal(frames[25].bgp, null);
+  assert.notEqual(frames[25].bgp, null);
+  assert.equal(frames[24].bgp, null);
 });
 
 test('the four outros end with black at 170 (spin), 126 (speckle), 122 (wavy) and 142 (zoom)', () => {
