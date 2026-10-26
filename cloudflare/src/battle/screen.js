@@ -34,6 +34,7 @@ const TEXT_COPY_PHASE = 1;
 const INPUT_LATENCY = 3;
 const MOVES_MENU_FRAMES = 4;              // FIGHT: the move list is drawn this long after the button (measured)
 const ARROW_FRAMES = 18;                  // the ▼ shows this long, then hides as long (the blink loop runs at CPU speed, so it is not a round 16)
+const FAINT_AT = 0, FAINT_ROWS = 7, FAINT_END = 2;         // MonFaintedAnimation: frames before the first step, tile rows the picture sinks, frames after the last
 const SLIDE_FRAMES = 73, COLOR_AT = 81;
 const TRAINER_TIMING = { balls: 120, borders: 122, text: 121 };      // when the Poké Ball rows, the HUD borders and the text come, in frames from the first
 const WILD_AFTER_ANIM = { balls: 3, borders: 4, text: 4 };           // and for a wild Pokémon, in frames after its picture's animation ends
@@ -60,6 +61,16 @@ export function expTiles(pixels) {
     tiles.push(n === 8 ? 0x6a : n === 0 ? 0x62 : 0x54 + n);
   }
   return tiles;
+}
+
+/** The 7x7 tile square of a picture moved down `rows` tile rows, the top left blank and what leaves the bottom lost (MonFaintedAnimation). */
+function sunk(pic, rows) {
+  const side = 56, pixels = new Array(side * side).fill('0');
+  for (let y = 0; y < pic.size; y++) for (let x = 0; x < pic.size; x++) {
+    const to = (pic.offY ?? 0) * 8 + y + rows * 8;
+    if (to < side) pixels[to * side + (pic.offX ?? 0) * 8 + x] = pic.pixels[y * pic.size + x];
+  }
+  return { ...pic, size: side, pixels: pixels.join(''), offX: 0, offY: 0 };
 }
 
 export class BattleScreen {
@@ -133,6 +144,11 @@ export class BattleScreen {
         break;
       case 'anim': if (this.animation.update()) { this.picOut = this.animation.sentOut; this.animation = null; this.advance(); } break;
       case 'hp': this.stepHp(); break;
+      case 'faintEnemy':                                            // MonFaintedAnimation: every 2 frames the picture sinks a tile row; then the HUD is cleared
+        this.faintT++;
+        if (this.faintT === FAINT_AT + 2 * FAINT_ROWS) this.enemyGone = true;
+        if (this.faintT >= FAINT_AT + 2 * FAINT_ROWS + FAINT_END) { this.mode = 'running'; this.advance(); }
+        break;
       case 'menu': this.updateMenu(input); break;
       case 'yesno': this.updateYesNo(input); break;
       case 'party': this.updateParty(input); break;
@@ -182,7 +198,8 @@ export class BattleScreen {
       if (value.menuIdle) { this.menuIdle = true; continue; }
       if (value.ask === 'action') { this.menuIdle = false; this.mode = 'menu'; this.wait = null; this.boxText = false; return; }
       if (value.sendOut !== undefined) { this.sentOut = true; this.picOut = false; this.boxText = false; this.playerSpecies = value.species; continue; }
-      if (value.faint !== undefined) { if (value.faint === 0) { this.sentOut = false; this.trainerGone = true; } else this.enemyGone = true; this.timer = 40; this.mode = 'wait'; return; }
+      if (value.faint === 1) { this.faintT = 0; this.mode = 'faintEnemy'; return; }
+      if (value.faint !== undefined) { this.sentOut = false; this.trainerGone = true; this.timer = 40; this.mode = 'wait'; return; }
       if (value.recall !== undefined || value.hudClear !== undefined) { this.sentOut = false; this.trainerGone = true; continue; }
       if (value.ask === 'yesno') { this.yesno = 0; this.mode = 'yesno'; return; }
       if (value.ask === 'nickname') { this.naming = new NamingScreen({ mon: { species: value.species, name: POKEMON[value.species].name, gender: 'MALE' } }); this.mode = 'naming'; return; }
@@ -371,7 +388,8 @@ export class BattleScreen {
     const enemyX = entering ? 12 + this.enemyPic.offX - (144 - 2 * k) / 8 : 12 + this.enemyPic.offX + this.enemySlide;
     const playerX = entering ? (k < SLIDE_FRAMES - 1 ? 160 - 2 * (k + 1) : 16) / 8 : this.sentOut || this.picOut ? 2 : 2 - this.slide;
     const enemyPixels = this.picAnim && !this.picAnim.done ? this.picAnim.pixels(this.enemyPic) : this.enemyPic.pixels;
-    if (!this.enemyGone) out.push({ pic: { ...this.enemyPic, pixels: enemyPixels, ...gray, x: enemyX, y: this.enemyPic.offY } });
+    if (this.mode === 'faintEnemy' && !this.enemyGone) out.push({ pic: { ...sunk(this.enemyPic, Math.min(FAINT_ROWS, Math.max(0, Math.floor((this.faintT - FAINT_AT) / 2) + (this.faintT >= FAINT_AT ? 1 : 0)))), x: 12, y: 0 } });
+    else if (!this.enemyGone) out.push({ pic: { ...this.enemyPic, pixels: enemyPixels, ...gray, x: enemyX, y: this.enemyPic.offY } });
     if (this.sentOut || this.picOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut || this.picOut ? this.pics.playerMons[this.playerSpecies ?? player.species] : this.pics.player), ...gray, x: playerX, y: 6 } });
     if (!entering || this.t >= this.timing.balls) out.push(...this.hudPanels());
     out.push({ box: [0, 12, 19, 17] });
@@ -380,7 +398,7 @@ export class BattleScreen {
       if (prompt) this.readyAt ??= this.frame; else this.readyAt = undefined;
       out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]], promptNow: prompt && (this.frame - this.readyAt) % (2 * ARROW_FRAMES) < ARROW_FRAMES });
     }
-    if (this.boxText && this.wait && (this.mode === 'wait' || this.mode === 'hp' || this.mode === 'slide')) {
+    if (this.boxText && this.wait && (this.mode === 'wait' || this.mode === 'hp' || this.mode === 'slide' || this.mode === 'faintEnemy')) {
       const { lines, shift } = textLines(this.shownText());
       out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]] });
     }

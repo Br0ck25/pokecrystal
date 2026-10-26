@@ -177,7 +177,7 @@ export class Battle {
         if (this.sides[0].hp === 0 || this.sides[1].hp === 0) break;
         if (t === 1 && (yield* this.tryEnemyFlee())) return { result: 'fled' };
         this.turn = t;
-        if (!(t === 0 && this.skipPlayerTurn) && !(t === 1 && enemyActed)) { yield* this.doTurn(); if (!this.turnEnded) yield { wait: 28 }; }   // measured: 28 frames pass after a move before the next text
+        if (!(t === 0 && this.skipPlayerTurn) && !(t === 1 && enemyActed)) { yield* this.doTurn(); if (!this.turnEnded) yield { wait: this.sides[1].hp === 0 ? 14 : 28 }; }   // measured: 28 frames pass after a move before the next text, 14 before the enemy faints
         if (this.fled) return { result: 'ran' };
         if (this.sides[1].hp === 0 || this.sides[0].hp === 0) break;
         yield* this.residual(t);
@@ -348,6 +348,7 @@ export class Battle {
   // ---- faint ---------------------------------------------------------------------------------------------------
   /** HandleEnemyMonFaint for a wild battle: the faint text, experience for the Pokémon that fought, then the battle is over. */
   *enemyFainted() {
+    yield { faint: 1 };
     yield this.say('BattleText_EnemyMonFainted');
     if (this.sides[0].hp === 0) { yield this.say('BattleText_MonFainted'); this.participants.delete(this.party.indexOf(this.sides[0].mon)); }
     if (this.party.some((m) => m.hp > 0)) yield* giveExperience(this, { participants: this.participants, playerId: this.playerId, trainer: this.trainer });
