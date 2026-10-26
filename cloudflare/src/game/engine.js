@@ -39,6 +39,8 @@ const LAND = 0;
 const TALK = 0x10;
 // player_movement.asm .TryJump: ledge tiles ($a0-$a7) can be hopped when moving in one of the directions listed (HOP_RIGHT, LEFT, UP, DOWN, then the diagonals).
 const LEDGE_DIRECTIONS = [['right'], ['left'], ['up'], ['down'], ['right', 'down'], ['down', 'left'], ['up', 'right'], ['up', 'left']];
+// home/map_objects.asm CheckSuperTallGrassTile and CheckGrassTile: tiles whose grass hides the lower body of whoever stands in them
+const isGrass = (c) => c === 0x14 || c === 0x1c || (((c & 0xf0) === 0x10 || (c & 0xf0) === 0x20) && (c & 7) === 0);
 const isLedge = (c) => (c & 0xf0) === 0xa0 && LEDGE_DIRECTIONS[c & 7].length > 0;
 const warpTile = (c) => c === COLLISION_VALUES.PIT || c === COLLISION_VALUES.PIT_68 || (c & 0xf0) === 0x70;
 const directionalCarpet = { [COLLISION_VALUES.WARP_CARPET_DOWN]: 'down', [COLLISION_VALUES.WARP_CARPET_UP]: 'up',
@@ -92,6 +94,7 @@ export class Game {
       step: null, queue: [], parity: 0, follow: null,
     }));
     this.follow = null;
+    for (const actor of [this.player, ...this.objects]) actor.inGrass = isGrass(world.collisionAt(actor.x, actor.y));
     this.deferred = null;
     this.runner = null;                                          // a script never survives a map change
     this.tileEventsEnabled = false;
@@ -177,7 +180,12 @@ export class Game {
     const d = DIRECTIONS[direction];
     if (!actor.fixedFacing) actor.facing = direction;     // fix_facing keeps the sprite turned while it moves
     if (force && this.follow?.leader === actor) for (let i = 0; i < distance; i++) this.follow.steps.push(direction);
-    actor.step = { kind: 'walk', fromX: actor.x, fromY: actor.y, toX: actor.x + d.dx * distance, toY: actor.y + d.dy * distance, frame: 0, frames, jump, force, distance, wander };
+    const toX = actor.x + d.dx * distance, toY = actor.y + d.dy * distance;
+    // InitStep + UpdateTallGrassFlags: whoever is in grass stays hidden only if the next square is grass too; a hop leaves the grass at once
+    const intoGrass = isGrass(this.world.collisionAt(toX, toY));
+    if (jump) actor.inGrass = false; else if (actor.inGrass) actor.inGrass = intoGrass;
+    // NormalStep: entering tall grass at walking pace shakes it
+    actor.step = { kind: 'walk', fromX: actor.x, fromY: actor.y, toX, toY, frame: 0, frames, jump, force, distance, wander, rustle: intoGrass && !jump && !wander && frames === STEP_FRAMES };
   }
 
   startTurn(actor, direction) {
@@ -193,6 +201,7 @@ export class Game {
     if (step.kind === 'walk') {
       actor.x = step.toX; actor.y = step.toY;
       actor.parity ^= 1;
+      actor.inGrass = isGrass(this.world.collisionAt(actor.x, actor.y));       // CopyCoordsTileToLastCoordsTile
       if (step.wander) endNpcWalk(actor, this.randomByte);
       if (actor === this.player) this.tileEventsEnabled = true;   // events.asm CheckPlayerState: re-enabled when a step ends
     }

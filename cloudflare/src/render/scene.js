@@ -41,7 +41,7 @@ function spriteEntry(game, spriteConst, paletteIndex, actor) {
   if ((row + 1) * TILE > sheet.height) ({ row, mirror } = spriteFrame(actor.facing, 0));   // STANDING / STILL sheets have fewer frames
   if ((row + 1) * TILE > sheet.height) row = 0;
   const { x, y, lift } = actorPixels(actor);
-  return { sprite: spriteConst, paletteIndex, row, mirror, x, y: y + lift + SPRITE_Y_OFFSET, tileY: actor.y };
+  return { sprite: spriteConst, paletteIndex, row, mirror, x, y: y + lift + SPRITE_Y_OFFSET, tileY: actor.y, inGrass: Boolean(actor.inGrass) };
 }
 
 /** What the screen shows right now. Coordinates are map pixels; subtract the camera for screen pixels. */
@@ -60,6 +60,11 @@ export function describeScene(game) {
     const { x, y } = actorPixels(a);
     return { x, y: y + SPRITE_Y_OFFSET + (a.facing === 'up' || a.facing === 'down' ? 14 : 12) };
   });
+  // The grass a step into tall grass shakes at the walker's feet: two blades, swapping pose every 4 loops (SetFacingGrassShake)
+  const rustles = [game.player, ...game.visibleObjects()].filter((a) => a.step?.kind === 'walk' && a.step.rustle && a.step.frame < a.step.frames - 2).map((a) => {
+    const { x, y } = actorPixels(a);
+    return { x, y: y + SPRITE_Y_OFFSET, wide: (Math.floor(a.step.frame / 2) + 1) & 4 ? 1 : 0 };
+  });
   const wait = game.runner?.wait;
   let textbox = null;
   if (game.textboxOpen) {
@@ -73,11 +78,11 @@ export function describeScene(game) {
   }
   const yesno = wait?.kind === 'yesno' ? { cursor: wait.cursor, left: wait.x, top: 7, right: wait.x + 5, bottom: 11 } : null;
   const panels = [];                                                    // boxes of text drawn under the dialogue box
-  if (wait?.kind === 'naming') return { camera, sprites: [], shadows: [], panels: wait.screen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: game.fade, mapId: game.world.id };
+  if (wait?.kind === 'naming') return { camera, sprites: [], shadows: [], rustles: [], panels: wait.screen.panels(), pokepic: null, sign: null, textbox: null, yesno: null, black: 0, fade: game.fade, mapId: game.world.id };
   if (game.menu) panels.push(startMenuView(game.state, game.menu.cursor, game.menu.hollow));
   if (game.savingInfo) panels.push(saveInfoView(game.state));
   const b = game.blackout;
   const black = b ? b.from + (b.to - b.from) * (b.frame / b.frames) : 0;       // 0 clear .. 1 black
   const sign = game.sign && game.sign.frame >= 2 ? game.sign.name : null;     // shown from the second frame for 60 frames
-  return { camera, sprites, shadows, panels, pokepic: game.pokepic, sign, textbox, yesno, black, fade: game.fade, mapId: game.world.id };
+  return { camera, sprites, shadows, rustles, panels, pokepic: game.pokepic, sign, textbox, yesno, black, fade: game.fade, mapId: game.world.id };
 }

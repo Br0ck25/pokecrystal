@@ -2,7 +2,7 @@
 import { TILESET_IMAGES, ROOFS } from '../generated/tileset-images.js';
 import { TILESETS } from '../generated/tilesets.js';
 import { SPRITES } from '../generated/sprites.js';
-import { JUMP_SHADOW } from '../generated/sprite-movement.js';
+import { JUMP_SHADOW, GRASS_RUSTLE } from '../generated/sprite-movement.js';
 import { FONT_PNG, FONT_EXTRA_PNG, FRAME_PNG, FONT_CODES, TEXT_PALETTE } from '../generated/font.js';
 import { mapBgPalettes, tilePaletteIndex } from '../maps/map-palettes.js';
 import { objectPaletteColors, recolorSprite, PALETTE_NAMES } from '../maps/object-sprites.js';
@@ -204,6 +204,58 @@ export class Renderer {
     c.putImageData(frame, 0, 0);
     this.sprites.set(key, canvas);
     return canvas;
+  }
+
+  /**
+   * A sprite flagged IN_GRASS has OAM priority on its lower two tiles (the facings' RELATIVE_ATTRIBUTES rows): they show only
+   * where the background is color 0, so the tiles' darker pixels are drawn over the lower half of the 16x16 square at (x, y) again.
+   */
+  drawBehindTiles(world, camera, x, y) {
+    const c = this.ctx, left = x + camera.x, top = y + camera.y;
+    c.save();
+    c.beginPath(); c.rect(x, y + 8, 16, 8); c.clip();
+    for (let by = Math.floor((top + 8) / 32); by <= Math.floor((top + 15) / 32); by++) {
+      for (let bx = Math.floor(left / 32); bx <= Math.floor((left + 15) / 32); bx++) {
+        c.drawImage(this.metatileOpaque(world, world.blockIdAt(bx * 2, by * 2)), bx * 32 - camera.x, by * 32 - camera.y);
+      }
+    }
+    c.restore();
+  }
+
+  /** A block's pixels that are not background color 0, the ones that hide a sprite with OAM priority. */
+  metatileOpaque(world, blockId) {
+    const key = `${world.id}:o${blockId}`;
+    let canvas = this.metatiles.get(key);
+    if (canvas) return canvas;
+    const data = this.tileData.get(world.id);
+    canvas = makeCanvas(32, 32);
+    const c = canvas.getContext('2d', { willReadFrequently: true });
+    c.drawImage(this.metatile(world, blockId), 0, 0);
+    const image = c.getImageData(0, 0, 32, 32);
+    TILESETS[world.tileset].metatiles[blockId].forEach((id, i) => {
+      const index = id < 0x60 ? id : id >= 0x80 && id < 0xe0 ? id - 0x80 + 0x60 : null;
+      for (let p = 0; p < 64; p++) {
+        const shade = index === null ? 0 : data.shades[(Math.floor(index / 16) * 8 + (p >> 3)) * data.width + (index % 16) * 8 + (p & 7)];
+        if (!shade) image.data[(((Math.floor(i / 4) * 8 + (p >> 3)) * 32) + (i % 4) * 8 + (p & 7)) * 4 + 3] = 0;
+      }
+    });
+    c.putImageData(image, 0, 0);
+    this.metatiles.set(key, canvas);
+    return canvas;
+  }
+
+  /** The shaking grass (gfx/overworld/grass_rustle.png) in the TREE palette: two blades, the right one mirrored; wide pulls them apart. */
+  drawRustle(x, y, wide) {
+    if (!this.rustle) {
+      const canvas = makeCanvas(8, 8), c = canvas.getContext('2d'), image = c.createImageData(8, 8);
+      const colors = objectPaletteColors(PALETTE_NAMES.indexOf('TREE'));
+      for (let i = 0; i < 64; i++) { const shade = GRASS_RUSTLE.charCodeAt(i) - 48; if (shade) image.data.set([...colors[shade], 255], i * 4); }
+      c.putImageData(image, 0, 0);
+      this.rustle = canvas;
+    }
+    const c = this.ctx, dx = wide ? -1 : 0, dy = wide ? 9 : 8;
+    c.drawImage(this.rustle, x + dx, y + dy);
+    c.save(); c.translate(x + (wide ? 17 : 16), y + dy); c.scale(-1, 1); c.drawImage(this.rustle, 0, 0); c.restore();
   }
 
   /** The hop's shadow (gfx/overworld/shadow.png) in the EMOTE palette, two tiles wide, the right one mirrored. */
@@ -437,7 +489,9 @@ export class Renderer {
       if (s.mirror) { c.translate(x + 16, y); c.scale(-1, 1); c.drawImage(sheet, 0, s.row * 16, 16, 16, 0, 0, 16, 16); }
       else c.drawImage(sheet, 0, s.row * 16, 16, 16, x, y, 16, 16);
       c.restore();
+      if (s.inGrass) this.drawBehindTiles(world, camera, x, y);
     }
+    for (const r of scene.rustles) this.drawRustle(r.x - camera.x, r.y - camera.y, r.wide);
     this.drawPanels(scene.panels);
     if (scene.pokepic) this.drawPokepic(scene.pokepic, 6, 4, mapBgPalettes(world.id)[0]);
     if (scene.sign) this.drawSign(scene.sign, mapBgPalettes(world.id)[7]);

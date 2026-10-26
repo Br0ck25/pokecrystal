@@ -254,3 +254,18 @@ test('NPCs act on their own: the fisher paces within his radius, the teacher tur
   assert.ok(g.runner);
   assert.deepEqual([fisher.x, fisher.y, teacher.facing], at);
 });
+
+test('tall grass: stepping into it shakes the grass, standing in it hides the lower body, leaving it clears that at once (flags read from the real game)', async () => {
+  const g = await newGame('ROUTE_29', 31, 7, 'right');
+  assert.equal(g.player.inGrass, false);
+  run(g, 1, { dir: 'right' });
+  assert.equal(g.player.step.rustle, true, 'the step into grass shakes it');
+  run(g, 15, { dir: null });
+  assert.equal(g.player.inGrass, false, 'still hidden-free until the step ends');
+  run(g, 1, { dir: null });
+  assert.deepEqual([g.player.x, g.player.y, g.player.inGrass], [32, 7, true]);
+  run(g, 1, { dir: 'left' });                                   // turn
+  run(g, 8, { dir: 'left' });
+  assert.equal(g.player.step.rustle, false, 'stepping out of the grass does not shake anything');
+  assert.equal(g.player.inGrass, false, 'the grass flag drops when the step to a non-grass square begins');
+});
