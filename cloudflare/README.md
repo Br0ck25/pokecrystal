@@ -1,7 +1,7 @@
 # Pokémon Crystal browser port — agent guide
 
 Browser-native JS port of the disassembly in this repo. Rules: `../AGENTS.md` (mandatory) and `../CLAUDE.md`. No build step; Pages serves
-this folder. Node 22, no packages. Status: title screen → main menu → new game → room → Mom → town → Elm's Lab runs on the real scripts; START menu with SAVE; save/export/import.
+this folder. Node 22, no packages. Status: title screen → main menu → new game → room → Mom → town → Elm's Lab runs on the real scripts; START menu with SAVE, OPTION, PACK and the party screen; save/export/import.
 
 ## Commands (run in `cloudflare/`)
 - `npm test` — quiet (dots; failures print). `npm run extract` — regenerate `src/generated/` (a test fails if stale).
@@ -26,4 +26,4 @@ this folder. Node 22, no packages. Status: title screen → main menu → new ga
 - Time of day is fixed to DAY; the player is Chris; ROM-vs-app diffs also show moving NPCs and animated flowers (not bugs).
 
 ## Not ported
-Audio, copyright/Game Freak/intro-movie screens, setting the clock (NEW GAME runs Oak's speech, gender and naming but uses the device time), OPTION, START-menu entries other than SAVE/EXIT (party/pack/dex/gear/status), the title's secret key combinations, battles, encounters, trainers, specials in `Game.unported`.
+Audio, copyright/Game Freak/intro-movie screens, setting the clock (NEW GAME runs Oak's speech, gender and naming but uses the device time), POKéDEX, POKéGEAR and the trainer card (START menu), the party summary (STATS/MOVE/ITEM), using or giving bag items, the title's secret key combinations, battles (see `BATTLE_PLAN.md`), encounters, trainers, specials in `Game.unported`.
