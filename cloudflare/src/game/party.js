@@ -7,6 +7,12 @@ import { POKEMON } from '../generated/pokemon.js';
 import { MOVES } from '../generated/moves.js';
 import { directionRepeat } from './menu.js';
 import { StatsScreen } from './stats-screen.js';
+import { PackScreen } from './pack.js';
+import { ITEMS } from '../generated/items.js';
+import { SCRIPTS as TEXT } from '../generated/scripts/_text.js';
+import { renderText } from '../script/text.js';
+import { startTextWait, stepTextWait, textLines } from '../script/textwait.js';
+import { receiveItem, tossItem } from '../script/bag.js';
 
 const HP_BAR_PIXELS = 48;
 const FIELD_MOVES = ['CUT', 'FLY', 'SURF', 'STRENGTH', 'FLASH', 'WATERFALL', 'WHIRLPOOL', 'DIG', 'TELEPORT', 'SOFTBOILED', 'HEADBUTT', 'ROCK_SMASH', 'MILK_DRINK', 'SWEET_SCENT'];
@@ -64,6 +70,9 @@ export class PartyScreen {
   update(input) {
     this.frame++;
     const rows = this.party.length + (this.phase === 'switch' || this.battle?.forced ? 0 : 1);
+    if (this.talk) { this.updateTalk(input); return false; }
+    if (this.pack) { this.updatePack(input); return false; }
+    if (this.phase === 'itemmenu') return this.updateItemMenu(input);
     if (this.stats) { if (this.stats.update(input)) { this.cursor = this.stats.index + 1; this.state.partyCursor = this.cursor; this.stats = null; } return false; }
     if (this.message) { if (input.a || input.b) this.message = null; return false; }
     if (this.phase === 'submenu') return this.updateSubmenu(input);
@@ -107,8 +116,80 @@ export class PartyScreen {
     if (id === 'SWITCH' && this.party.length >= 2) { this.switchFrom = this.cursor; this.phase = 'switch'; return false; }
     this.phase = 'select';
     if (id === 'STATS') this.stats = new StatsScreen(this.state, this.cursor - 1);
+    else if (id === 'ITEM') { this.phase = 'itemmenu'; this.itemCursor = 0; }
     else if (id !== 'CANCEL' && id !== 'SWITCH') this.unported.add(`party: ${id}`);
     return false;
+  }
+
+  // ---- GiveTakePartyMonItem (engine/pokemon/mon_menu.asm) ------------------------------------------------------------
+  get heldMon() { return this.party[this.cursor - 1]; }
+
+  updateItemMenu(input) {
+    const dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
+    if (dir) this.itemCursor ^= 1;
+    if (input.b) { this.phase = 'select'; return false; }
+    if (!input.a) return false;
+    if (this.itemCursor === 0) { this.pack = new PackScreen(this.state, { pick: true }); return false; }
+    this.phase = 'select';
+    this.takeItem();
+    return false;
+  }
+
+  /** The pack as the GIVE chooser; an item that cannot be held brings the pack back after its text. */
+  updatePack(input) {
+    if (!this.pack.update(input)) return;
+    const item = this.pack.chosen;
+    this.pack = null;
+    this.phase = 'select';
+    if (!item) return;
+    if (ITEMS[item].property === 'CANT_TOSS' || ITEMS[item].pocket === 'KEY_ITEM') { this.say('_ItemCantHeldText', {}, () => { this.pack = new PackScreen(this.state, { pick: true }); }); return; }
+    this.giveItem(item);
+  }
+
+  giveItem(item) {
+    const mon = this.heldMon, name = displayName(mon), vars = { wMonOrItemNameBuffer: name, wStringBuffer2: ITEMS[item].name };
+    if (!mon.item) { tossItem(this.state, item); mon.item = item; this.say('_PokemonHoldItemText', vars); return; }
+    const old = mon.item;
+    this.say('_PokemonAskSwapItemText', { ...vars, wStringBuffer1: ITEMS[old].name }, null, () => {
+      this.ask((yes) => {
+        if (!yes) return;
+        tossItem(this.state, item);
+        if (!receiveItem(this.state, old)) { receiveItem(this.state, item); this.say('_ItemStorageFullText', {}); return; }
+        mon.item = item;
+        this.say('_PokemonSwapItemText', { ...vars, wStringBuffer1: ITEMS[old].name });
+      });
+    });
+  }
+
+  takeItem() {
+    const mon = this.heldMon, vars = { wMonOrItemNameBuffer: displayName(mon) };
+    if (!mon.item) { this.say('_PokemonNotHoldingText', vars); return; }
+    const old = mon.item;
+    if (!receiveItem(this.state, old)) { this.say('_ItemStorageFullText', vars); return; }
+    mon.item = null;
+    this.say('_PokemonTookItemText', { ...vars, wStringBuffer1: ITEMS[old].name });
+  }
+
+  /** A text of the game in the message box (typed like the rest); `then` runs when it is dismissed, `after` replaces that with a yes/no question. */
+  say(label, vars, then = null, after = null) {
+    const env = { block: (l) => TEXT[l], vars, playerName: this.state.playerName, rivalName: this.state.rivalName };
+    this.talk = { wait: startTextWait(renderText([['text_far', label]], env)), then, after };
+  }
+
+  ask(done) { this.talk = { yesno: 0, done, shown: this.lastWait }; }
+
+  updateTalk(input) {
+    const t = this.talk;
+    if (t.yesno !== undefined) {
+      const dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
+      if (dir) t.yesno ^= 1;
+      if (input.a || input.b) { this.talk = null; t.done(t.yesno === 0 && !input.b); }
+      return;
+    }
+    if (!stepTextWait(t.wait, { ...input, delay: 3 })) return;
+    this.talk = null;
+    this.lastWait = t.wait;
+    if (t.after) t.after(); else t.then?.();
   }
 
   endSwitch() { this.phase = 'select'; this.cursor = this.switchFrom; return false; }
@@ -124,6 +205,7 @@ export class PartyScreen {
 
   /** Panels bottom first: tiles and texts in the party menu palette, the HP bars in their HP palette, icons, then boxes. */
   panels() {
+    if (this.pack) return this.pack.panels();
     if (this.stats) return this.stats.panels();
     if (this.frame <= BLANK_FRAMES) return [{ colors: PARTY_MENU_BG, fill: 0 }];
     const n = this.party.length, text = [], tiles = [], out = [];
@@ -148,7 +230,15 @@ export class PartyScreen {
     const cursorRow = 1 + 2 * (this.cursor - 1);
     const hollow = this.phase === 'submenu' || this.phase === 'switch';
     out.push({ colors: PARTY_MENU_BG, texts: [[0, cursorRow, hollow ? '▷' : '▶'], ...(this.phase === 'switch' ? [[0, 1 + 2 * (this.switchFrom - 1), '▷']] : [])], sprites: icons });
+    if (this.talk) {
+      const t = this.talk, box = { box: [0, 12, 19, 17] };
+      const { lines, prompt } = textLines(t.wait ?? t.shown);
+      out.push({ ...box, texts: [[1, 14, lines[0]], [1, 16, lines[1]]], prompt: t.wait ? prompt : false });
+      if (t.yesno !== undefined) out.push({ box: [14, 7, 19, 11], texts: [[16, 8, 'YES'], [16, 10, 'NO']], cursor: [15, 8 + 2 * t.yesno, '▶'] });
+      return out;
+    }
     out.push({ box: [0, 14, 19, 17], texts: this.message ? [[1, 15, this.message[0]], [1, 16, this.message[1]]] : this.phase === 'submenu' ? [] : [[1, 16, n ? (this.phase === 'switch' ? STRINGS.moveTo : this.battle?.forced ? STRINGS.which : STRINGS.choose).replace('#', 'POKé') : 'You have no <PK><MN>!']] });
+    if (this.phase === 'itemmenu') out.push({ box: [12, 12, 19, 17], texts: [[14, 13, 'GIVE'], [14, 15, 'TAKE']], cursor: [13, 13 + 2 * this.itemCursor, '▶'] });
     if (this.phase === 'submenu') {
       const items = this.sub.items, top = 18 - 2 * (items.length + 1);
       out.push({ box: [6, top, 19, 17], texts: items.map((it, i) => [8, top + 2 + 2 * i, it.label]), cursor: [7, top + 2 + 2 * this.sub.cursor, '▶'] });

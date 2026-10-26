@@ -37,8 +37,9 @@ export function submenuFor(item) {
 
 export class PackScreen {
   /** battle: true turns USE into a choice (`chosen`) for the battle to act on, and closes the pack. */
-  constructor(state, { battle = false } = {}) {
+  constructor(state, { battle = false, pick = false } = {}) {
     this.battle = battle;
+    this.pick = pick;                // GIVE: A chooses the item at once (DepositSellPack)
     this.chosen = null;
     this.state = state;
     const memory = (state.pack ??= { pocket: 0, cursor: [1, 1, 1, 1], scroll: [0, 0, 0, 0] });
@@ -94,6 +95,7 @@ export class PackScreen {
     if (input.select) this.unported.add('pack: SELECT switches items');
     if (input.a) {
       if (this.selected >= size) return true;                             // CANCEL
+      if (this.pick) { this.chosen = this.list[this.selected].item; return true; }
       this.sub = { items: this.battle ? ['USE', 'QUIT'] : submenuFor(this.list[this.selected].item), cursor: 0 };
       this.phase = 'submenu';
     }
