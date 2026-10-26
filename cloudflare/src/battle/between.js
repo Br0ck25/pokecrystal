@@ -80,15 +80,18 @@ export function installBetween(Battle, STATUS) {
     *handleFutureSight() {
       for (const t of [0, 1]) {
         const s = this.sides[t];
-        if (!s.futureSight) continue;
-        s.futureSight.count--;
-        if (s.futureSight.count !== 1) continue;
-        const saved = { turn: this.turn };
+        if (!s.futureSightCount) continue;
+        if (--s.futureSightCount !== 1) continue;
+        const saved = { turn: this.turn, name: s.curMove, move: s.move };
         this.turn = t;
         yield this.say('BattleText_TargetWasHitByFutureSight');
-        const stored = s.futureSight;
-        s.futureSight = null;
-        throw new Error('unported battle command: future sight hit');
+        this.useMove('FUTURE_SIGHT');
+        this.attackMissed = false;
+        this.typeModifier = 10;
+        yield* this.doMove();
+        this.curDamage = 0;
+        this.turn = saved.turn;
+        s.curMove = saved.name; s.move = saved.move;
       }
       return null;
     },

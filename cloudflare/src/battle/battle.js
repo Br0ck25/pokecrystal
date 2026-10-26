@@ -17,6 +17,7 @@ import { giveExperience } from './experience.js';
 import { installStatus } from './status.js';
 import { installEffects } from './effects.js';
 import { installBetween } from './between.js';
+import { installEffects2 } from './effects2.js';
 
 export const STATUS = { SLP: 7, PSN: 1 << 3, BRN: 1 << 4, FRZ: 1 << 5, PAR: 1 << 6 };
 const BASE_STAGE = 7;
@@ -85,6 +86,7 @@ export class Battle {
         else out.push([name, ...args.map((a) => this.fill(a))]);
       }
     };
+    if (!TEXT[label]) throw new Error(`no battle text ${label}`);
     walk(TEXT[label]);
     return { text: out };
   }
@@ -107,8 +109,11 @@ export class Battle {
       this.sides.forEach((s) => { s.sub.flinched = false; });
       this.curDamage = 0;
       this.skipPlayerTurn = false;
-      const choice = yield { ask: 'action' };
-      if (choice.action === 'run') {
+      this.sides.forEach((s) => { s.sub.flinched = false; });
+      const locked = this.isLockedIn(0) || this.sides[0].sub.bide;
+      const choice = locked ? { action: 'locked' } : yield { ask: 'action' };
+      if (choice.action === 'locked') this.loadMove(0);
+      else if (choice.action === 'run') {
         const ran = yield* this.tryRun();
         if (ran === 'escaped') return { result: 'ran' };
         if (ran === 'menu') continue;
@@ -118,7 +123,7 @@ export class Battle {
         if (!done) continue;
         this.skipPlayerTurn = true;                      // the switch is the player's action; the enemy moves
       } else { this.fleeAttempts = 0; this.pickPlayerMove(choice.slot); }
-      this.pickEnemyMove();
+      if (this.isLockedIn(1) || this.sides[1].sub.bide) this.loadMove(1); else this.pickEnemyMove();
       const order = this.skipPlayerTurn ? [0, 1] : this.playerFirst() ? [0, 1] : [1, 0];
       this.enemyGoesFirst = order[0] === 1;
       for (const t of order) {
@@ -149,6 +154,7 @@ export class Battle {
     if (!this.playerHasUsableMoves()) { p.curMoveNum = 0; p.curMove = 'STRUGGLE'; }
     else { p.curMoveNum = slot; p.curMove = p.moves[slot]; }
     this.loadMove(0);
+    this.startMove(0);
   }
 
   /** ParseEnemyAction for a wild Pokémon: a random move with PP left, STRUGGLE when none is usable. */
@@ -162,12 +168,22 @@ export class Battle {
       e.curMove = e.moves[c];
     }
     this.loadMove(1);
+    this.startMove(1);
   }
 
   /** UpdateMoveData: copy the chosen move into the user's move struct. */
   loadMove(t) {
     const side = this.sides[t], m = MOVES[side.curMove];
     side.move = { name: side.curMove, effect: m.effect, power: m.power, type: typeId(m.type), accuracy: rawAccuracy(m.accuracy), chance: percent(m.chance) };
+  }
+
+  /** What choosing a (new) move resets (ParsePlayerAction / ParseEnemyAction): consecutive-use counters and the charging flag. */
+  startMove(t) {
+    const side = this.sides[t], effect = side.move.effect;
+    side.charging = false;
+    if (effect !== 'EFFECT_FURY_CUTTER') side.furyCutterCount = 0;
+    if (effect !== 'EFFECT_RAGE') { side.sub.rage = false; side.rageCounter = 0; }
+    if (effect !== 'EFFECT_PROTECT' && effect !== 'EFFECT_ENDURE') side.protectCount = 0;
   }
 
   /** DetermineMoveOrder (no link): priority, Quick Claw, speed, then a coin flip. */
@@ -376,7 +392,13 @@ Battle.prototype.commands = {
     u.turnsTaken++;
     if (u.move.name === 'STRUGGLE') return;
     if (u.sub.inLoop || u.sub.rampage || u.sub.bide) return;
-    if (u.pp[u.curMoveNum] === 0) throw new Error('unported: out of PP');
+    if (u.pp[u.curMoveNum] === 0) {
+      yield { wait: 40 };
+      const continuous = ['EFFECT_RAZOR_WIND', 'EFFECT_SKY_ATTACK', 'EFFECT_SKULL_BASH', 'EFFECT_SOLARBEAM', 'EFFECT_FLY', 'EFFECT_ROLLOUT', 'EFFECT_BIDE', 'EFFECT_RAMPAGE'].includes(u.move.effect);
+      yield continuous ? this.say('HasNoPPLeftText', { wStringBuffer2: MOVES[u.move.name].name }) : this.say('NoPPLeftText');
+      this.endMoveEffect();
+      return;
+    }
     u.pp[u.curMoveNum]--;
     u.mon.pp[u.curMoveNum] = u.pp[u.curMoveNum];
   },
@@ -494,7 +516,16 @@ Battle.prototype.falseSwipe = function falseSwipe() {
 Battle.prototype.damageTarget = function* damageTarget({ ignoreSubstitute = false } = {}) {
   const t = this.target;
   if (this.curDamage === 0) return;
-  if (!ignoreSubstitute && t.sub.substitute) throw new Error('unported: substitute');
+  if (!ignoreSubstitute && t.sub.substitute) {                  // DoSubstituteDamage
+    yield this.say('SubTookDamageText');
+    if (this.curDamage >= t.sub.substitute) {
+      t.sub.substitute = 0;
+      yield this.say('SubFadedText');
+      if (!['EFFECT_MULTI_HIT', 'EFFECT_DOUBLE_HIT', 'EFFECT_POISON_MULTI_HIT', 'EFFECT_TRIPLE_KICK', 'EFFECT_BEAT_UP'].includes(this.user.move.effect)) this.user.move.effect = 'EFFECT_NORMAL_HIT';
+    } else t.sub.substitute -= this.curDamage;
+    this.curDamage = 0;
+    return;
+  }
   const from = t.hp;
   if (this.curDamage > from) this.curDamage = from;       // the ROM leaves HP in wCurDamage when the hit would overkill
   t.hp = from - this.curDamage;
@@ -600,3 +631,4 @@ Object.assign(Battle.prototype.commands, statCommands, {
 installStatus(Battle, STATUS);
 installEffects(Battle, STATUS);
 installBetween(Battle, STATUS);
+installEffects2(Battle, STATUS);

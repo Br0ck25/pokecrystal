@@ -193,7 +193,10 @@ Object.assign(Battle.prototype.commands, {
     if (!u.sub.inLoop) {
       u.sub.inLoop = true;
       if (move === 'EFFECT_POISON_MULTI_HIT' || move === 'EFFECT_DOUBLE_HIT') { u.rolloutCount = 1; this.hitCount = 2; this.loopBackToCritical(); return; }
-      if (move === 'EFFECT_BEAT_UP') throw new Error('unported battle command: beat up');
+      if (move === 'EFFECT_BEAT_UP') {
+        if (this.turn !== 0 || this.party.length === 1) { u.sub.inLoop = false; yield* this.commands.beatupfailtext.call(this); this.endMoveEffect(); return; }
+        u.rolloutCount = this.party.length - 1; this.hitCount = this.party.length; this.loopBackToCritical(); return;
+      }
       if (move === 'EFFECT_TRIPLE_KICK') {
         let r;
         do r = this.random() & 3; while (r === 0);
@@ -240,7 +243,15 @@ Object.assign(Battle.prototype.commands, {
       const max = u.level + (u.level >> 1);
       do damage = this.random(); while (damage === 0 || damage >= max);
     } else if (move === 'EFFECT_SUPER_FANG') damage = Math.max(1, t.hp >> 1);
-    else if (move === 'EFFECT_REVERSAL') throw new Error('unported battle command: reversal');
+    else if (move === 'EFFECT_REVERSAL') {                              // Flail/Reversal: the power by the user's HP bar pixels
+      let px = Math.floor((u.hp * 48) / u.maxHp);
+      if (u.maxHp > 255) px = Math.floor(((u.hp * 48) >> 2) / ((u.maxHp >> 2) & 0xff || 1));
+      u.move.power = BATTLE.flailPower.find(([limit]) => limit >= px)[1];
+      yield* this.commands.damagestats.call(this);
+      yield* this.commands.damagecalc.call(this);
+      u.move.power = 1;
+      return;
+    }
     else damage = u.move.power;                                       // Sonicboom, Dragon Rage: the power is the damage
     this.curDamage = damage;
   },

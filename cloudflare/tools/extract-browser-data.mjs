@@ -524,12 +524,20 @@ function battleData() {
   const effectConsts = [...text('constants/move_effect_constants.asm').matchAll(/^\tconst (EFFECT_\w+)/gm)].map((m) => m[1]);
   const effectLabels = [...text('data/moves/effects_pointers.asm').matchAll(/^\tdw (\w+)/gm)].map((m) => m[1]);
   const { blocks } = parseBlocks('data/moves/effects.asm');
+  // stacked labels (`LightScreen:` `Reflect:` then one body) share a body; parseBlocks drops the empty ones
+  const alias = {};
+  let group = [];
+  for (const line of text('data/moves/effects.asm').split('\n')) {
+    const label = line.match(/^(\w+):\s*$/);
+    if (label) { group.push(label[1]); continue; }
+    if (group.length && line.trim() && !line.startsWith(';')) { for (const g of group.slice(0, -1)) alias[g] = group.at(-1); group = []; }
+  }
   const pairs = (file) => [...text(file).matchAll(/^\tdb\s+(\d+),\s+(\d+)/gm)].map((m) => [Number(m[1]), Number(m[2])]);
   const crit = [...text('data/battle/critical_hit_chances.asm').matchAll(/db (\d+) out_of (\d+)/g)].map((m) => Math.floor((Number(m[1]) * 256) / Number(m[2])));
   return {
     types, special, matchups, foresight,
     effects: Object.fromEntries(effectConsts.map((c, i) => [c, effectLabels[i]])),
-    scripts: Object.fromEntries(effectLabels.filter((l, i) => effectLabels.indexOf(l) === i).map((l) => [l, blocks[l]])),
+    scripts: Object.fromEntries(effectLabels.filter((l, i) => effectLabels.indexOf(l) === i).map((l) => [l, blocks[l] ?? blocks[alias[l]]])),
     priorities: [...text('data/moves/effects_priorities.asm').matchAll(/^\tdb (EFFECT_\w+),\s+(\d+)/gm)].map((m) => [m[1], Number(m[2])]),
     critMoves: [...text('data/moves/critical_hit_moves.asm').matchAll(/^\tdb (\w+)/gm)].map((m) => m[1]).filter((m) => m !== '-1'),
     critChances: crit,
