@@ -1,6 +1,7 @@
 // Overworld sprite selection, palettes and frames, all from source data (src/generated).
 import { EVENTS } from '../generated/events.js';
 import { SPRITES, OBJECT_PALETTES } from '../generated/sprites.js';
+import { SPRITE_MOVEMENT } from '../generated/sprite-movement.js';
 
 // data/sprites/sprites.asm: the player is Chris unless the girl is chosen at the intro (not ported yet).
 export const PLAYER_SPRITE = 'SPRITE_CHRIS';
@@ -17,10 +18,9 @@ export function sourceObjectAt(mapName, x, y) {
   return EVENTS[mapName]?.objects.find((o) => o.x === x && o.y === y) ?? null;
 }
 
-/** Initial facing from the object_event's movement function: SPRITEMOVEDATA_STANDING_<DIR>, otherwise down. */
+/** Initial facing from the object_event's movement data (data/sprites/map_objects.asm), down when unknown. */
 export function initialFacing(sourceObject) {
-  const m = sourceObject?.movement?.match(/^SPRITEMOVEDATA_STANDING_(DOWN|UP|LEFT|RIGHT)$/);
-  return m ? m[1].toLowerCase() : 'down';
+  return SPRITE_MOVEMENT[sourceObject?.movement]?.facing ?? 'down';
 }
 
 /**

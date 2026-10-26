@@ -233,3 +233,21 @@ test('a starter received from Elm asks about a nickname: NO keeps the species na
   const typed = await pick(true, [1, 1]);
   assert.equal(typed.mon.nickname, 'AA');
 });
+
+test('NPCs act on their own: the fisher paces within his radius, the teacher turns on the spot, nobody moves during a script', async () => {
+  const g = await newGame('NEW_BARK_TOWN', 11, 10, 'up');
+  let seed = 12345;
+  g.randomByte = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) >> 16 & 0xff;
+  const fisher = g.objects.find((o) => o.id === 'NEWBARKTOWN_FISHER'), teacher = g.objects.find((o) => o.id === 'NEWBARKTOWN_TEACHER');
+  const rows = new Set(), facings = new Set();
+  for (let i = 0; i < 6000; i++) { g.update({}); rows.add(`${fisher.x},${fisher.y}`); facings.add(teacher.facing); assert.ok(Math.abs(fisher.y - 9) <= 1 && fisher.x === 12, `fisher at ${fisher.x},${fisher.y}`); }
+  assert.ok(rows.size > 1, 'the fisher walked');
+  assert.ok(facings.size > 2, 'the teacher looked around');
+  assert.deepEqual([teacher.x, teacher.y], [6, 8]);
+  g.startScript('NewBarkTownSign', { caller: null });
+  run(g, 40);                                                    // a step already under way finishes
+  const at = [fisher.x, fisher.y, teacher.facing];
+  run(g, 60);
+  assert.ok(g.runner);
+  assert.deepEqual([fisher.x, fisher.y, teacher.facing], at);
+});

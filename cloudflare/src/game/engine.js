@@ -12,6 +12,7 @@ import { serializeSave, parseSave } from './save.js';
 import { NamingScreen } from './naming.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
+import { stepNpc, endNpcWalk, LOOP_FRAMES } from './npc-ai.js';
 import { TileAnimator } from '../maps/tile-anim.js';
 import { COLLISION_PERMISSIONS, COLLISION_VALUES } from '../generated/collision.js';
 import { SCENES, CALLBACKS } from '../generated/scenes.js';
@@ -50,6 +51,7 @@ export class Game {
     this.state = state;
     this.saveStore = saveStore;       // { read(): text | null, write(text) }; see save.js
     this.menu = null;                 // the open start menu: { cursor, lastDir, repeat }
+    this.randomByte = () => Math.floor(Math.random() * 256);     // Random; tests replace it
     this.menuCursor = 0;              // wBattleMenuCursorPosition
     this.savingInfo = false;          // the save-info box is up (SaveMenu)
     this.prevLandmark = 'LANDMARK_SPECIAL';   // wPrevLandmark
@@ -171,11 +173,11 @@ export class Game {
 
   // ---- stepping -----------------------------------------------------------------------------------------------
 
-  startStep(actor, direction, { force = false, frames = STEP_FRAMES, jump = false, distance = 1 } = {}) {
+  startStep(actor, direction, { force = false, frames = STEP_FRAMES, jump = false, distance = 1, wander = false } = {}) {
     const d = DIRECTIONS[direction];
     if (!actor.fixedFacing) actor.facing = direction;     // fix_facing keeps the sprite turned while it moves
     if (force && this.follow?.leader === actor) this.follow.steps.push(direction);
-    actor.step = { kind: 'walk', fromX: actor.x, fromY: actor.y, toX: actor.x + d.dx * distance, toY: actor.y + d.dy * distance, frame: 0, frames, jump, force, distance };
+    actor.step = { kind: 'walk', fromX: actor.x, fromY: actor.y, toX: actor.x + d.dx * distance, toY: actor.y + d.dy * distance, frame: 0, frames, jump, force, distance, wander };
   }
 
   startTurn(actor, direction) {
@@ -191,10 +193,22 @@ export class Game {
     if (step.kind === 'walk') {
       actor.x = step.toX; actor.y = step.toY;
       actor.parity ^= 1;
+      if (step.wander) endNpcWalk(actor, this.randomByte);
       if (actor === this.player) this.tileEventsEnabled = true;   // events.asm CheckPlayerState: re-enabled when a step ends
     }
     actor.step = null;
     return true;                                                  // finished this frame
+  }
+
+  /** CanObjectMoveInDirection for a wandering object: land, nobody there, inside its movement radius and the screen. */
+  npcCanWalk(object, direction) {
+    const d = DIRECTIONS[direction], x = object.x + d.dx, y = object.y + d.dy;
+    if (!this.canWalkTo(x, y)) return false;
+    const p = this.player;
+    if ((p.x === x && p.y === y) || (p.step && p.step.toX === x && p.step.toY === y)) return false;
+    const [rx, ry] = object.def.radius.map(Number);                        // the object may stray rx, ry tiles from where it started
+    if (Math.abs(x - object.def.x) === rx + 1 || Math.abs(y - object.def.y) === ry + 1) return false;
+    return x >= p.x - 4 && x <= p.x + 5 && y >= p.y - 4 && y <= p.y + 4;   // IsObjectMovingOffEdgeOfScreen
   }
 
   canWalkTo(x, y) {
@@ -217,6 +231,8 @@ export class Game {
     if (this.sign && ++this.sign.frame > SIGN_FRAMES + 1) this.sign = null;
     for (const object of this.objects) this.updateActor(object);
     this.updateActor(this.player);
+    // objects act on their own between scripts and menus (the loop that runs them does not run while text is waiting)
+    if (!this.runner && !this.menu && this.frame % LOOP_FRAMES === 0) for (const object of this.visibleObjects()) stepNpc(this, object, this.randomByte);
     if (this.runner) { this.updateRunner(input); return; }
     if (this.menu) { this.updateMenu(input); return; }
     if (this.player.step) return;
@@ -324,6 +340,7 @@ export class Game {
       if (object) { tx = bx; ty = by; }
     }
     if (object) {
+      if (object.step) return false;                              // CheckFacingObject: only someone standing still can be talked to
       if (object.def.type !== 'OBJECTTYPE_SCRIPT' && object.def.type !== 'OBJECTTYPE_ITEMBALL') { this.unported.add(object.def.type); return false; }
       this.startScript(object.def.script, { caller: object });
       return true;
@@ -489,6 +506,7 @@ export class Game {
   beginMovement({ object, steps }) {
     const actor = this.objectById(object);
     actor.queue = [];
+    actor.ai = null;                                              // after the script it starts over, like ResetObject
     for (const [command, direction] of steps) {
       const dir = direction?.toLowerCase();
       if (command === 'turn_head') { actor.queue.push({ direction: dir, turn: true }); continue; }
