@@ -6,12 +6,14 @@ import { createMon } from '../../../src/script/mon.js';
 import { POKEMON } from '../../../src/generated/pokemon.js';
 import { MOVES } from '../../../src/generated/moves.js';
 import { TRAINER_CLASSES } from '../../../src/generated/trainer-data.js';
+import { ITEMS } from '../../../src/generated/items.js';
 
 const out = process.argv[2];
 const observed = JSON.parse(fs.readFileSync(`${out}/${process.argv[3] ?? 'aiobserved.json'}`, 'utf8'));
 const speciesById = Object.fromEntries(Object.entries(POKEMON).map(([n, p]) => [p.id, n]));
 const moveById = Object.fromEntries(Object.entries(MOVES).map(([n, m]) => [m.id, n]));
 const classNames = Object.keys(TRAINER_CLASSES);
+const itemById = Object.fromEntries(Object.entries(ITEMS).map(([n, i]) => [i.id, n]));
 const mv = (id) => (id ? moveById[id] ?? null : null);
 const bits = (byte, names) => Object.fromEntries(Object.entries(names).map(([n, b]) => [n, Boolean(byte & (1 << b))]));
 const SUB = [
@@ -46,7 +48,8 @@ function build(snap, random) {
     return m;
   });
   const cls = classNames[snap.TrainerClass - 1];
-  const b = new Battle({ player: [pm], enemy: ot, wild: false, random, playerId: 1, state: { money: 0, items: {} }, trainerInfo: { name: 'X', className: cls, reward: 0, ai: TRAINER_CLASSES[cls].ai } });
+  const b = new Battle({ player: [pm], enemy: ot, wild: false, random, playerId: 1, state: { money: 0, items: {} }, trainerInfo: { name: 'X', className: cls, reward: 0, ai: TRAINER_CLASSES[cls].ai, flags: TRAINER_CLASSES[cls].flags, items: (snap.TrainerItems ?? []).map((i) => itemById[i]).filter(Boolean) } });
+  if (snap.TrainerItems) b.trainerItems = snap.TrainerItems.map((i) => itemById[i] ?? null);
   b.enemyIndex = snap.CurOTMon;
   b.sides[1] = battleMon(ot[snap.CurOTMon]);
   b.sides[0] = battleMon(pm);
@@ -57,6 +60,7 @@ function build(snap, random) {
   p.usedMoves = snap.Player.UsedMoves.map(mv).filter(Boolean);
   p.lastMove = mv(snap.LastPlayerMove); p.lastCounterMove = mv(snap.LastPlayerCounterMove);
   e.lastMove = mv(snap.LastEnemyMove); e.lastCounterMove = mv(snap.LastEnemyCounterMove);
+  e.toxicCount = snap.Enemy.ToxicCount;
   e.rageCounter = snap.Enemy.RageCounter; e.disabledMove = mv(snap.Enemy.DisabledMove);
   b.weather = snap.Weather;
   b.turn = snap.BattleTurn;
@@ -64,6 +68,10 @@ function build(snap, random) {
   return b;
 }
 
+function runAi(b) {
+  const g = b.aiSwitchOrTryItem(); let r = g.next();
+  while (!r.done) r = g.next(r.value?.ask === 'yesno' ? false : undefined);
+}
 let seed = 12345;
 const random = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) >> 16) & 255;
 const N = Number(process.env.N ?? 2000);
@@ -91,6 +99,26 @@ for (const o of observed) {
     const within = Math.abs(r - n * p) <= tol;
     if (!within) ok = false;
     rows.push(`${name}: rom ${r}/${n} js ${(p * 100).toFixed(1)}%${within ? '' : '  <-- differs'}`);
+  }
+  if (o.outcomes) {
+    const js = {};
+    for (let i = 0; i < N; i++) {
+      const b = build(o.snapshot, random);
+      const before = [...b.trainerItems];
+      runAi(b);
+      const used = before.findIndex((x, k) => x !== b.trainerItems[k]);
+      const key = b.enemyIndex !== o.snapshot.CurOTMon ? `switch ${b.enemyIndex + 1}` : used >= 0 ? `item ${ITEMS[before[used]].id}` : 'none';
+      js[key] = (js[key] ?? 0) + 1;
+    }
+    const rom2 = {};
+    for (const k of o.outcomes) rom2[k] = (rom2[k] ?? 0) + 1;
+    for (const key of new Set([...Object.keys(js), ...Object.keys(rom2)])) {
+      const p = (js[key] ?? 0) / N, r = rom2[key] ?? 0, n2 = o.outcomes.length;
+      const tol = 4 * Math.sqrt(n2 * p * (1 - p)) + 3;
+      const within = Math.abs(r - n2 * p) <= tol;
+      if (!within) ok = false;
+      rows.push(`[${key}] rom ${r}/${n2} js ${(p * 100).toFixed(1)}%${within ? '' : '  <-- differs'}`);
+    }
   }
   if (!ok) bad++;
   console.log(`${o.scenario ?? `case ${o.case} turn ${o.turn}`} [${b0.trainerInfo.className} ${b0.sides[1].name} vs ${b0.sides[0].name}] ${ok ? 'ok' : 'MISMATCH'}: ${rows.join('; ')}`);

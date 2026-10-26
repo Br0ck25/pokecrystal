@@ -4,6 +4,8 @@ import { POKEMON } from '../../../src/generated/pokemon.js';
 import { MOVES } from '../../../src/generated/moves.js';
 import { TRAINER_CLASSES } from '../../../src/generated/trainer-data.js';
 import { BATTLE } from '../../../src/generated/battle-data.js';
+import { ITEMS } from '../../../src/generated/items.js';
+const AI_ITEMS = ['FULL_RESTORE', 'MAX_POTION', 'HYPER_POTION', 'SUPER_POTION', 'POTION', 'X_ACCURACY', 'FULL_HEAL', 'GUARD_SPEC', 'DIRE_HIT', 'X_ATTACK', 'X_DEFEND', 'X_SPEED', 'X_SPECIAL'];
 
 const count = Number(process.argv[2] ?? 100);
 let seed = Number(process.argv[3] ?? 1);
@@ -54,6 +56,7 @@ for (let i = 0; i < count; i++) {
   const partyExtra = Array.from({ length: int(3) }, () => ({ speciesId: POKEMON[pick(species)].id, hpFrac: pick([0, 1, 0.5]) }));
   const used = player.moveIds.filter(Boolean).filter(() => chance(0.5));
   out.push({
+    trainerItems: [chance(0.6) ? pick(AI_ITEMS) : null, chance(0.3) ? pick(AI_ITEMS) : null],
     cls, classId: classes.indexOf(cls) + 1, enemy, player, otParty, partyExtra,
     enemyStages: Array.from({ length: 7 }, stageRoll), playerStages: Array.from({ length: 7 }, stageRoll),
     enemySub: subBytes().map((v, i) => v & [~0x40, ~0, ~0x13, ~0x20, ~0][i] & 0xff), playerSub: subBytes(),      // the enemy is never locked in (AIChooseMove would not run)
@@ -62,7 +65,8 @@ for (let i = 0; i < count; i++) {
     usedMoves: used, lastPlayerMove: used.length ? pick(used) : 0, lastPlayerCounterMove: used.length && chance(0.8) ? pick(used) : 0,
     enemyProtect: chance(0.15) ? 1 + int(2) : 0, playerFury: chance(0.15) ? 1 + int(4) : 0, enemyFury: chance(0.15) ? 1 + int(4) : 0,
     enemyRage: chance(0.1) ? 1 + int(4) : 0, playerWrap: chance(0.1) ? 2 : 0, enemyWrap: chance(0.08) ? 2 : 0,
-    enemyPerish: chance(0.1) ? 1 + int(3) : 0, playerMinimized: chance(0.15) ? 1 : 0, playerRollout: chance(0.1) ? 1 + int(4) : 0,
+    enemyToxic: chance(0.15) ? 1 + int(8) : 0, enemyPerish: chance(0.1) ? 1 + int(3) : 0, playerMinimized: chance(0.15) ? 1 : 0, playerRollout: chance(0.1) ? 1 + int(4) : 0,
   });
 }
+for (const sc of out) sc.trainerItemIds = sc.trainerItems.map((n) => (n ? ITEMS[n].id : 0));
 console.log(JSON.stringify(out));

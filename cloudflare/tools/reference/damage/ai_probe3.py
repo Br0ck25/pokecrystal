@@ -67,6 +67,7 @@ def snapshot():
                   'ProtectCount': ref.rd(p + 'ProtectCount'), 'FuryCutterCount': ref.rd(p + 'FuryCutterCount'), 'WrapCount': ref.rd(p + 'WrapCount'),
                   'PerishCount': ref.rd(p + 'PerishCount'), 'DisableCount': ref.rd(p + 'DisableCount'), 'RolloutCount': ref.rd(p + 'RolloutCount'),
                   'Minimized': ref.rd(p + 'Minimized'), 'Base': [r16(p + n) for n in ['Attack', 'Defense', 'Speed', 'SpAtk', 'SpDef']]}
+    d['Enemy']['ToxicCount'] = ref.rd('wEnemyToxicCount'); d['TrainerItems'] = [ref.rd('wEnemyTrainerItem1'), ref.rd('wEnemyTrainerItem2')]
     d['Enemy']['RageCounter'] = ref.rd('wEnemyRageCounter'); d['Enemy']['DisabledMove'] = ref.rd('wEnemyDisabledMove')
     d['Player']['UsedMoves'] = B1('wPlayerUsedMoves', 4)
     d['LastPlayerMove'] = ref.rd('wLastPlayerMove'); d['LastPlayerCounterMove'] = ref.rd('wLastPlayerCounterMove')
@@ -98,12 +99,14 @@ def stub_for(name):
     bank, addr = ref.sym[name]
     # ld a, BANK; ld hl, addr; call FarCall_hl; ld a, $77; ld [DONE], a; jr $
     return [0x3E, bank, 0x21, addr & 255, addr >> 8, 0xCD, far & 255, far >> 8, 0x3E, 0x77, 0xEA, DONE & 255, DONE >> 8, 0x18, 0xFE]
-def run_stub(name, frames=None):
+def run_stub(name, frames=None, press_a=False):
     for k, v in enumerate(stub_for(name)): mem_set(sa + k, v)
     mem_set(DONE, 0)
     ref.pb.register_file.PC = sa
     if frames is not None: ref.tick(frames); return
-    for _ in range(120):
+    for i in range(900 if press_a else 120):
+        if press_a and i % 4 == 0: ref.pb.button_press('a')
+        if press_a and i % 4 == 2: ref.pb.button_release('a')
         ref.tick(1)
         if mem_get(DONE) == 0x77: return
     raise RuntimeError(name + ' did not return')
@@ -173,6 +176,7 @@ def apply(sc):
     ref.wr('wLastPlayerMove', sc['lastPlayerMove']); ref.wr('wLastPlayerCounterMove', sc['lastPlayerCounterMove'])
     ref.wr('wEnemyProtectCount', sc['enemyProtect']); ref.wr('wPlayerFuryCutterCount', sc['playerFury']); ref.wr('wEnemyFuryCutterCount', sc['enemyFury'])
     ref.wr('wEnemyRageCounter', sc['enemyRage']); ref.wr('wPlayerWrapCount', sc['playerWrap']); ref.wr('wEnemyWrapCount', sc['enemyWrap'])
+    ref.wr('wEnemyTrainerItem1', sc['trainerItemIds'][0]); ref.wr('wEnemyTrainerItem2', sc['trainerItemIds'][1]); ref.wr('wEnemyToxicCount', sc['enemyToxic'])
     ref.wr('wEnemyPerishCount', sc['enemyPerish']); ref.wr('wPlayerMinimized', sc['playerMinimized']); ref.wr('wPlayerRolloutCount', sc['playerRollout'])
 
 # reach the first battle menu in Falkner's gym once; every scenario is poked into that state
@@ -213,7 +217,21 @@ for si, sc in enumerate(scen[FIRST:], FIRST):
         ref.wr('wCurEnemyMove', 0)
         run_stub('AIChooseMove')
         picks.append(ref.rd('wCurEnemyMove'))
-    results.append({'scenario': si, 'trainer': sc['cls'], 'snapshot': snap, 'picks': picks})
-    print(si, sc['cls'], sc['enemy']['species'], 'vs', sc['player']['species'], {m: picks.count(m) for m in sorted(set(picks))}, flush=True)
+    outcomes = []
+    for t in range(TRIALS):
+        state.seek(0); ref.pb.load_state(state)
+        ref.tick(rnd.randrange(0, 80))
+        ref.wr('wEnemySwitchMonIndex', 0); ref.wr('wEnemyIsSwitching', 0); ref.wr('wCurEnemyItem', 0)
+        before = [ref.rd('wEnemyTrainerItem1'), ref.rd('wEnemyTrainerItem2')]
+        try:
+            run_stub('AI_SwitchOrTryItem', press_a=True)
+        except RuntimeError:
+            pass                                    # a switch runs the whole send-out; the decision is already in RAM
+        after = [ref.rd('wEnemyTrainerItem1'), ref.rd('wEnemyTrainerItem2')]
+        if ref.rd('wEnemyIsSwitching'): outcomes.append('switch %d' % ref.rd('wEnemySwitchMonIndex'))
+        elif ref.rd('wCurEnemyItem'): outcomes.append('item %d' % ref.rd('wCurEnemyItem'))
+        else: outcomes.append('none')
+    results.append({'scenario': si, 'trainer': sc['cls'], 'snapshot': snap, 'picks': picks, 'outcomes': outcomes})
+    print(si, sc['cls'], sc['enemy']['species'], 'vs', sc['player']['species'], {m: picks.count(m) for m in sorted(set(picks))}, {o: outcomes.count(o) for o in sorted(set(outcomes))}, flush=True)
     if len(results) % 5 == 0: json.dump(results, open(OUT + '/aiobserved3.json', 'w'))
 json.dump(results, open(OUT + '/aiobserved3.json', 'w'))
