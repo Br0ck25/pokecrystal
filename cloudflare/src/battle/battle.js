@@ -19,6 +19,7 @@ import { installEffects } from './effects.js';
 import { installBetween } from './between.js';
 import { installEffects2 } from './effects2.js';
 import { useBall } from './catching.js';
+import { installTrainer } from './trainer.js';
 
 export const STATUS = { SLP: 7, PSN: 1 << 3, BRN: 1 << 4, FRZ: 1 << 5, PAR: 1 << 6 };
 const BASE_STAGE = 7;
@@ -42,12 +43,16 @@ export function battleMon(mon, { name = mon.nickname ?? POKEMON[mon.species].nam
 
 export class Battle {
   /** player/enemy: party mon objects (src/script/mon.js); badges: Johto bits 0-7, Kanto bits 8-15. */
-  constructor({ player, enemy, wild = true, random, badges = 0, weather = 0, playerId = 0, state = null }) {
+  constructor({ player, enemy, wild = true, random, badges = 0, weather = 0, playerId = 0, state = null, trainerInfo = null, shiftStyle = true }) {
     this.party = player;
     this.playerId = playerId;
     this.state = state;                              // the game state (items, Pokédex, box) for balls and items
     this.trainer = !wild;
-    this.sides = [battleMon(player.find((m) => m.hp > 0)), battleMon(enemy)];
+    this.trainerInfo = trainerInfo;                  // { name, className, reward } of a trainer battle
+    this.enemyParty = wild ? [enemy] : enemy;        // a trainer's party; the active Pokémon is enemyParty[enemyIndex]
+    this.enemyIndex = 0;
+    this.shiftStyle = shiftStyle;                    // OPTION BATTLE SHIFT: no "Will you change POKéMON?" offer
+    this.sides = [battleMon(player.find((m) => m.hp > 0)), battleMon(this.enemyParty[0])];
     this.participants = new Set([player.indexOf(this.sides[0].mon)]);      // wBattleParticipantsNotFainted
     this.wild = wild;
     this.random = random;
@@ -92,15 +97,28 @@ export class Battle {
     walk(TEXT[label]);
     return { text: out };
   }
-  fill(s) { return typeof s === 'string' ? s.replace(/<USER>/g, this.nameOf(this.turn)).replace(/<TARGET>/g, this.nameOf(1 - this.turn)) : s; }
+  fill(s) {
+    if (typeof s !== 'string') return s;
+    const enemy = this.trainerInfo ? `${this.trainerInfo.className} ${this.trainerInfo.name}` : '';
+    return s.replace(/<USER>/g, this.nameOf(this.turn)).replace(/<TARGET>/g, this.nameOf(1 - this.turn)).replace(/<ENEMY>/g, enemy);
+  }
 
   // ---- the whole battle ---------------------------------------------------------------------------------------
   *run() {
     // measured in the real game after the "appeared" text: the box clears, the enemy HUD follows 6 frames later, 40 frames of DelayFrames,
     // the trainer slides out (22 frames), "Go! X!", 30 frames, the send-out animation (62 frames), the HUD, 17 frames to the menu
-    yield { wait: 6 };
-    yield { enemyHud: true };
-    yield { wait: 40 };
+    if (this.wild) {
+      yield { wait: 6 };
+      yield { enemyHud: true };
+      yield { wait: 40 };
+    } else {                                             // the trainer's pic leaves, the first Pokémon is sent out (timings not measured yet)
+      yield { wait: 6 };
+      yield { enemyTrainerOut: true };
+      yield this.say('BattleText_EnemySentOut');
+      yield { enemySendOut: true, species: this.sides[1].species };
+      yield { enemyHud: true };
+      yield { wait: 40 };
+    }
     yield { slideOut: true };
     yield* this.sendOutText();
     yield { wait: 30 };
@@ -310,8 +328,17 @@ export class Battle {
     yield this.say('BattleText_EnemyMonFainted');
     if (this.sides[0].hp === 0) { yield this.say('BattleText_MonFainted'); this.participants.delete(this.party.indexOf(this.sides[0].mon)); }
     if (this.party.some((m) => m.hp > 0)) yield* giveExperience(this, { participants: this.participants, playerId: this.playerId, trainer: this.trainer });
+    if (!this.party.some((m) => m.hp > 0)) { yield { wait: 60 }; return { result: 'lose' }; }
     yield { wait: 60 };
-    return { result: this.party.some((m) => m.hp > 0) ? 'win' : 'lose' };
+    if (this.wild) return { result: 'win' };
+    this.sides[1].mon.hp = 0;
+    if (this.enemyDefeated()) return yield* this.winTrainer();
+    if (this.sides[0].hp === 0) {                         // DoubleSwitch: both sides send out a new Pokémon
+      const picked = yield { ask: 'party', forced: true };
+      yield* this.sendOut(picked);
+      yield* this.enemyEntrance({ offer: false });
+    } else yield* this.enemyEntrance({ offer: true });
+    return null;
   }
   /** HandlePlayerMonFaint for a wild battle: the faint text, then "Use next POKéMON?" and a forced choice, or the end. Returns a result or null to go on. */
   *playerFainted() {
@@ -380,6 +407,14 @@ export class Battle {
     yield { wait: 30 };
     yield { anim: 'SEND_OUT_MON', user: 0, frames: 62 };
     yield { sendOut: 0, species: this.sides[0].species };
+  }
+
+  /** The player's switch after "Will you change POKéMON?": the same withdraw and send-out as a menu switch. */
+  *tryPlayerSwitchFree(index) {
+    yield* this.withdrawText();
+    yield { wait: 50 };
+    yield { recall: 0 };
+    yield* this.sendOut(index);
   }
 
   /** After a level up: the active Pokémon's battle stats from its new party stats. */
@@ -647,3 +682,4 @@ installStatus(Battle, STATUS);
 installEffects(Battle, STATUS);
 installBetween(Battle, STATUS);
 installEffects2(Battle, STATUS);
+installTrainer(Battle);
