@@ -316,7 +316,7 @@ export class Game {
     const { cls, id } = request.trainer;
     const trainer = trainerParty(cls, id);
     const pics = await this.battleArt(trainer.party.map((m) => m.species), cls);
-    const info = { name: trainer.name, className: trainer.className, reward: trainer.reward, ai: trainer.ai, items: trainer.items, flags: trainer.flags, win: request.win, loss: request.loss };
+    const info = { name: trainer.name, className: trainer.className, cls, canLose: request.canLose, reward: trainer.reward, ai: trainer.ai, items: trainer.items, flags: trainer.flags, win: request.win, loss: request.loss };
     const battle = new Battle({ player: this.state.party, enemy: trainer.party, wild: false, random: this.randomByte, playerId: this.state.playerId, badges: badgeBits(this.state), state: this.state, trainerInfo: info, shiftStyle: options(this.state).battleShift });
     const intro = [['text', `${trainer.className} ${trainer.name}`], ['line', 'wants to battle!'], ['prompt']];
     this.battleScreen = new BattleScreen({ battle, state: this.state, pics, intro, trainer: true });
@@ -330,7 +330,8 @@ export class Game {
     this.battleScreen = null;
     const runner = this.battleRunner;
     this.battleRunner = null;
-    if (result.result === 'lose') { this.runner = null; this.startWhiteout(); return; }   // the script that began the battle never resumes
+    const canLose = this.battleCanLose; this.battleCanLose = false;
+    if (result.result === 'lose' && !canLose) { this.runner = null; this.startWhiteout(); return; }   // the script that began the battle never resumes
     if (runner) { runner.wait = null; this.advanceRunner(result); }
   }
 
@@ -577,6 +578,7 @@ export class Game {
         case 'battle':
           runner.wait = { kind: 'battle' };
           this.battleRunner = runner;
+          this.battleCanLose = Boolean(request.canLose);
           this.startTrainerBattle(request).catch((e) => { throw e; });
           return;
         case 'effect': {

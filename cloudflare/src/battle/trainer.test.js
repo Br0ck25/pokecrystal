@@ -44,3 +44,15 @@ test('a trainer battle: the second Pokémon comes in after the first faints, win
   const text = events.filter((e) => e.text).map((e) => e.text.map((c) => c[1]).join(' '));
   assert.ok(text.some((x) => /YOUNGSTER JOEY was defeated!/.test(x)), text.join('\n'));
 });
+
+test('a battle that can be lost ends with the loss text instead of a whiteout, and a win heals the party', () => {
+  const t = trainerParty('RIVAL1', 'RIVAL1_1_CHIKORITA');
+  const player = createMon({ species: 'CHIKORITA', level: 2, dvs: [0, 0], id: 1 });
+  player.hp = 1;
+  const info = { name: t.name, className: t.className, cls: 'RIVAL1', canLose: true, reward: t.reward, ai: t.ai, items: t.items, flags: t.flags, win: null, loss: [['text', 'x']] };
+  const battle = new Battle({ player: [player], enemy: t.party, wild: false, random: seeded(4), playerId: 1, state: { money: 0, items: {}, rivalName: 'SILVER' }, trainerInfo: info });
+  const { events, result } = play(battle);
+  assert.equal(result.result, 'lose');
+  assert.ok(events.some((e) => e.trainerLossText));
+  assert.ok(events.some((e) => e.text && e.text.some((c) => /SILVER/.test(c[1]))));
+});

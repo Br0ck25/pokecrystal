@@ -258,6 +258,7 @@ export function* runScript(ctx, startLabel) {
         jump(after);                                               // scripttalkafter
         break;
       }
+      case 'loadvar': if (args[0] === 'VAR_BATTLETYPE') state.battleType = args[1]; else throw new Error(`loadvar ${args[0]}`); break;
       case 'winlosstext': winText = args[0]; lossText = args[1]; break;
       case 'loadtrainer': trainer = { cls: args[0], id: args[1] }; break;
       case 'startbattle': yield* startBattle(); break;
@@ -341,7 +342,10 @@ export function* runScript(ctx, startLabel) {
   /** Script_startbattle then reloadmapafterbattle: the engine runs the battle; a lost one (without a loss text) never comes back here. */
   function* startBattle() {
     const text = (label) => (label && label !== '0' ? find(label, pos.key)?.commands ?? null : null);
-    yield { type: 'battle', trainer: { cls: trainer.cls, id: trainer.id }, win: text(winText), loss: text(lossText) };
+    const canLose = state.battleType === 'BATTLETYPE_CANLOSE';
+    state.battleType = null;
+    const outcome = yield { type: 'battle', canLose, trainer: { cls: trainer.cls, id: trainer.id }, win: text(winText), loss: text(lossText) };
+    state.scriptVar = outcome?.result === 'lose' ? 1 : 0;
     yield { type: 'effect', name: 'reloadmapafterbattle', args: [] };
   }
 

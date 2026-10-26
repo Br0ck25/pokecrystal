@@ -110,7 +110,8 @@ export class Battle {
   }
   fill(s) {
     if (typeof s !== 'string') return s;
-    const enemy = this.trainerInfo ? `${this.trainerInfo.className} ${this.trainerInfo.name}` : '';
+    const rival = this.trainerInfo && ['RIVAL1', 'RIVAL2'].includes(this.trainerInfo.cls);
+    const enemy = this.trainerInfo ? (rival ? this.state?.rivalName ?? 'SILVER' : `${this.trainerInfo.className} ${this.trainerInfo.name}`) : '';
     return s.replace(/<USER>/g, this.nameOf(this.turn)).replace(/<TARGET>/g, this.nameOf(1 - this.turn)).replace(/<ENEMY>/g, enemy);
   }
 
@@ -342,7 +343,7 @@ export class Battle {
     yield this.say('BattleText_EnemyMonFainted');
     if (this.sides[0].hp === 0) { yield this.say('BattleText_MonFainted'); this.participants.delete(this.party.indexOf(this.sides[0].mon)); }
     if (this.party.some((m) => m.hp > 0)) yield* giveExperience(this, { participants: this.participants, playerId: this.playerId, trainer: this.trainer });
-    if (!this.party.some((m) => m.hp > 0)) { yield { wait: 60 }; return { result: 'lose' }; }
+    if (!this.party.some((m) => m.hp > 0)) { yield { wait: 60 }; return yield* this.lostBattle(); }
     yield { wait: 60 };
     if (this.wild) return { result: 'win' };
     this.sides[1].mon.hp = 0;
@@ -362,7 +363,7 @@ export class Battle {
     yield { faint: 0 };
     yield this.say('BattleText_MonFainted');
     if (this.sides[1].hp === 0) return yield* this.enemyFainted();
-    if (!this.party.some((m) => m.hp > 0)) return { result: 'lose' };
+    if (!this.party.some((m) => m.hp > 0)) return yield* this.lostBattle();
     if (this.wild) {
       yield this.say('BattleText_UseNextMon');
       const yes = yield { ask: 'yesno' };

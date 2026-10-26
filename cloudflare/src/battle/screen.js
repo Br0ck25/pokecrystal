@@ -129,8 +129,8 @@ export class BattleScreen {
       }
       if (value.enemyHudClear) { this.enemyHud = false; continue; }
       if (value.trainerSlideIn) { this.enemyPic = this.pics.enemy; this.enemyGone = false; this.enemyHud = false; this.enemySlide = 0; continue; }
-      if (value.trainerWinText) {
-        const commands = this.battle.trainerInfo.win;
+      if (value.trainerWinText || value.trainerLossText) {
+        const commands = value.trainerWinText ? this.battle.trainerInfo.win : this.battle.trainerInfo.loss;
         if (!commands) continue;
         this.wait = startTextWait(renderText(commands, { block: (l) => TEXT[l], vars: {}, playerName: this.state?.playerName ?? '', rivalName: '' }));
         this.mode = 'text';

@@ -4,6 +4,7 @@ import { BATTLE } from '../generated/battle-data.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { MOVES } from '../generated/moves.js';
 import { battleMon } from './battle.js';
+import { healParty } from '../script/mon.js';
 
 const MAX_MONEY = 999999;
 
@@ -87,11 +88,22 @@ export function installTrainer(Battle) {
       return playerSwitched;
     },
 
+    /** LostBattle: a battle that can be lost (BATTLETYPE_CANLOSE) shows the trainer and its loss text instead of a whiteout. */
+    *lostBattle() {
+      if (this.trainerInfo?.canLose) {
+        yield { trainerSlideIn: true };
+        yield { wait: 40 };
+        yield { trainerLossText: true };
+      }
+      return { result: 'lose' };
+    },
+
     /** WinTrainerBattle: the defeat text, the trainer's own win text (the script's), then the money. */
     *winTrainer() {
       yield this.say('BattleText_EnemyWasDefeated');
       yield { trainerSlideIn: true };
       yield { wait: 40 };
+      if (this.trainerInfo.canLose) healParty(this.party);
       yield { trainerWinText: true };
       let reward = this.trainerInfo.reward;
       if (this.state?.amuletCoin) reward = Math.min(reward * 2, 0xffffff);
