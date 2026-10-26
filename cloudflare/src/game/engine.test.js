@@ -145,3 +145,51 @@ test('the rival follows the player one step, is shoved out, and returns to his o
   assert.deepEqual([rival.x, rival.y], [3, 2]);
   assert.deepEqual([g.player.x, g.player.y], [2, 4]);
 });
+
+test('a ledge is hopped in one 32-frame arc and lands two squares on', async () => {
+  const g = await newGame('ROUTE_38', 0, 0);
+  // find a ledge tile with walkable land on both sides in the facing direction
+  let found = null;
+  for (let y = 1; y < 40 && !found; y++) for (let x = 1; x < 60 && !found; x++) {
+    const c = g.world.collisionAt(x, y);
+    if (c === 0xa3) found = [x, y];
+  }
+  assert.ok(found, 'a south-facing ledge on Route 38');
+  g.player.x = found[0]; g.player.y = found[1] - 1; g.player.facing = 'down';
+  run(g, 1, { dir: 'down' });
+  assert.equal(g.player.step.distance, 2);
+  run(g, 32, { dir: null });
+  assert.deepEqual([g.player.x, g.player.y], [found[0], found[1] + 1]);
+});
+
+const talkThrough = (g, limit = 6000) => {
+  const seen = [];
+  for (let i = 0; i < limit && g.runner; i++) {
+    const wait = g.runner.wait;
+    if (wait?.kind === 'text' && wait.ready) seen.push(wait.screens[wait.index].lines.join(' ').trim());
+    g.update({ a: Boolean(wait && (wait.kind === 'button' || wait.kind === 'yesno' || (wait.kind === 'text' && wait.ready))) });
+  }
+  return seen;
+};
+
+test('an item ball is picked up: the item goes into the bag, the ball disappears for good', async () => {
+  const g = await newGame('ROUTE_29', 48, 3, 'up');
+  run(g, 1, { a: true });
+  const seen = talkThrough(g);
+  assert.equal(g.state.items.POTION, 1);
+  assert.equal(g.state.flags.has('EVENT_ROUTE_29_POTION'), true);
+  assert.ok(seen.some((t) => /found POTION!/.test(t)), seen.join('|'));
+  assert.ok(seen.some((t) => /ITEM POCKET\./.test(t)), seen.join('|'));
+  assert.equal(g.objects.find((o) => o.id === 'ROUTE29_POKE_BALL').hidden, true);
+});
+
+test('a fruit tree gives its fruit once a day', async () => {
+  const g = await newGame('ROUTE_29', 12, 3, 'up');
+  run(g, 1, { a: true });
+  talkThrough(g);
+  assert.equal(g.state.items.BERRY, 1);
+  run(g, 1, { a: true });
+  const seen = talkThrough(g);
+  assert.equal(g.state.items.BERRY, 1);
+  assert.ok(seen.some((t) => /nothing here/.test(t)), seen.join('|'));
+});

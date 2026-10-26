@@ -11,7 +11,18 @@ const fs = require('fs');
   await page.waitForTimeout(800);
   await page.evaluate(() => window.__manual && window.__manual(true));
   for (const s of steps) {
-    if (s.hold || s.press || s.wait) {
+    if (s.enter) {
+      await page.evaluate(async (e) => {
+        const g = window.game;
+        for (const pair of e.scene.split(',').filter(Boolean)) { const [n, i] = pair.split(':'); g.state.scenes[n] = Number(i); }
+        for (const f of e.clearFlags) g.state.flags.delete(f);
+        for (const f of e.flags) g.state.flags.add(f);
+        if (e.prevLandmark) g.prevLandmark = e.prevLandmark;
+        await g.enterMap(e.map, e.x, e.y, 'down');
+        while (g.loading) await new Promise((r) => setTimeout(r, 2));
+        if (e.tileAnim) { g.tileAnim.index = e.tileAnim[0]; g.tileAnim.timer = e.tileAnim[1]; }   // the real game's animation phase
+      }, s.enter);
+    } else if (s.hold || s.press || s.wait) {
       await page.evaluate(async (s) => {
         const g = window.game;
         const dirs = ['up', 'down', 'left', 'right'];
@@ -24,6 +35,7 @@ const fs = require('fs');
       }, s);
     } else if (s.shot) {
       await page.evaluate(async () => { await window.__draw(); });
+      console.log(`  [${s.shot}] app at`, JSON.stringify(await page.evaluate(() => [window.game.player.x, window.game.player.y, window.game.player.facing, window.game.pokepic, !!window.game.runner, [...window.game.unported]])));
       const png = await page.evaluate(() => document.querySelector('#map').toDataURL('image/png'));
       fs.writeFileSync(`${outDir}/play_${s.shot}.png`, Buffer.from(png.split(',')[1], 'base64'));
     }

@@ -23,16 +23,40 @@ sys.argv = ['x', '--build', a.build, '--out', a.out]
 exec(src)
 ref = Ref(); ref.newgame()
 roms = {}
+ids = map_ids()
+def event_index(name):
+    n = 0
+    for l in open(os.path.join(REPO, 'constants/event_flags.asm')):
+        m = re.match(r'\s*const (EVENT_\w+)', l)
+        if m:
+            if m.group(1) == name: return n
+            n += 1
+    raise KeyError(name)
+def set_event(name, on):
+    i = event_index(name); addr = ref.key('wEventFlags')
+    byte = ref.pb.memory[addr + i // 8] if isinstance(addr, int) else ref.pb.memory[addr[0], addr[1] + i // 8]
+    byte = (byte | (1 << (i % 8))) if on else (byte & ~(1 << (i % 8)))
+    if isinstance(addr, int): ref.pb.memory[addr + i // 8] = byte
+    else: ref.pb.memory[addr[0], addr[1] + i // 8] = byte
 BUTTONS = {'left', 'right', 'up', 'down', 'a', 'b', 'start', 'select'}
 for s in steps:
     if 'hold' in s:
         ref.pb.button_press(s['hold']); ref.tick(s['frames']); ref.pb.button_release(s['hold'])
     elif 'press' in s:
         ref.pb.button_press(s['press']); ref.tick(3); ref.pb.button_release(s['press']); ref.tick(8)
+    elif 'warp' in s:                                  # {"warp": {"id": "ELMS_LAB", "warp": 1, "ram": {...}, "scene": "ElmsLab:2"}}
+        c = s['warp']
+        for var, value in c.get('ram', {}).items(): ref.wr(var, value)
+        for ev in c.get('clear', []): set_event(ev, False)      # event flags, e.g. to show the starter Poké Balls
+        for ev in c.get('set', []): set_event(ev, True)
+        group, num = ids[c['id']]
+        ref.warp_in(group, num, c['warp'], c.get('settle', 300))
+        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
     elif 'wait' in s:
         ref.tick(s['wait'])
     elif 'shot' in s:
         roms[s['shot']] = ref.shot()
+        print(f"  [{s['shot']}] game at ({ref.rd('wXCoord')},{ref.rd('wYCoord')}) facing {ref.rd('wPlayerDirection') >> 2 & 3} landmark prev/cur {ref.rd('wPrevLandmark')}/{ref.rd('wCurLandmark')} sign {ref.rd('wLandmarkSignTimer')}")
 json.dump(steps, open(os.path.join(a.out, 'steps.json'), 'w'))
 subprocess.run(['node', os.path.join(HERE, 'play_app.cjs'), os.path.join(a.out, 'steps.json'), a.out, a.base], check=True)
 for label, rom in roms.items():

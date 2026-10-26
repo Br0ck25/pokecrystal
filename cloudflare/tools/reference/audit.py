@@ -51,12 +51,12 @@ class Ref:
                 if (s.rd('wMapGroup'), s.rd('wMapNumber'), s.rd('wXCoord')) == (24, 7, 3): break
         s.tick(120)
         assert s.rd('wMapNumber') == 7, 'new game did not reach PlayersHouse2F'
-    def warp_in(s, group, num, warp):
+    def warp_in(s, group, num, warp, settle=300):
         """Arrive at warp number `warp` (1-based) of map (group,num) exactly as a door does (MAPSETUP_DOOR)."""
         s.wr('wNextMapGroup', group); s.wr('wNextMapNumber', num); s.wr('wNextWarp', warp)
         s.pb.memory[s.key('hMapEntryMethod')] = 0xf5
         s.wr('wMapStatus', 1)                          # MAPSTATUS_ENTER
-        s.tick(300)
+        s.tick(settle)
 
 cases = json.load(open(a.cases))
 ids = map_ids()

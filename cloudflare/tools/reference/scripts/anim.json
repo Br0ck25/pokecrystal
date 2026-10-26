@@ -1,0 +1,4 @@
+{"steps": [
+ {"warp": {"id": "ROUTE_29", "warp": 1, "settle": 300}},
+ {"wait": 1}, {"shot": "a0"}, {"wait": 13}, {"shot": "a1"}, {"wait": 13}, {"shot": "a2"}, {"wait": 26}, {"shot": "a3"}, {"wait": 26}, {"shot": "a4"}, {"wait": 30}, {"shot": "a5"}
+]}

@@ -11,6 +11,7 @@ export async function createScriptContext(mapName, state, caller = null) {
   const own = await import(`../generated/scripts/${mapName}.js`);
   return {
     mapName, state, caller,
+    today: () => new Date().toDateString(),                      // fruit trees grow back on a new day
     sources: [own, std, sharedText],
     sceneLists: SCENES,
     mapNameOf: (id) => {

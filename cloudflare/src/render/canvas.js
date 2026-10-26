@@ -9,6 +9,7 @@ import { GBC_VIEWPORT_WIDTH as W, GBC_VIEWPORT_HEIGHT as H } from '../maps/viewp
 import { describeScene } from './scene.js';
 import { tiles } from '../script/text.js';
 import { titleFrame } from './title-frame.js';
+import { MAP_ENTRY_SIGN } from '../generated/landmarks.js';
 
 const to8 = (c) => Math.round((c * 255) / 31);
 const textColors = TEXT_PALETTE.map((rgb) => rgb.map(to8));
@@ -45,20 +46,40 @@ function recolorSheet(source, paletteFor) {
   return canvas;
 }
 
+/** Palette-index pixels (0-3) of a tileset image plus which palette each of its tiles uses (for animated tiles). */
+function tileShades(source, paletteOf) {
+  const canvas = makeCanvas(source.width, source.height);
+  const c = canvas.getContext('2d', { willReadFrequently: true });
+  c.drawImage(source, 0, 0);
+  const rgba = c.getImageData(0, 0, canvas.width, canvas.height).data;
+  const shades = new Uint8Array(canvas.width * canvas.height);
+  for (let i = 0; i < shades.length; i++) shades[i] = Math.max(0, Math.min(3, Math.round((255 - rgba[i * 4]) / 85)));
+  const count = (canvas.width / 8) * (canvas.height / 8);
+  const waterTiles = [];
+  for (let t = 0; t < count; t++) if (paletteOf(t) === 3) waterTiles.push(t);
+  return { shades, width: canvas.width, paletteOf, waterTiles };
+}
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.scale = 1;
     this.sheets = new Map();       // map id -> recolored tileset sheet
+    this.tileData = new Map();     // map id -> { shades, width, paletteOf } source tile pixels for animated tiles
     this.metatiles = new Map();    // `${map id}:${block id}` -> 32x32 canvas
     this.sprites = new Map();      // `${sprite}|${palette}` -> recolored sheet
     this.spriteSources = new Map();
     this.glyphs = new Map();
+    this.pics = new Map();         // `${species}|side|colors` -> 56x56 canvas
+    this.grayFrames = new Map();
+    this.signSheets = new Map();
     this.fontReady = Promise.all([loadImage(FONT_PNG), loadImage(FONT_EXTRA_PNG), loadImage(FRAME_PNG)]).then(([font, extra, frame]) => {
       this.font = recolorSheet(font, () => textColors);
       this.fontExtra = recolorSheet(extra, () => textColors);
       this.frame = recolorSheet(frame, () => textColors);
+      this.frameImage = frame;
+      this.fontImages = [font, extra];
     });
   }
 
@@ -85,6 +106,10 @@ export class Renderer {
         for (let t = 0; t < 9; t++) c.drawImage(roof, (t % 3) * 8, Math.floor(t / 3) * 8, 8, 8, ((0x0a + t) % 16) * 8, Math.floor((0x0a + t) / 16) * 8, 8, 8);
       }
       const palettes = mapBgPalettes(world.id);
+      this.tileData.set(world.id, tileShades(source, (index) => {
+        const id = index < 0x60 ? index : index - 0x60 + 0x80;
+        return tilePaletteIndex(world.tileset, id);
+      }));
       this.sheets.set(world.id, recolorSheet(source, (index) => {
         const id = index < 0x60 ? index : index - 0x60 + 0x80;
         const palette = tilePaletteIndex(world.tileset, id);
@@ -94,6 +119,40 @@ export class Renderer {
     for (const sprite of new Set(Object.keys(SPRITES))) {
       if (!this.spriteSources.has(sprite)) this.spriteSources.set(sprite, null);
     }
+  }
+
+  /** Redraw the tiles the animation changed (tileset_anims.asm writes them into VRAM) and forget the blocks built from them. */
+  applyTileAnimation(world, anim) {
+    const data = this.tileData.get(world.id), sheet = this.sheets.get(world.id);
+    if (!data || !sheet) return;
+    const palettes = mapBgPalettes(world.id);
+    const c = sheet.getContext('2d');
+    const water = palettes[3].slice();
+    water[0] = palettes[3][anim.waterColor];                       // AnimateWaterPalette
+    const redraw = (index, pixels) => {
+      const palette = data.paletteOf(index);
+      if (palette === null) return;
+      const colors = palette === 3 ? water : palettes[palette];
+      const image = c.createImageData(8, 8);
+      for (let i = 0; i < 64; i++) {
+        const shade = pixels ? pixels.charCodeAt(i) - 48 : data.shades[(Math.floor(index / 16) * 8 + (i >> 3)) * data.width + (index % 16) * 8 + (i & 7)];
+        image.data.set([...colors[shade], 255], i * 4);
+      }
+      c.putImageData(image, (index % 16) * 8, Math.floor(index / 16) * 8);
+    };
+    const drawn = new Set();
+    for (const [id, pixels] of anim.tiles) { const index = id < 0x60 ? id : id >= 0x80 ? id - 0x80 + 0x60 : null; if (index !== null) { redraw(index, pixels); drawn.add(index); } }
+    if (data.waterTiles) for (const index of data.waterTiles) if (!drawn.has(index)) redraw(index, null);
+    for (const key of [...this.metatiles.keys()]) if (key.startsWith(`${world.id}:`)) this.metatiles.delete(key);
+  }
+
+  /** The tileset's own pixels of tile `id` as a 64-digit string (the start of a cave water scroll). */
+  baseTile(world, id) {
+    const data = this.tileData.get(world.id);
+    const index = id < 0x60 ? id : id - 0x80 + 0x60;
+    let out = '';
+    for (let i = 0; i < 64; i++) out += data.shades[(Math.floor(index / 16) * 8 + (i >> 3)) * data.width + (index % 16) * 8 + (i & 7)];
+    return out;
   }
 
   metatile(world, blockId) {
@@ -135,19 +194,19 @@ export class Renderer {
     return canvas;
   }
 
-  glyph(character) {
+  glyph(character, fonts = [this.font, this.fontExtra]) {
     const code = FONT_CODES[character];
     if (code === undefined) throw new Error(`no glyph for ${JSON.stringify(character)}`);
-    if (code >= 0x80) return [this.font, code - 0x80];
-    if (code >= 0x63 && code <= 0x78) return [this.fontExtra, code - 0x60];
+    if (code >= 0x80) return [fonts[0], code - 0x80];
+    if (code >= 0x63 && code <= 0x78) return [fonts[1], code - 0x60];
     throw new Error(`character ${JSON.stringify(character)} (code ${code.toString(16)}) is not in the font sheets`);
   }
 
-  drawText(text, tileX, tileY) {
+  drawText(text, tileX, tileY, fonts) {
     let x = tileX * 8;
     for (const character of tiles(text)) {
       if (character !== ' ') {
-        const [sheet, index] = this.glyph(character);
+        const [sheet, index] = this.glyph(character, fonts);
         this.ctx.drawImage(sheet, (index % 16) * 8, Math.floor(index / 16) * 8, 8, 8, x, tileY * 8, 8, 8);
       }
       x += 8;
@@ -155,10 +214,10 @@ export class Renderer {
   }
 
   /** Box with the frame border (home/text.asm TextBoxBorder): corners and edges from frames/1.png, white inside. */
-  drawBox(left, top, right, bottom) {
+  drawBox(left, top, right, bottom, colors = textColors, frame = this.frame) {
     const c = this.ctx;
-    const tile = (n, tx, ty) => c.drawImage(this.frame, (n % 3) * 8, Math.floor(n / 3) * 8, 8, 8, tx * 8, ty * 8, 8, 8);
-    c.fillStyle = `rgb(${textColors[0]})`;
+    const tile = (n, tx, ty) => c.drawImage(frame, (n % 3) * 8, Math.floor(n / 3) * 8, 8, 8, tx * 8, ty * 8, 8, 8);
+    c.fillStyle = `rgb(${colors[0]})`;
     c.fillRect(left * 8, top * 8, (right - left + 1) * 8, (bottom - top + 1) * 8);
     for (let x = left + 1; x < right; x++) { tile(1, x, top); tile(1, x, bottom); }
     for (let y = top + 1; y < bottom; y++) { tile(3, left, y); tile(3, right, y); }
@@ -174,6 +233,52 @@ export class Renderer {
       for (const [x, y, text] of panel.texts) this.drawText(text, x, y);
       if (panel.cursor) this.drawText(panel.cursor[2], panel.cursor[0], panel.cursor[1]);
     }
+  }
+
+  /** The area-name sign: a 20x4 window at the bottom of the screen in the map's TEXT palette (map_name_sign.asm PlaceMapNameFrame). */
+  drawSign(name, colors) {
+    const key = colors.toString();
+    if (!this.signSheets.has(key)) {
+      const sign = makeCanvas(56, 16), c = sign.getContext('2d'), image = c.createImageData(56, 16);
+      for (let i = 0; i < 56 * 16; i++) image.data.set([...colors[MAP_ENTRY_SIGN.pixels.charCodeAt(i) - 48], 255], i * 4);
+      c.putImageData(image, 0, 0);
+      this.signSheets.set(key, { sign, fonts: this.fontImages.map((f) => recolorSheet(f, () => colors)) });
+    }
+    const { sign, fonts } = this.signSheets.get(key);
+    const put = (n, x, y) => this.ctx.drawImage(sign, (n % 7) * 8, Math.floor(n / 7) * 8, 8, 8, x * 8, (14 + y) * 8, 8, 8);
+    const edge = (y, tile, a, b, c2) => { put(tile, 0, y); for (let k = 0; k < 18; k++) put(k % 4 < 2 ? a : b, 1 + k, y); put(c2, 19, y); };
+    edge(0, 1, 3, 2, 4);
+    for (const [y, l, r] of [[1, 5, 11], [2, 6, 12]]) { put(l, 0, y); for (let k = 1; k < 19; k++) put(13, k, y); put(r, 19, y); }
+    edge(3, 7, 9, 8, 10);
+    this.drawText(name, (20 - tiles(name).length) >> 1, 16, fonts);
+  }
+
+  /** engine/events/pokepic.asm: a box at (x,y) 9x10 tiles with the species' front picture in its 7x7 interior, all in the map's gray palette (_CGB_Pokepic). */
+  drawPokepic(species, x, y, gray) {
+    const key = gray.toString();
+    if (!this.grayFrames.has(key)) this.grayFrames.set(key, recolorSheet(this.frameImage, () => gray));
+    this.drawBox(x, y, x + 8, y + 9, gray, this.grayFrames.get(key));
+    const pic = this.picCanvas(species, 'front', gray);
+    if (pic) this.ctx.drawImage(pic, (x + 1) * 8, (y + 1) * 8);
+  }
+
+  /** A species' front or back picture in a 7x7-tile canvas (PadFrontpic: smaller pictures sit at the bottom, 5x5 ones centered). */
+  picCanvas(species, side, colors) {
+    const key = `${species}|${side}|${colors}`;
+    if (this.pics.has(key)) return this.pics.get(key);
+    this.pics.set(key, null);
+    import(`../generated/pokemon/${species}.js`).then(({ PIC }) => {
+      const size = side === 'front' ? PIC.size : 48;
+      const pixels = PIC[side];
+      const canvas = makeCanvas(56, 56);
+      const c = canvas.getContext('2d');
+      const image = c.createImageData(size, size);
+      for (let i = 0; i < size * size; i++) image.data.set([...colors[pixels.charCodeAt(i) - 48], 255], i * 4);
+      const tiles = size / 8;
+      c.putImageData(image, (side === 'front' && tiles < 7 ? 1 : 0) * 8, (side === 'front' ? 7 - tiles : 0) * 8);
+      this.pics.set(key, canvas);
+    }).catch(() => {});
+    return null;
   }
 
   /** The title screen (software-composed, see title-frame.js) or the white main-menu screen. */
@@ -200,6 +305,7 @@ export class Renderer {
     c.fillRect(0, 0, W, H);
     const world = game.world;
     if (!this.sheets.has(world.id)) return;
+    if (game.tileAnim.changed) { game.tileAnim.base = (id) => this.baseTile(world, id); this.applyTileAnimation(world, game.tileAnim); game.tileAnim.changed = false; }
     const { camera } = scene;
     // The map and, outside it, the border block.
     for (let by = Math.floor(camera.y / 32); by <= Math.floor((camera.y + H - 1) / 32); by++) {
@@ -217,6 +323,8 @@ export class Renderer {
       c.restore();
     }
     this.drawPanels(scene.panels);
+    if (scene.pokepic) this.drawPokepic(scene.pokepic, 6, 4, mapBgPalettes(world.id)[0]);
+    if (scene.sign) this.drawSign(scene.sign, mapBgPalettes(world.id)[7]);
     if (scene.textbox) {
       this.drawBox(0, 12, 19, 17);
       this.drawText(scene.textbox.lines[0], 1, 14);
@@ -230,6 +338,7 @@ export class Renderer {
       this.drawText('NO', y.left + 2, y.top + 3);
       this.drawText('▶', y.left + 1, y.top + 1 + 2 * y.cursor);
     }
+    if (scene.black > 0) { c.fillStyle = `rgba(0,0,0,${scene.black})`; c.fillRect(0, 0, W, H); }
     if (scene.fade) {
       c.fillStyle = `rgba(255,255,255,${1 - scene.fade.frame / scene.fade.frames})`;
       c.fillRect(0, 0, W, H);

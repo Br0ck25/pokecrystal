@@ -71,8 +71,8 @@ function maps() {
   const borders = new Map([...text('data/maps/attributes.asm').matchAll(/^\tmap_attributes (\w+), \w+, \$([0-9a-fA-F]{2})/gm)]
     .map((m) => [m[1], parseInt(m[2], 16)]));
   const out = {};
-  for (const m of text('data/maps/maps.asm').matchAll(/^\tmap (\w+), TILESET_(\w+), (\w+), \w+, [^,]+, \w+, PALETTE_(\w+),/gm)) {
-    const [, name, tileset, environment, palette] = m;
+  for (const m of text('data/maps/maps.asm').matchAll(/^\tmap (\w+), TILESET_(\w+), (\w+), (\w+), [^,]+, \w+, PALETTE_(\w+),/gm)) {
+    const [, name, tileset, environment, landmark, palette] = m;
     const size = sizes.get(norm(name));
     if (!size) throw new Error(`no map_const for ${name}`);
     const file = blockFiles.get(`${name}_Blocks`);
@@ -80,7 +80,7 @@ function maps() {
     if (!borders.has(name)) throw new Error(`no border block for ${name}`);
     const blocks = bin(file);
     if (blocks.length !== size.width * size.height) throw new Error(`${name}: ${blocks.length} bytes, expected ${size.width}x${size.height}`);
-    out[size.id] = { name, tileset, environment, palette, connections: links[name] ?? [], group: size.group, number: size.number, width: size.width, height: size.height, border: borders.get(name), source: file, blocks: [...blocks] };
+    out[size.id] = { name, tileset, environment, landmark, palette, connections: links[name] ?? [], group: size.group, number: size.number, width: size.width, height: size.height, border: borders.get(name), source: file, blocks: [...blocks] };
   }
   return out;
 }
@@ -280,31 +280,158 @@ function fontData() {
   };
 }
 
+// constants/item_constants.asm, data/items/{names,attributes,descriptions}.asm: every item by constant name (TM_*/HM_* included).
+function itemData() {
+  const src = text('constants/item_constants.asm').split('\n');
+  const ids = {};
+  let id = 0;
+  for (const line of src) {
+    const c = line.match(/^\tconst (\w+)/), t = line.match(/^\tadd_(?:tm|hm) (\w+)\s*; ([0-9a-f]{2})/);
+    if (/^DEF NUM_ITEMS/.test(line)) break;
+    if (c) ids[c[1]] = id++;
+  }
+  for (const line of src) {
+    const t = line.match(/^\tadd_tm (\w+)\s*; ([0-9a-f]{2})/), h = line.match(/^\tadd_hm (\w+)\s*; ([0-9a-f]{2})/);
+    if (t) ids[`TM_${t[1]}`] = parseInt(t[2], 16);
+    if (h) ids[`HM_${h[1]}`] = parseInt(h[2], 16);
+  }
+  const names = [...text('data/items/names.asm').matchAll(/^\tli "([^"]*)"/gm)].map((m) => m[1]);   // names[id - 1]
+  const attrs = [...text('data/items/attributes.asm').matchAll(/^\titem_attribute ([^;\n]+)/gm)].map((m) => m[1].split(',').map((x) => x.trim()));
+  const descTable = [...text('data/items/descriptions.asm').split('ItemDescriptions:')[1].split('\n\n')[0].matchAll(/^\tdw (\w+)/gm)].map((m) => m[1]);
+  const descText = {};
+  for (const m of text('data/items/descriptions.asm').matchAll(/^(\w+Desc):\n((?:\t.*\n)+)/gm)) {
+    descText[m[1]] = [...m[2].matchAll(/"([^"]*)"/g)].map((x) => x[1].replace(/@$/, ''));
+  }
+  const items = {};
+  for (const [name, n] of Object.entries(ids)) {
+    if (n === 0) continue;
+    const a = attrs[n - 1];
+    items[name] = { id: n, name: names[n - 1], desc: descText[descTable[n - 1]] ?? [],
+      ...(a ? { price: a[0].startsWith('$') ? parseInt(a[0].slice(1), 16) : Number(a[0]), hold: a[1], param: a[2], property: a[3], pocket: a[4], field: a[5], battle: a[6] } : {}) };
+  }
+  return items;
+}
+
+// Pokémon: constants/pokemon_constants.asm, data/pokemon/{names,base_stats,pic_pointers}.asm, gfx/pokemon/*/{front,back}.png and shiny.pal.
+let pokemonMemo;
+const pokemonAll = () => (pokemonMemo ??= pokemonData());
+function pokemonData() {
+  const consts = [];
+  for (const line of text('constants/pokemon_constants.asm').split('\n')) {
+    const c = line.match(/^\tconst (\w+)\s*; [0-9a-f]{2}/);
+    if (/^DEF NUM_POKEMON/.test(line)) break;
+    if (c) consts.push(c[1]);
+  }
+  const names = [...text('data/pokemon/names.asm').matchAll(/^\tdname "([^"]*)"/gm)].map((m) => m[1]);
+  const files = [...text('data/pokemon/base_stats.asm').matchAll(/INCLUDE "(data\/pokemon\/base_stats\/\w+\.asm)"/g)].map((m) => m[1]);
+  const picFiles = new Map([...text('gfx/pics.asm').matchAll(/^(\w+):\s+INCBIN "([^"]+)"/gm)].map((m) => [m[1], m[2]]));
+  const pics = [...text('data/pokemon/pic_pointers.asm').matchAll(/^\tdba_pics ([^;\n]*)(;.*)?$/gm)].map((m) => {
+    const labels = m[1].trim() ? m[1].split(',').map((l) => l.trim()) : /Unown/.test(m[2] ?? '') ? ['UnownAFrontpic', 'UnownABackpic'] : [];   // Unown has its own table; use letter A
+    return labels.map((l) => picFiles.get(l));
+  });
+  const shiny = rgbs(text('data/pokemon/palettes.asm').split('\n').filter((l) => /^\s*RGB /.test(l) || /^INCLUDE/.test(l)).join('\n'));
+  const out = {};
+  consts.forEach((constant, i) => {
+    const src = text(files[i]);
+    const nums = (re) => { const m = src.match(re); if (!m) throw new Error(`${files[i]}: no match for ${re}`); return m.slice(1).map((v) => v.trim()); };
+    const [hp, atk, def, spd, sat, sdf] = src.match(/^\tdb\s+(\d+),\s+(\d+),\s+(\d+),\s+(\d+),\s+(\d+),\s+(\d+)\s*$/m).slice(1).map(Number);
+    const dir = pics[i][0].match(/gfx\/pokemon\/([^/]+)\//)[1];
+    const front = indexedPng(`gfx/pokemon/${dir}/front.png`), back = indexedPng(`gfx/pokemon/${dir}/back.png`);
+    const size = front.width;                                  // 40, 48 or 56 pixels: the first frame is width x width
+    const crop = (img, w) => img.pixels.slice(0, w * w);
+    const pal5 = front.palette.map((c) => c.map((v) => Math.round((v * 31) / 255)));
+    const shinyPal = rgbs(text(`gfx/pokemon/${dir.startsWith("unown_") ? "unown" : dir}/shiny.pal`));
+    out[constant] = {
+      meta: { id: i + 1, name: names[i], dir, stats: { hp, atk, def, spd, sat, sdf }, types: nums(/^\tdb (\w+), (\w+) ; type/m),
+        catchRate: Number(nums(/^\tdb (\d+) ; catch rate/m)[0]), baseExp: Number(nums(/^\tdb (\d+) ; base exp/m)[0]),
+        items: nums(/^\tdb (\w+), (\w+) ; items/m), gender: nums(/^\tdb (\w+) ; gender ratio/m)[0], eggCycles: Number(nums(/^\tdb (\d+) ; step cycles to hatch/m)[0]),
+        growth: nums(/^\tdb (\w+) ; growth rate/m)[0], eggGroups: nums(/^\tdn (\w+), (\w+)/m),
+        tmhm: (src.match(/^\ttmhm ([^;\n]*)/m)?.[1] ?? '').split(',').map((t) => t.trim()).filter(Boolean) },
+      pic: { size, front: crop(front, size), back: crop(back, 48), palette: pal5, shiny: [pal5[0], shinyPal[0], shinyPal[1], pal5[3]] },
+    };
+  });
+  return out;
+}
+
+// data/tileset_anims.asm + engine/tilesets/tileset_anims.asm + gfx/tilesets/{water,flower,fountain,lava,whirlpool,tower-pillar,forest-tree}:
+// each tileset's animation list (one entry per frame) and the tile graphics they draw, as 64-digit palette-index strings.
+function tileAnimData() {
+  const src = text('data/tileset_anims.asm');
+  const code = text('engine/tilesets/tileset_anims.asm');
+  const tile = (png, row = 0) => { const img = grayPng(png); return img.pixels.slice(row * 64, row * 64 + 64); };
+  const strip = (png) => { const img = grayPng(png); return Array.from({ length: img.height / 8 }, (_, i) => img.pixels.slice(i * 64, i * 64 + 64)); };
+  const frames = {
+    water: strip('gfx/tilesets/water/water.png'),
+    flower: ['cgb_1', 'cgb_2'].map((n) => tile(`gfx/tilesets/flower/${n}.png`)),
+    fountain: [1, 2, 3, 4, 5].map((n) => tile(`gfx/tilesets/fountain/${n}.png`)),
+    lava: [1, 2, 3, 4].map((n) => tile(`gfx/tilesets/lava/${n}.png`)),
+    forestTree: [1, 2, 3, 4].map((n) => tile(`gfx/tilesets/forest-tree/${n}.png`)),
+  };
+  const pointers = {};   // label -> { tile, frames name } for the Whirlpool and TowerPillar pointer tables
+  for (const m of code.matchAll(/^(\w+(?:Pointer\d+|Frames\d)):\s+dw vTiles2 tile \$([0-9a-f]+), (\w+)/gm)) {
+    const png = m[3].startsWith('Whirlpool') ? `gfx/tilesets/whirlpool/${m[3].slice(-1)}.png` : `gfx/tilesets/tower-pillar/${m[3].replace('TowerPillarTile', '')}.png`;
+    pointers[m[1]] = { tile: parseInt(m[2], 16), frames: strip(png) };
+  }
+  const OPS = { AnimateWaterTile: 'water', AnimateFlowerTile: 'flower', AnimateFountainTile: 'fountain', AnimateWaterPalette: 'waterPalette',
+    WaitTileAnimation: 'wait', StandingTileFrame8: 'tick8', StandingTileFrame: 'tick', DoneTileAnimation: 'done', AnimateWhirlpoolTile: 'frames',
+    AnimateTowerPillarTile: 'tower', AnimateLavaBubbleTile1: 'lava1', AnimateLavaBubbleTile2: 'lava2', ReadTileToAnimBuffer: 'read',
+    ScrollTileRightLeft: 'scrollRL', ScrollTileDown: 'scrollDown', WriteTileFromAnimBuffer: 'write', FlickeringCaveEntrancePalette: 'flicker',
+    ForestTreeLeftAnimation: 'forestL', ForestTreeRightAnimation: 'forestR', ForestTreeLeftAnimation2: 'forestL', ForestTreeRightAnimation2: 'forestR' };
+  const lists = {};
+  let pending = [];
+  for (const line of src.split('\n')) {
+    const label = line.match(/^(\w+Anim):/);
+    if (label) { pending.push(label[1]); continue; }
+    const f = line.match(/^\ttileframe (\w+)(?:,\s+(.*))?/);
+    if (!f) continue;
+    const op = OPS[f[1]];
+    if (!op) throw new Error(`unknown tile animation ${f[1]}`);
+    const arg = f[2]?.trim();
+    const entry = { op };
+    if (arg?.startsWith('vTiles2 tile')) entry.tile = parseInt(arg.match(/\$([0-9a-f]+)/)[1], 16);
+    else if (arg && pointers[arg]) { entry.tile = pointers[arg].tile; entry.frames = pointers[arg].frames; }
+    for (const l of pending) lists[l] = lists[l] ?? [];
+    for (const l of pending) lists[l].push(entry);
+    if (op === 'done') pending = [];
+  }
+  const byTileset = {};
+  for (const m of text('data/tilesets.asm').matchAll(/^\ttileset (\w+)/gm)) byTileset[norm(m[1].replace(/^Tileset/, '') || '0')] = `${m[1]}Anim`;
+  return { lists, frames, byTileset };
+}
+
 // gfx/title/*.png (2-bit grayscale) as palette indexes, one digit per pixel, row by row (0 = lightest), and gfx/title/title.pal.
-function grayPng(path) {
+function grayPng(path) { return indexedPng(path, { gray: true }); }
+/** Decode a non-interlaced PNG of 1-8 bits per pixel: grayscale (index = 3 - value for 2-bit, as rgbgfx reads it) or indexed color. */
+function indexedPng(path, { gray = false } = {}) {
   const png = bin(path);
-  let width = 0, height = 0, depth = 0;
+  let width = 0, height = 0, depth = 0, colorType = 0, palette = null;
   const idat = [];
   for (let at = 8; at < png.length;) {
     const length = png.readUInt32BE(at), type = png.toString('latin1', at + 4, at + 8), body = png.subarray(at + 8, at + 8 + length);
-    if (type === 'IHDR') { width = body.readUInt32BE(0); height = body.readUInt32BE(4); depth = body[8]; if (body[9] !== 0 || body[12] !== 0) throw new Error(`${path}: not non-interlaced grayscale`); }
+    if (type === 'IHDR') { width = body.readUInt32BE(0); height = body.readUInt32BE(4); depth = body[8]; colorType = body[9]; if (body[12] !== 0) throw new Error(`${path}: interlaced`); }
+    if (type === 'PLTE') palette = Array.from({ length: length / 3 }, (_, i) => [...body.subarray(i * 3, i * 3 + 3)]);
     if (type === 'IDAT') idat.push(body);
     at += 12 + length;
   }
-  if (depth !== 2) throw new Error(`${path}: expected 2-bit grayscale`);
-  const raw = inflateSync(Buffer.concat(idat)), stride = width / 4, rows = [];
+  if (colorType !== 0 && colorType !== 3) throw new Error(`${path}: color type ${colorType} unsupported`);
+  const raw = inflateSync(Buffer.concat(idat)), stride = Math.ceil(width * depth / 8), rows = [];
   for (let y = 0; y < height; y++) {                      // undo the PNG row filters
     const filter = raw[y * (stride + 1)], line = Buffer.from(raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1))), up = rows[y - 1];
+    const bpp = Math.max(1, depth >> 3);
     for (let i = 0; i < stride; i++) {
-      const left = i ? line[i - 1] : 0, above = up ? up[i] : 0, corner = up && i ? up[i - 1] : 0;
+      const left = i >= bpp ? line[i - bpp] : 0, above = up ? up[i] : 0, corner = up && i >= bpp ? up[i - bpp] : 0;
       const p = left + above - corner, pa = Math.abs(p - left), pb = Math.abs(p - above), pc = Math.abs(p - corner);
       line[i] = (line[i] + [0, left, above, (left + above) >> 1, pa <= pb && pa <= pc ? left : pb <= pc ? above : corner][filter]) & 255;
     }
     rows.push(line);
   }
+  const max = (1 << depth) - 1;
   let pixels = '';
-  for (const line of rows) for (let x = 0; x < width; x++) pixels += 3 - ((line[x >> 2] >> (6 - 2 * (x & 3))) & 3);
-  return { width, height, pixels };
+  for (const line of rows) for (let x = 0; x < width; x++) {
+    const v = (line[(x * depth) >> 3] >> (8 - depth - ((x * depth) & 7))) & max;
+    pixels += gray && colorType === 0 ? (max === 3 ? 3 - v : max - v) : v;
+  }
+  return { width, height, pixels, palette: colorType === 3 ? palette : null };
 }
 function titleData() {
   const palettes = palettesOf(rgbs(text('gfx/title/title.pal')));
@@ -457,6 +584,11 @@ function scriptFiles() {
       + `export const CALLBACKS = ${JSON.stringify(parsed.callbacks)};\n`
       + `export const SCRIPTS = ${JSON.stringify(parsed.blocks)};\n`;
   }
+  for (const [species, { pic }] of Object.entries(pokemonAll())) {
+    files[`pokemon/${species}.js`] = `// GENERATED by tools/extract-browser-data.mjs from gfx/pokemon/*/{front,back}.png and shiny.pal. Do not edit.\n`
+      + `// PIC: front (first frame, size x size), back (48x48) as one palette-index digit per pixel; palette and shiny are [white, color1, color2, black] in 5-bit [r,g,b].\n`
+      + `export const PIC = ${JSON.stringify(pic)};\n`;
+  }
   // Shared scripts: std scripts (jumpstd) and the decoration descriptions (describedecoration).
   const std = { ...parseBlocks('engine/events/std_scripts.asm').blocks, ...parseBlocks('engine/overworld/decorations.asm').blocks };
   files['scripts/_std.js'] = `// GENERATED by tools/extract-browser-data.mjs from engine/events/std_scripts.asm and engine/overworld/decorations.asm. Do not edit.\n`
@@ -481,7 +613,7 @@ export function generate() {
   const tileset = Object.entries(ts).map(([k, v]) =>
     `  ${k}: {\n  metatiles: [\n${rows(v.metatiles)}\n  ],\n  collision: [\n${rows(v.collision)}\n  ],\n},`).join('\n');
   const mp = Object.entries(maps()).map(([k, v]) =>
-    `  ${k}: { name: '${v.name}', tileset: '${v.tileset}', environment: '${v.environment}', palette: '${v.palette}', connections: ${JSON.stringify(v.connections)}, group: ${v.group}, number: ${v.number}, width: ${v.width}, height: ${v.height}, border: ${v.border}, source: '${v.source}',\n    blocks: ${JSON.stringify(v.blocks)} },`).join('\n');
+    `  ${k}: { name: '${v.name}', tileset: '${v.tileset}', environment: '${v.environment}', landmark: '${v.landmark}', palette: '${v.palette}', connections: ${JSON.stringify(v.connections)}, group: ${v.group}, number: ${v.number}, width: ${v.width}, height: ${v.height}, border: ${v.border}, source: '${v.source}',\n    blocks: ${JSON.stringify(v.blocks)} },`).join('\n');
   const spriteTable = Object.entries(sprites()).map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
   const eventTable = Object.entries(events()).map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
   return {
@@ -526,6 +658,35 @@ export function generate() {
         + `export const FONT_PNG = '${f.font}';\nexport const FONT_EXTRA_PNG = '${f.extra}';\nexport const FRAME_PNG = '${f.frame}';\nexport const SPACE_PNG = '${f.space}';\n`
         + `export const FONT_CODES = ${JSON.stringify(f.codes)};\nexport const TEXT_PALETTE = ${JSON.stringify(f.palette)};\n`;
     })(),
+    'fruit-trees.js': `// GENERATED by tools/extract-browser-data.mjs from data/items/fruit_trees.asm. Do not edit.\n`
+      + `export const FRUIT_TREE_ITEMS = ${JSON.stringify(Object.fromEntries([...text('data/items/fruit_trees.asm').matchAll(/^\tdb (\w+)\s*; (\w+)/gm)].map((m) => [`FRUITTREE_${m[2]}`, m[1]])))};\n`,
+    'pokemon.js': (() => {
+      const all = pokemonAll();
+      return `// GENERATED by tools/extract-browser-data.mjs from data/pokemon/{names,base_stats}.asm. Do not edit.\n`
+        + `// POKEMON[SPECIES] = { id, name, dir, stats: {hp, atk, def, spd, sat, sdf}, types, catchRate, baseExp, items, gender, eggCycles, growth, eggGroups, tmhm }.\n`
+        + `export const POKEMON = ${JSON.stringify(Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v.meta])))};\n`
+        + `export const SPECIES_BY_ID = ${JSON.stringify(Object.keys(all))};\n`;
+    })(),
+    'landmarks.js': (() => {
+      const consts = [...text('constants/landmark_constants.asm').matchAll(/^\tconst (LANDMARK_\w+)/gm)].map((m) => m[1]);
+      const table = [...text('data/maps/landmarks.asm').matchAll(/^\tlandmark\s+-?\d+,\s+-?\d+,\s+(\w+)/gm)].map((m) => m[1]);
+      const names = Object.fromEntries([...text('data/maps/landmarks.asm').matchAll(/^(\w+Name):\s+db "([^"]*)@"/gm)].map((m) => [m[1], m[2].replace(/<BSP>/g, ' ')]));
+      return `// GENERATED by tools/extract-browser-data.mjs from constants/landmark_constants.asm and data/maps/landmarks.asm. Do not edit.\n`
+        + `// LANDMARK_NAMES[LANDMARK_*] = the name shown on the sign when entering the area (<BSP> is a space).\n`
+        + `export const LANDMARK_NAMES = ${JSON.stringify(Object.fromEntries(consts.map((c, i) => [c, names[table[i]]])))};\n`
+        + `// MAP_ENTRY_SIGN: gfx/frames/map_entry_sign.png, 7x2 tiles as palette-index digits (0 lightest), row by row.\n`
+        + `export const MAP_ENTRY_SIGN = ${JSON.stringify(grayPng('gfx/frames/map_entry_sign.png'))};\n`;
+    })(),
+    'tile-anims.js': (() => {
+      const t = tileAnimData();
+      return `// GENERATED by tools/extract-browser-data.mjs from data/tileset_anims.asm, engine/tilesets/tileset_anims.asm and gfx/tilesets/*. Do not edit.\n`
+        + `// TILE_ANIM_LISTS[list] = one { op, tile?, frames? } per frame (hTileAnimFrame indexes it, 'done' wraps); FRAMES: tile graphics as 64-digit palette-index strings.\n`
+        + `export const TILE_ANIM_LISTS = ${JSON.stringify(t.lists)};\nexport const TILE_ANIM_FRAMES = ${JSON.stringify(t.frames)};\n`
+        + `// TILE_ANIM_BY_TILESET[normalized tileset name without underscores] = list name\nexport const TILE_ANIM_BY_TILESET = ${JSON.stringify(t.byTileset)};\n`;
+    })(),
+    'items.js': `// GENERATED by tools/extract-browser-data.mjs from constants/item_constants.asm and data/items/{names,attributes,descriptions}.asm. Do not edit.\n`
+      + `// ITEMS[ITEM_CONSTANT] = { id, name, desc: [line, ...], price, hold, param, property, pocket, field, battle } (TM_*/HM_* included).\n`
+      + `export const ITEMS = ${JSON.stringify(itemData())};\n`,
     'title.js': (() => {
       const t = titleData();
       return `// GENERATED by tools/extract-browser-data.mjs from gfx/title/{logo,crystal,suicune}.png and gfx/title/title.pal. Do not edit.\n`

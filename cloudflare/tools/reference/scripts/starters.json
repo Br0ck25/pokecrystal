@@ -1,0 +1,6 @@
+{"steps": [
+ {"warp": {"id": "ELMS_LAB", "warp": 1, "ram": {"wElmsLabSceneID": 2}, "scene": "ElmsLab:2", "clear": ["EVENT_CYNDAQUIL_POKEBALL_IN_ELMS_LAB", "EVENT_TOTODILE_POKEBALL_IN_ELMS_LAB", "EVENT_CHIKORITA_POKEBALL_IN_ELMS_LAB"]}},
+ {"wait": 60}, {"shot": "lab"},
+ {"hold": "up", "frames": 112}, {"hold": "right", "frames": 70}, {"shot": "walked"},
+ {"press": "up"}, {"press": "a"}, {"wait": 90}, {"shot": "pic"}, {"wait": 60}, {"shot": "pic2"}
+]}

@@ -9,6 +9,8 @@ import { runScript, createScriptState } from '../script/interpreter.js';
 import { tileLength } from '../script/text.js';
 import { startMenuItems, saveFlow, moveCursor } from './menu.js';
 import { serializeSave, parseSave } from './save.js';
+import { landmarkSign, SIGN_FRAMES } from './landmark.js';
+import { TileAnimator } from '../maps/tile-anim.js';
 import { COLLISION_PERMISSIONS, COLLISION_VALUES } from '../generated/collision.js';
 import { SCENES, CALLBACKS } from '../generated/scenes.js';
 import { SPRITES } from '../generated/sprites.js';
@@ -27,11 +29,14 @@ const upper = (d) => d.toUpperCase();
 export const STEP_FRAMES = 16;
 export const TURN_FRAMES = 8;
 /** Movement command speeds in frames per square (macros/scripts/movement.asm: slow, normal and big steps). */
-const MOVEMENT_FRAMES = { slow_step: 32, step: 16, big_step: 8, jump_step: 16, fast_jump_step: 8 };
+const MOVEMENT_FRAMES = { slow_step: 32, step: 16, big_step: 8, slow_jump_step: 32, jump_step: 16, fast_jump_step: 8 };
 export const TEXT_FRAMES_PER_CHAR = 3;
 
 const LAND = 0;
 const TALK = 0x10;
+// player_movement.asm .TryJump: ledge tiles ($a0-$a7) can be hopped when moving in one of the directions listed (HOP_RIGHT, LEFT, UP, DOWN, then the diagonals).
+const LEDGE_DIRECTIONS = [['right'], ['left'], ['up'], ['down'], ['right', 'down'], ['down', 'left'], ['up', 'right'], ['up', 'left']];
+const isLedge = (c) => (c & 0xf0) === 0xa0 && LEDGE_DIRECTIONS[c & 7].length > 0;
 const warpTile = (c) => c === COLLISION_VALUES.PIT || c === COLLISION_VALUES.PIT_68 || (c & 0xf0) === 0x70;
 const directionalCarpet = { [COLLISION_VALUES.WARP_CARPET_DOWN]: 'down', [COLLISION_VALUES.WARP_CARPET_UP]: 'up',
   [COLLISION_VALUES.WARP_CARPET_LEFT]: 'left', [COLLISION_VALUES.WARP_CARPET_RIGHT]: 'right' };
@@ -39,12 +44,15 @@ const directionalCarpet = { [COLLISION_VALUES.WARP_CARPET_DOWN]: 'down', [COLLIS
 const WALK_DOWN_TILES = new Set([COLLISION_VALUES.DOOR, COLLISION_VALUES.DOOR_79, COLLISION_VALUES.STAIRCASE, COLLISION_VALUES.CAVE]);
 
 export class Game {
-  constructor({ mapId, x, y, facing = 'down', state = createScriptState(), prev = { map: null, warp: null }, saveStore = null } = {}) {
+  constructor({ mapId, x, y, facing = 'down', state = createScriptState(), prev = { map: null, warp: null }, saveStore = null, continued = false } = {}) {
     this.state = state;
     this.saveStore = saveStore;       // { read(): text | null, write(text) }; see save.js
     this.menu = null;                 // the open start menu: { cursor, lastDir, repeat }
     this.menuCursor = 0;              // wBattleMenuCursorPosition
     this.savingInfo = false;          // the save-info box is up (SaveMenu)
+    this.prevLandmark = 'LANDMARK_SPECIAL';   // wPrevLandmark
+    this.skipSign = continued;        // SHOWN_MAP_NAME_SIGN: Continue shows no sign for the first map
+    this.sign = null;                 // { name, frame }: the area-name sign
     this.frame = 0;
     this.player = { x, y, facing, step: null, parity: 0, queue: [] };
     this.objects = [];
@@ -62,7 +70,7 @@ export class Game {
   /** Continue: a game resumed from a save file's text (see save.js). */
   static fromSave(text, options = {}) {
     const { mapId, x, y, facing, prev, state } = parseSave(text);
-    return new Game({ mapId, x, y, facing, state, prev, ...options });
+    return new Game({ mapId, x, y, facing, state, prev, continued: true, ...options });
   }
 
   // ---- map entry ----------------------------------------------------------------------------------------------
@@ -72,6 +80,7 @@ export class Game {
     const world = loadWorld(mapId);
     this.ctx = await createScriptContext(world.name, this.state);
     this.world = world;
+    this.tileAnim = new TileAnimator(world.tileset);
     this.player = { x, y, facing, step: null, parity: this.player.parity, queue: [] };
     this.objects = world.objects.map((def, index) => ({
       def, index, id: def.id ?? `${world.name}#${index}`, x: def.x, y: def.y, facing: initialFacing(def),
@@ -83,6 +92,12 @@ export class Game {
     this.tileEventsEnabled = false;
     this.textboxOpen = false;
     this.emote = null;
+    this.blackout = null;
+    this.pokepic = null;
+    const shown = landmarkSign(this.prevLandmark, mapId, this.skipSign);
+    this.skipSign = false;
+    this.prevLandmark = shown.prev;
+    this.sign = shown.name ? { name: shown.name, frame: 0 } : null;
     this.loading = false;
     // MAPCALLBACK_NEWMAP, then OBJECTS and TILES (home/map.asm LoadMapAttributes / HandleNewMap order).
     const runCallbacks = (type) => {
@@ -124,6 +139,7 @@ export class Game {
 
   objectById(id) {
     if (id === 'PLAYER') return this.player;
+    if (id === 'LAST_TALKED') return this.runner?.caller ?? this.lastTalked;
     const found = this.objects.find((o) => o.id === id);
     if (!found) throw new Error(`no object ${id} on ${this.world.name}`);
     return found;
@@ -152,11 +168,11 @@ export class Game {
 
   // ---- stepping -----------------------------------------------------------------------------------------------
 
-  startStep(actor, direction, { force = false, frames = STEP_FRAMES, jump = false } = {}) {
+  startStep(actor, direction, { force = false, frames = STEP_FRAMES, jump = false, distance = 1 } = {}) {
     const d = DIRECTIONS[direction];
-    actor.facing = direction;
+    if (!actor.fixedFacing) actor.facing = direction;     // fix_facing keeps the sprite turned while it moves
     if (force && this.follow?.leader === actor) this.follow.steps.push(direction);
-    actor.step = { kind: 'walk', fromX: actor.x, fromY: actor.y, toX: actor.x + d.dx, toY: actor.y + d.dy, frame: 0, frames, jump, force };
+    actor.step = { kind: 'walk', fromX: actor.x, fromY: actor.y, toX: actor.x + d.dx * distance, toY: actor.y + d.dy * distance, frame: 0, frames, jump, force, distance };
   }
 
   startTurn(actor, direction) {
@@ -191,8 +207,11 @@ export class Game {
   update(input = {}) {
     if (this.loading) return;
     this.frame++;
+    this.tileAnim.step();
     this.state.playFrames = (this.state.playFrames ?? 0) + 1;     // wGameTime*, counted while playing
     if (this.fade) { this.fade.frame++; if (this.fade.frame >= this.fade.frames) this.fade = null; }
+    if (this.blackout && this.blackout.frame < this.blackout.frames) this.blackout.frame++;
+    if (this.sign && ++this.sign.frame > SIGN_FRAMES + 1) this.sign = null;
     for (const object of this.objects) this.updateActor(object);
     this.updateActor(this.player);
     if (this.runner) { this.updateRunner(input); return; }
@@ -216,10 +235,13 @@ export class Game {
     if (f && actor === f.follower && !actor.step && f.steps.length > 1) {
       this.startStep(actor, f.steps.shift(), { frames: MOVEMENT_FRAMES.step, force: true });
     }
+    if (actor.sleep > 0) { actor.sleep--; return; }
     while (!actor.step && actor.queue.length) {
       const next = actor.queue.shift();
       if (next.turn) { actor.facing = next.direction; continue; }
-      this.startStep(actor, next.direction, { frames: next.frames, force: true });
+      if (next.fix !== undefined) { actor.fixedFacing = next.fix; continue; }
+      if (next.sleep) { actor.sleep = next.sleep; break; }
+      this.startStep(actor, next.direction, { frames: next.frames, force: true, jump: next.jump });
     }
   }
 
@@ -279,6 +301,9 @@ export class Game {
       const warp = this.world.warps.find((w) => w.x === p.x && w.y === p.y);
       if (warp) { this.warp(warp); return; }
     }
+    // A ledge is hopped in one 32-frame arc, landing on the square beyond it.
+    const there = this.world.collisionAt(nx, ny);
+    if (isLedge(there) && LEDGE_DIRECTIONS[there & 7].includes(direction)) { this.startStep(p, direction, { frames: 2 * STEP_FRAMES, jump: true, distance: 2 }); return; }
     if (this.canWalkTo(nx, ny)) this.startStep(p, direction);
   }
 
@@ -296,13 +321,13 @@ export class Game {
       if (object) { tx = bx; ty = by; }
     }
     if (object) {
-      if (object.def.type !== 'OBJECTTYPE_SCRIPT') { this.unported.add(object.def.type); return false; }
+      if (object.def.type !== 'OBJECTTYPE_SCRIPT' && object.def.type !== 'OBJECTTYPE_ITEMBALL') { this.unported.add(object.def.type); return false; }
       this.startScript(object.def.script, { caller: object });
       return true;
     }
     const events = this.world.bgEvents.filter((b) => b.x === tx && b.y === ty);
     for (const bg of events) {
-      const facingOk = { BGEVENT_READ: true, BGEVENT_IFSET: true, BGEVENT_IFNOTSET: true,
+      const facingOk = { BGEVENT_READ: true, BGEVENT_ITEM: true, BGEVENT_IFSET: true, BGEVENT_IFNOTSET: true,
         BGEVENT_UP: p.facing === 'up', BGEVENT_DOWN: p.facing === 'down', BGEVENT_LEFT: p.facing === 'left', BGEVENT_RIGHT: p.facing === 'right' }[bg.kind];
       if (facingOk === undefined) { this.unported.add(bg.kind); continue; }
       if (!facingOk) continue;
@@ -370,7 +395,11 @@ export class Game {
         case 'waitbutton': case 'promptbutton': runner.wait = { kind: 'button' }; return;
         case 'yesorno': runner.wait = { kind: 'yesno', cursor: 0, x: request.x ?? 14 }; return;   // YesNoBox is at column 14; SaveTheGame_yesorno puts it at 0
         case 'movement': this.beginMovement(request); runner.wait = { kind: 'movement', object: request.object }; return;
-        case 'special': this.applySpecial(request.name); break;
+        case 'special': {
+          const blocking = this.applySpecial(request.name);
+          if (blocking?.wait) { runner.wait = blocking.wait; return; }
+          break;
+        }
         case 'effect': {
           const blocking = this.applyEffect(request, { instant: false });
           if (blocking && blocking.wait) { runner.wait = blocking.wait; return; }
@@ -440,7 +469,7 @@ export class Game {
         break;
       case 'movement': {
         const mover = this.objectById(wait.object);
-        if (!mover.step && !(mover.queue && mover.queue.length)) { runner.wait = null; this.advanceRunner(undefined); }
+        if (!mover.step && !mover.sleep && !(mover.queue && mover.queue.length)) { runner.wait = null; this.advanceRunner(undefined); }
         break;
       }
       case 'frames': if (--wait.left <= 0) { runner.wait = null; if (wait.emote) this.emote = null; this.advanceRunner(undefined); } break;
@@ -477,9 +506,11 @@ export class Game {
     for (const [command, direction] of steps) {
       const dir = direction?.toLowerCase();
       if (command === 'turn_head') { actor.queue.push({ direction: dir, turn: true }); continue; }
-      if (command === 'fix_facing' || command === 'remove_fixed_facing') continue;
+      if (command === 'fix_facing' || command === 'remove_fixed_facing') { actor.queue.push({ fix: command === 'fix_facing' }); continue; }
+      if (command === 'step_sleep') { actor.queue.push({ sleep: Number(direction) }); continue; }   // stands still for that many frames
+      if (command === 'set_sliding' || command === 'remove_sliding') continue;
       if (!(command in MOVEMENT_FRAMES)) throw new Error(`unsupported movement command ${command}`);
-      actor.queue.push({ direction: dir, frames: MOVEMENT_FRAMES[command] });
+      actor.queue.push({ direction: dir, frames: MOVEMENT_FRAMES[command], jump: command.includes('jump') });
     }
   }
 
@@ -511,10 +542,25 @@ export class Game {
       }
       case 'readvar': return this.readVar(args[0]);
       case 'sdefer': this.deferred = args[0]; return undefined;
+      case 'specialphonecall': return undefined;                  // the phone is not ported
       case 'changeblock': this.world.setBlockAt(Number(args[0]), Number(args[1]), Number(args[2].replace('$', '0x'))); return undefined;
       case 'follow': this.startFollow(args[0], args[1]); return undefined;
       case 'stopfollow': this.follow = null; return undefined;
-      case 'warp': this.unported.add('warp'); return undefined;
+      case 'warp': {
+        // Script_warp: leave for the map and tile named, facing as given (down by default)
+        const [map, x, y, facing] = args;
+        this.loading = true;
+        this.fade = { frame: 0, frames: 16 };
+        this.enterMap(map, Number(x), Number(y), facing ? facing.toLowerCase() : 'down');
+        return undefined;
+      }
+      case 'refreshmap': case 'reloadmap': case 'reloadmapafterbattle': case 'newloadmap': case 'dontrestartmapmusic': case 'playmapmusic': case 'warpsound': return undefined;
+      case 'faceobject': {
+        const [who, target] = args.map((a) => this.objectById(a));
+        const dx = target.x - who.x, dy = target.y - who.y;
+        who.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+        return undefined;
+      }
       case 'playsound': case 'specialsound': {
         // No audio yet, but the effect still takes its real time: waitsfx waits for it (scripting.asm, home/audio.asm WaitSFX).
         const frames = SFX_FRAMES[name === 'specialsound' ? 'SFX_ITEM' : args[0]];
@@ -527,7 +573,9 @@ export class Game {
         return instant || left <= 0 ? undefined : { wait: { kind: 'frames', left } };
       }
       case 'playmusic': case 'musicfadeout': case 'cry':
-      case 'reanchormap': case 'pokepic': case 'closepokepic': case 'addcellnum': case 'itemnotify':
+      case 'pokepic': this.pokepic = args[0] === 'USE_SCRIPT_VAR' ? String(this.state.scriptVar) : args[0]; return undefined;   // engine/events/pokepic.asm
+      case 'closepokepic': this.pokepic = null; return undefined;
+      case 'reanchormap': case 'addcellnum': case 'itemnotify':
         return undefined;                                         // audio and presentation are not ported yet
       default:
         this.unported.add(name);
@@ -543,6 +591,13 @@ export class Game {
 
   applySpecial(name) {
     switch (name) {
+      case 'FadeOutToBlack': case 'FadeInFromBlack': {
+        // palette fades take about 16 frames; the screen stays black between the two
+        if (this.runner === null) return undefined;
+        this.blackout = { from: name === 'FadeOutToBlack' ? 0 : 1, to: name === 'FadeOutToBlack' ? 1 : 0, frame: 0, frames: 16 };
+        return { wait: { kind: 'frames', left: 16, fade: true } };
+      }
+      case 'ReloadSpritesNoPalettes': return undefined;
       case 'HealParty': case 'HealMachineAnim': case 'RestartMapMusic': case 'StubbedTrainerRankings_Healings': return;
       case 'ToggleDecorationsVisibility': return;                      // the interpreter sets the object flags
       case 'ToggleMaptileDecorations': {

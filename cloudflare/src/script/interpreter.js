@@ -7,6 +7,8 @@
 import { renderText } from './text.js';
 import { EVENTS } from '../generated/events.js';
 import { NEW_GAME_DECORATIONS } from '../generated/decorations.js';
+import { FRUIT_TREE_ITEMS } from '../generated/fruit-trees.js';
+import { receiveItem, tossItem, itemName, pocketOf, POCKET_NAMES } from './bag.js';
 
 export const DIRECTIONS = ['DOWN', 'UP', 'LEFT', 'RIGHT'];
 const TIMES = { MORN: 1, DAY: 2, NITE: 4 };   // constants/time_constants.asm: 1 << MORN_F, DAY_F, NITE_F
@@ -138,20 +140,28 @@ export function* runScript(ctx, startLabel) {
       }
       case 'checktime': state.scriptVar = (timeMask(args[0]) & TIMES[state.timeOfDay]) ? 1 : 0; break;
       case 'readvar': state.scriptVar = yield* readVar(args[0]); break;
-      case 'checkitem': state.scriptVar = (state.items[args[0]] ?? 0) > 0 ? 1 : 0; break;
-      case 'giveitem': state.items[args[0]] = (state.items[args[0]] ?? 0) + Number(args[1] ?? 1); state.scriptVar = 1; break;
+      case 'checkitem': state.scriptVar = (state.items[args[0] === 'ITEM_FROM_MEM' ? state.scriptVar : args[0]] ?? 0) > 0 ? 1 : 0; break;
+      case 'giveitem': {
+        const item = args[0] === 'ITEM_FROM_MEM' ? state.scriptVar : args[0];
+        state.curItem = item;
+        state.scriptVar = receiveItem(state, item, Number(args[1] ?? 1)) ? 1 : 0;
+        break;
+      }
       case 'takeitem': {
-        const have = state.items[args[0]] ?? 0;
-        state.scriptVar = have > 0 ? 1 : 0;
-        if (have > 0) state.items[args[0]] = have - Number(args[1] ?? 1);
+        state.scriptVar = tossItem(state, args[0], Number(args[1] ?? 1)) ? 1 : 0;
         break;
       }
       case 'givepoke': state.party.push({ species: args[0], level: Number(args[1]), item: args[2] }); state.scriptVar = 1; break;
       case 'getstring': state.buffers[args[0].replace('STRING_BUFFER_', 'wStringBuffer')] = findString(args[1]); break;
       case 'getmonname': state.buffers[args[0].replace('STRING_BUFFER_', 'wStringBuffer')] = args[1] === 'FROM_MEM' ? String(state.scriptVar) : args[1]; break;
-      case 'getitemname': state.buffers[args[0].replace('STRING_BUFFER_', 'wStringBuffer')] = args[1]; break;
-      case 'appear': state.flags.delete(objectFlag(args[0])); yield { type: 'effect', name, args }; break;
-      case 'disappear': state.flags.add(objectFlag(args[0])); yield { type: 'effect', name, args }; break;
+      case 'getitemname': state.buffers[args[0].replace('STRING_BUFFER_', 'wStringBuffer')] = itemName(args[1] === 'USE_SCRIPT_VAR' ? state.scriptVar : args[1]); break;
+      case 'appear': args[0] = realId(args[0]); state.flags.delete(objectFlag(args[0])); yield { type: 'effect', name, args }; break;
+      case 'disappear': args[0] = realId(args[0]); state.flags.add(objectFlag(args[0])); yield { type: 'effect', name, args }; break;
+      case 'blackoutmod': state.blackout = args[0]; break;                                   // wLastSpawnMapGroup/Number
+      case 'setlasttalked': state.lastTalked = args[0]; break;                               // hLastTalked
+      case 'applymovementlasttalked': yield { type: 'movement', object: realId('LAST_TALKED'), steps: movementSteps(args[0]) }; break;
+      case 'warp': yield { type: 'effect', name, args }; return;                             // Script_warp: StopScript
+      case 'warpfacing': yield { type: 'effect', name: 'warp', args: [...args.slice(1), args[0]] }; return;
       case 'opentext': yield { type: 'opentext' }; break;
       case 'closetext': yield { type: 'closetext' }; break;
       case 'waitbutton': yield { type: 'waitbutton' }; break;
@@ -186,27 +196,111 @@ export function* runScript(ctx, startLabel) {
           break;
         }
         yield { type: 'special', name: args[0] }; break;
-      case 'verbosegiveitem': {
-        state.items[args[0]] = (state.items[args[0]] ?? 0) + Number(args[1] ?? 1);
-        state.buffers.wStringBuffer4 = args[0];
+      case 'verbosegiveitem': case 'verbosegiveitemvar': {
+        // scripting.asm Script_verbosegiveitem + GiveItemScript
+        const item = args[0] === 'ITEM_FROM_MEM' ? state.scriptVar : args[0];
+        const quantity = name === 'verbosegiveitem' ? Number(args[1] ?? 1) : Number(state.scriptVar);
+        state.curItem = item;
+        state.scriptVar = receiveItem(state, item, quantity) ? 1 : 0;
+        state.buffers.wStringBuffer4 = itemName(item);
         yield showText('_ReceivedItemText');
+        if (state.scriptVar === 0) { yield { type: 'promptbutton' }; yield* pocketIsFull(); break; }
         yield { type: 'effect', name: 'waitsfx', args: [] };
         yield { type: 'effect', name: 'specialsound', args: [] };
         yield { type: 'waitbutton' };
-        yield { type: 'effect', name: 'itemnotify', args: [args[0]] };
+        yield* itemNotify();
+        break;
+      }
+      case 'itemnotify': yield* itemNotify(); break;
+      case 'refreshmap': case 'reloadmap': case 'reloadmapafterbattle': case 'newloadmap': case 'dontrestartmapmusic': case 'playmapmusic': case 'warpsound': case 'faceobject':
+        yield { type: 'effect', name, args: args.map(realId) }; break;
+      case 'pocketisfull': yield* pocketIsFull(); break;
+      case 'itemball': {
+        // misc_scripts.asm FindItemInBallScript
+        const [item, quantity = '1'] = args;
+        state.buffers.wStringBuffer3 = itemName(item);
+        state.curItem = item;
+        const ok = receiveItem(state, item, Number(quantity));
+        if (ok) { state.flags.add(objectFlag(ctx.caller.id)); yield { type: 'effect', name: 'disappear', args: [ctx.caller.id] }; }
+        yield { type: 'opentext' };
+        yield showText('_FoundItemText');
+        if (ok) {
+          yield { type: 'effect', name: 'playsound', args: ['SFX_ITEM'] };
+          yield { type: 'effect', name: 'pause', args: [60] };
+          yield* itemNotify();
+        } else { yield { type: 'waitbutton' }; yield showText('_CantCarryItemText'); yield { type: 'waitbutton' }; }
+        yield { type: 'closetext' };
+        if (returnOrFinish()) return;
+        break;
+      }
+      case 'hiddenitem': {
+        // hidden_item.asm HiddenItemScript: the flag (args[0]) marks it as found
+        const [flag, item] = [args[1], args[0]];
+        if (state.flags.has(flag)) { if (returnOrFinish()) return; break; }
+        state.buffers.wStringBuffer3 = itemName(item);
+        state.curItem = item;
+        yield { type: 'opentext' };
+        yield showText('_PlayerFoundItemText');
+        if (receiveItem(state, item, 1)) {
+          state.flags.add(flag);
+          yield { type: 'effect', name: 'specialsound', args: [] };
+          yield* itemNotify();
+        } else { yield { type: 'promptbutton' }; yield showText('_ButNoSpaceText'); yield { type: 'waitbutton' }; }
+        yield { type: 'closetext' };
+        if (returnOrFinish()) return;
+        break;
+      }
+      case 'fruittree': {
+        // fruit_trees.asm FruitTreeScript; the trees grow back every day (ResetFruitTrees)
+        const fruit = FRUIT_TREE_ITEMS[args[0]];
+        if (!fruit) throw new Error(`unknown fruit tree ${args[0]}`);
+        state.buffers.wStringBuffer3 = itemName(fruit);
+        yield { type: 'opentext' };
+        yield showText('_FruitBearingTreeText');
+        yield { type: 'promptbutton' };
+        const picked = (state.fruitTrees ??= new Set());
+        if (state.fruitTreesDay !== ctx.today?.()) { picked.clear(); state.fruitTreesDay = ctx.today?.(); }
+        if (picked.has(args[0])) { yield showText('_NothingHereText'); yield { type: 'waitbutton' }; }
+        else {
+          yield showText('_HeyItsFruitText');
+          state.curItem = fruit;
+          if (receiveItem(state, fruit, 1)) {
+            yield { type: 'promptbutton' };
+            yield showText('_ObtainedFruitText');
+            picked.add(args[0]);
+            yield { type: 'effect', name: 'specialsound', args: [] };
+            yield* itemNotify();
+          } else { yield { type: 'promptbutton' }; yield showText('_FruitPackIsFullText'); yield { type: 'waitbutton' }; }
+        }
+        yield { type: 'closetext' };
+        if (returnOrFinish()) return;
         break;
       }
       // Presentation and engine effects handled by the caller; they never change script state themselves.
       case 'faceplayer': case 'turnobject': case 'showemote': case 'pause': case 'playmusic': case 'playsound':
       case 'waitsfx': case 'musicfadeout': case 'follow': case 'stopfollow': case 'reanchormap': case 'moveobject':
-      case 'pokepic': case 'closepokepic': case 'cry': case 'warp': case 'addcellnum': case 'sdefer':
-      case 'itemnotify': case 'changeblock': case 'specialphonecall': case 'fix_facing': case 'remove_fixed_facing':
+      case 'pokepic': case 'closepokepic': case 'cry': case 'addcellnum': case 'sdefer':
+      case 'changeblock': case 'specialphonecall': case 'fix_facing': case 'remove_fixed_facing':
         yield { type: 'effect', name, args }; break;
       default:
         throw new Error(`unsupported script command ${name} in ${pos.key}`);
     }
   }
 
+  // Script_itemnotify / Script_pocketisfull: text with the item (buffer 1) and its pocket (buffer 3)
+  function* itemNotify() {
+    state.buffers.wStringBuffer1 = itemName(state.curItem);
+    state.buffers.wStringBuffer3 = POCKET_NAMES[pocketOf(state.curItem)];
+    yield showText('_PutItemInPocketText');
+  }
+  function* pocketIsFull() {
+    state.buffers.wStringBuffer3 = POCKET_NAMES[pocketOf(state.curItem)];
+    yield showText('_PocketIsFullText');
+  }
+  /** LAST_TALKED is the object spoken to (or set with setlasttalked); other ids are object constants. */
+  function realId(id) {
+    return id === 'LAST_TALKED' ? (state.lastTalked ?? ctx.caller?.id) : id;
+  }
   function objectFlag(id) {
     if (!OBJECT_FLAGS.has(id)) throw new Error(`unknown object ${id}`);
     return OBJECT_FLAGS.get(id);
