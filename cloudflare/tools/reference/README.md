@@ -27,3 +27,7 @@ Other checks (same build; `play.sh`/`play.py` replay button scripts in `scripts/
     node tools/reference/title_app_menu.cjs out.png http://localhost:8765 DOWNS [save.json] [A]   # the app's main menu / CONTINUE box
 
 Regression run: `npm run regress -- --build DIR --out DIR [--only menu,mom]` replays the scripts listed in `regress.json` and fails when a checkpoint differs by more pixels than its budget. The budgets only cover settled frames (not mid-fade or moving-NPC ones). `PyBoy` ignores a button press unless the screen is read between presses; `play.py` handles that, but a `hold` of one frame can still be missed, so use 4+ frames. Useful `warp` fields: `ram` (symbol -> value), `set`/`clear` (event flags), `engine` (app-side engine flags such as `ENGINE_POKEGEAR`) and `party` (app-side party size).
+
+Damage oracle (`damage/`): `node damage/cases.mjs > OUT/cases.json`, `BATTLES=5 python3 damage/probe.py --build DIR --out OUT` plants a party Pokémon in RAM (species, item, moves, badges),
+random-walks Route 29 into wild battles and records each hit (`wCurDamage`, crit flag, `wTypeModifier`, both mons' stats), then `node damage/verify.mjs OUT` checks that `src/battle/damage.js`
+can produce exactly that damage (some roll of 217..255, or the target's HP when the hit overkills). The last run matched 64 of 67 hits; the rest were 10-HP losses of MAROWAK that no attack explains.

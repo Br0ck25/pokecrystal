@@ -21,4 +21,4 @@ battle_transition.asm, trainer_huds.asm, anim_hp_bar.asm...), driven by the gene
 5. Trainers: sight, parties, AI, rewards. Remaining effects. Animations last.
 
 ## Status
-Nothing of the battle is ported yet. Party Pokémon (stats, moves, exp) exist in `src/script/mon.js`.
+Done: `src/battle/damage.js` (DamageStats, DamageCalc, Critical, Stab with weather/badges/type chart, DamageVariation), checked against 67 ROM hits with `tools/reference/damage`. Not ported yet: CheckHit, the turn loop, everything after step 1. Party Pokémon (stats, moves, exp) exist in `src/script/mon.js`.

@@ -496,6 +496,7 @@ function battleData() {
     if (/^DEF TYPES_END/.test(line)) break;
   }
   const special = types.FIRE;
+  const WEATHER = { WEATHER_NONE: 0, WEATHER_RAIN: 1, WEATHER_SUN: 2, WEATHER_SANDSTORM: 3 };
   const effectness = { SUPER_EFFECTIVE: 20, MORE_EFFECTIVE: 15, EFFECTIVE: 10, NOT_VERY_EFFECTIVE: 5, NO_EFFECT: 0 };
   const matchups = [], foresight = [];
   let into = matchups;
@@ -518,6 +519,9 @@ function battleData() {
     critChances: crit,
     statMultipliers: pairs('data/battle/stat_multipliers.asm'),
     accuracyMultipliers: pairs('data/battle/accuracy_multipliers.asm'),
+    typeBoostItems: Object.fromEntries([...text('data/types/type_boost_items.asm').matchAll(/^\tdb (HELD_\w+),\s+(\w+)/gm)].map((m) => [m[1], types[m[2]]])),
+    badgeBoosts: [...text('data/types/badge_type_boosts.asm').matchAll(/^\tdb (\w+)\s+;/gm)].map((m) => types[m[1]]),   // Johto badges, then Kanto
+    weatherTypes: [...text('data/battle/weather_modifiers.asm').matchAll(/^\tdb (WEATHER_\w+),\s+(\w+),\s+(\w+)/gm)].map((m) => [WEATHER[m[1]], types[m[2]] ?? m[2], effectness[m[3]]]),
   };
 }
 
