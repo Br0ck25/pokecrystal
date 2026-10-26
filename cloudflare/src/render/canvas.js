@@ -3,7 +3,7 @@ import { TILESET_IMAGES, ROOFS } from '../generated/tileset-images.js';
 import { TILESETS } from '../generated/tilesets.js';
 import { SPRITES } from '../generated/sprites.js';
 import { JUMP_SHADOW, GRASS_RUSTLE } from '../generated/sprite-movement.js';
-import { FONT_PNG, FONT_EXTRA_PNG, FRAME_PNG, FONT_CODES, TEXT_PALETTE } from '../generated/font.js';
+import { FONT_PNG, FONT_EXTRA_PNG, FRAME_PNGS, FONT_CODES, TEXT_PALETTE } from '../generated/font.js';
 import { mapBgPalettes, tilePaletteIndex } from '../maps/map-palettes.js';
 import { objectPaletteColors, recolorSprite, PALETTE_NAMES } from '../maps/object-sprites.js';
 import { GBC_VIEWPORT_WIDTH as W, GBC_VIEWPORT_HEIGHT as H } from '../maps/viewport.js';
@@ -79,22 +79,30 @@ export class Renderer {
     this.themes = new Map();
     this.picImages = new Map();
     this.picModules = new Map();
-    this.fontReady = Promise.all([loadImage(FONT_PNG), loadImage(FONT_EXTRA_PNG), loadImage(FRAME_PNG)]).then(([font, extra, frame]) => {
+    this.fontReady = Promise.all([loadImage(FONT_PNG), loadImage(FONT_EXTRA_PNG), ...FRAME_PNGS.map(loadImage)]).then(([font, extra, ...frames]) => {
       this.font = recolorSheet(font, () => textColors);
       this.fontExtra = recolorSheet(extra, () => textColors);
-      this.frame = recolorSheet(frame, () => textColors);
-      this.frameImage = frame;
+      this.frameImages = frames;
+      this.frameIndex = 0;
+      this.frame = recolorSheet(frames[0], () => textColors);
       this.fontImages = [font, extra];
     });
   }
 
   /** Font sheets and frame recolored for a four-color palette (text and boxes take the palette of the screen they are on). */
   theme(colors) {
-    const key = colors.toString();
+    const key = `${this.frameIndex}|${colors}`;
     if (!this.themes.has(key)) {
-      this.themes.set(key, { colors, fonts: this.fontImages.map((f) => recolorSheet(f, () => colors)), frame: recolorSheet(this.frameImage, () => colors) });
+      this.themes.set(key, { colors, fonts: this.fontImages.map((f) => recolorSheet(f, () => colors)), frame: recolorSheet(this.frameImages[this.frameIndex], () => colors) });
     }
     return this.themes.get(key);
+  }
+
+  /** The box border the player chose in OPTION (wTextboxFrame, 0-7). */
+  setFrame(index) {
+    if (index === this.frameIndex || !this.frameImages) return;
+    this.frameIndex = index;
+    this.frame = recolorSheet(this.frameImages[index], () => textColors);
   }
 
   setScale(scale) {
@@ -422,8 +430,8 @@ export class Renderer {
 
   /** engine/events/pokepic.asm: a box at (x,y) 9x10 tiles with the species' front picture in its 7x7 interior, all in the map's gray palette (_CGB_Pokepic). */
   drawPokepic(species, x, y, gray) {
-    const key = gray.toString();
-    if (!this.grayFrames.has(key)) this.grayFrames.set(key, recolorSheet(this.frameImage, () => gray));
+    const key = `${this.frameIndex}|${gray}`;
+    if (!this.grayFrames.has(key)) this.grayFrames.set(key, recolorSheet(this.frameImages[this.frameIndex], () => gray));
     this.drawBox(x, y, x + 8, y + 9, gray, this.grayFrames.get(key));
     const pic = this.picCanvas(species, 'front', gray);
     if (pic) this.ctx.drawImage(pic, (x + 1) * 8, (y + 1) * 8);
@@ -465,6 +473,7 @@ export class Renderer {
   }
 
   draw(game) {
+    this.setFrame(game.state.options?.frame ?? 0);
     const scene = describeScene(game);
     const c = this.ctx;
     c.setTransform(this.scale, 0, 0, this.scale, 0, 0);

@@ -10,6 +10,7 @@ import { startTextWait, stepTextWait, TEXT_FRAMES_PER_CHAR } from '../script/tex
 import { startMenuItems, saveFlow, moveCursor } from './menu.js';
 import { serializeSave, parseSave } from './save.js';
 import { NamingScreen } from './naming.js';
+import { OptionsScreen, options, TEXT_DELAYS } from './options.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
 import { stepNpc, endNpcWalk, LOOP_FRAMES } from './npc-ai.js';
@@ -52,6 +53,7 @@ export class Game {
   constructor({ mapId, x, y, facing = 'down', state = createScriptState(), prev = { map: null, warp: null }, saveStore = null, continued = false } = {}) {
     this.state = state;
     this.saveStore = saveStore;       // { read(): text | null, write(text) }; see save.js
+    this.optionScreen = null;         // the OPTION screen, opened from the start menu
     this.menu = null;                 // the open start menu: { cursor, lastDir, repeat }
     this.randomByte = () => Math.floor(Math.random() * 256);     // Random; tests replace it
     this.menuCursor = 0;              // wBattleMenuCursorPosition
@@ -243,6 +245,7 @@ export class Game {
     // objects act on their own between scripts and menus (the loop that runs them does not run while text is waiting)
     if (!this.runner && !this.menu && this.frame % LOOP_FRAMES === 0) for (const object of this.visibleObjects()) stepNpc(this, object, this.randomByte);
     if (this.runner) { this.updateRunner(input); return; }
+    if (this.optionScreen) { if (this.optionScreen.update(input)) this.optionScreen = null; return; }
     if (this.menu) { this.updateMenu(input); return; }
     if (this.player.step) return;
     this.idleEvents(input);
@@ -461,6 +464,7 @@ export class Game {
     const item = items[m.cursor];
     if (item === 'EXIT') this.menu = null;
     else if (item === 'SAVE') this.startSave();
+    else if (item === 'OPTION') this.optionScreen = new OptionsScreen(options(this.state));
     else this.unported.add(`start menu ${item}`);
   }
 
@@ -507,7 +511,7 @@ export class Game {
 
   updateText(wait, input) {
     this.lastTextLines = wait.screens[wait.index].lines;     // stays on screen through the waitbutton or yes/no that follows
-    if (stepTextWait(wait, input)) { this.runner.wait = null; this.advanceRunner(undefined); }
+    if (stepTextWait(wait, { ...input, delay: TEXT_DELAYS[options(this.state).textSpeed] })) { this.runner.wait = null; this.advanceRunner(undefined); }
   }
 
   // ---- movement requests and effects ---------------------------------------------------------------------------

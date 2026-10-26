@@ -57,10 +57,11 @@ export function startMenuItems(state) {
 export function startMenuView(state, cursor, hollow = false) {
   const items = startMenuItems(state);
   const texts = items.map((item, i) => [12, 2 + 2 * i, LABELS[item] ?? state.playerName]);
-  if (!hollow) texts.push(...DESCRIPTIONS[items[cursor]].map((line, i) => [0, 14 + 2 * i, expandTokens(line, state)]));
+  const account = !hollow && (state.options?.menuAccount ?? true);       // ._DrawMenuAccount only when the option is on
+  if (account) texts.push(...DESCRIPTIONS[items[cursor]].map((line, i) => [0, 14 + 2 * i, expandTokens(line, state)]));
   return {
     box: [10, 0, 19, items.length * 2 + 1],
-    clear: hollow ? null : [0, 13, 10, 5],                // ._DrawMenuAccount blanks 10x5 tiles at (0,13)
+    clear: account ? [0, 13, 10, 5] : null,                // ._DrawMenuAccount blanks 10x5 tiles at (0,13)
     texts,
     cursor: [11, 2 + 2 * cursor, hollow ? '▷' : '▶'],
   };

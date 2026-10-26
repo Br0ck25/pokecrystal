@@ -1,10 +1,81 @@
 {
   "comment": "Largest allowed differing_pixels per checkpoint (play.py compares the app with the real game). Only the listed checkpoints are checked; the others are mid-fade or moving-NPC frames. Lower a budget when a fix makes it smaller; raise one only for a diff you have looked at and explained.",
   "runs": [
-    { "script": "menu", "budgets": { "room": 0, "menu": 0, "down1": 0, "cursor_save": 0, "a_pressed": 0, "ask": 0, "saving": 0, "saving2": 0, "saving3": 0, "saving4": 0, "s5": 0, "s6": 0, "s7": 0, "s8": 13, "s9": 4, "s10": 0, "s11": 0, "s12": 0, "s13": 0, "s14": 0, "s15": 0, "s16": 0, "s17": 0 } },
-    { "script": "menu_full", "budgets": { "menu8": 0 } },
-    { "script": "mom", "budgets": { "room": 0, "downstairs": 0, "mom_text1": 0, "mom_text2": 35 } },
-    { "script": "sign", "budgets": { "t11": 0, "t12": 0, "t13": 0, "t14": 0, "t16": 32, "t17": 0, "t18": 0 } },
-    { "script": "anim", "budgets": { "a0": 0 } }
+    {
+      "script": "menu",
+      "budgets": {
+        "room": 0,
+        "menu": 0,
+        "down1": 0,
+        "cursor_save": 0,
+        "a_pressed": 0,
+        "ask": 0,
+        "saving": 0,
+        "saving2": 0,
+        "saving3": 0,
+        "saving4": 0,
+        "s5": 0,
+        "s6": 0,
+        "s7": 0,
+        "s8": 13,
+        "s9": 4,
+        "s10": 0,
+        "s11": 0,
+        "s12": 0,
+        "s13": 0,
+        "s14": 0,
+        "s15": 0,
+        "s16": 0,
+        "s17": 0
+      }
+    },
+    {
+      "script": "menu_full",
+      "budgets": {
+        "menu8": 0
+      }
+    },
+    {
+      "script": "mom",
+      "budgets": {
+        "room": 0,
+        "downstairs": 0,
+        "mom_text1": 0,
+        "mom_text2": 35
+      }
+    },
+    {
+      "script": "sign",
+      "budgets": {
+        "t11": 0,
+        "t12": 0,
+        "t13": 0,
+        "t14": 0,
+        "t16": 32,
+        "t17": 0,
+        "t18": 0
+      }
+    },
+    {
+      "script": "anim",
+      "budgets": {
+        "a0": 0
+      }
+    },
+    {
+      "script": "option",
+      "budgets": {
+        "m0": 0,
+        "opt_speed": 0,
+        "opt_scene": 0,
+        "opt_style": 0,
+        "opt_sound": 0,
+        "opt_print": 0,
+        "opt_account": 0,
+        "opt_frame": 0,
+        "opt_frame2": 0,
+        "opt_cancel": 0
+      }
+    }
   ]
 }

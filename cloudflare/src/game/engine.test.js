@@ -269,3 +269,22 @@ test('tall grass: stepping into it shakes the grass, standing in it hides the lo
   assert.equal(g.player.step.rustle, false, 'stepping out of the grass does not shake anything');
   assert.equal(g.player.inGrass, false, 'the grass flag drops when the step to a non-grass square begins');
 });
+
+test('OPTION: START opens it, left/right change the settings, text speed sets the typing speed, B closes it', async () => {
+  const g = await newGame('PLAYERS_HOUSE_2F', 3, 3);
+  run(g, 1, { start: true });
+  const items = ['PACK', 'STATUS', 'SAVE', 'OPTION', 'EXIT'];
+  g.menu.cursor = items.indexOf('OPTION');
+  run(g, 1, { a: true });
+  assert.ok(g.optionScreen);
+  run(g, 1, { dir: 'right' });                                  // TEXT SPEED: MID -> SLOW
+  assert.equal(g.state.options.textSpeed, 2);
+  run(g, 20, {});
+  run(g, 1, { dir: 'down' });
+  run(g, 20, {});
+  run(g, 1, { dir: 'left' });                                   // BATTLE SCENE: ON -> OFF
+  assert.equal(g.state.options.battleScene, false);
+  run(g, 1, { b: true });
+  assert.equal(g.optionScreen, null);
+  assert.ok(g.menu, 'back in the start menu');
+});

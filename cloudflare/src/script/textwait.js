@@ -15,7 +15,7 @@ export function stepTextWait(wait, input) {
   const total = tileLength(screen.lines[0]) + tileLength(screen.lines[1]);
   if (!wait.ready) {
     wait.timer++;
-    const per = (input.aHeld || input.bHeld) ? 1 : TEXT_FRAMES_PER_CHAR;
+    const per = (input.aHeld || input.bHeld) ? 1 : input.delay ?? TEXT_FRAMES_PER_CHAR;
     if (wait.timer >= per) { wait.timer = 0; wait.chars++; }
     if (wait.chars >= total) wait.ready = true;
     return false;
