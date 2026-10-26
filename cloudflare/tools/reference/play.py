@@ -75,7 +75,7 @@ for s in steps:
         for ev in c.get('set', []): set_event(ev, True)
         group, num = ids[c['id']]
         ref.warp_in(group, num, c['warp'], c.get('settle', 300))
-        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'playerId': ref.rd('wPlayerID') << 8 | ref.rd('wPlayerID+1'), 'party': c.get('party', 0), 'plant': c.get('plant', []), 'items': c.get('items', {}), 'settle': c.get('settle', 0), 'enemyMonLevel': ref.rd('wEnemyMonLevel'), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
+        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'playerId': ref.rd('wPlayerID') << 8 | ref.rd('wPlayerID+1'), 'party': c.get('party', 0), 'plant': c.get('plant', []), 'items': c.get('items', {}), 'settle': c.get('settle', 0), 'enemyMonLevel': ref.rd('wEnemyMonLevel'), 'clock': c.get('clock'), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
     elif 'sync' in s:                                  # {"sync": "battle", "tap": "a"}: tap A every 40 frames until the battle starts (BattleIntro); both sides then sit at transition frame 0
         # {"sync": "battle", "walk": ["left", "right"]}: walk a tile (16 frames) at a time in that order until a wild battle starts; the app is told the species, level and DVs
         for i in range(s.get('limit', 4000)):

@@ -30,6 +30,7 @@ const fs = require('fs');
         }
         if (e.prevLandmark) g.prevLandmark = e.prevLandmark;
         if (e.enemyMonLevel !== undefined) g.enemyMonLevel = e.enemyMonLevel;
+        if (e.clock) g.state.clock = e.clock;                                         // the time the Pokégear shows
         await g.enterMap(e.map, e.x, e.y, 'down');
         while (g.loading) await new Promise((r) => setTimeout(r, 2));
         for (let i = 0; i < (e.settle ?? 0); i++) g.update({});                  // the ROM idles this long after the warp too

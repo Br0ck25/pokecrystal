@@ -404,7 +404,23 @@ export class Renderer {
   }
 
   /** A sprite sheet frame at pixel (x, y) in a palette named RED/BLUE...: { sprite, palette, row, mirror, x, y }. */
-  drawSpriteAt({ sprite, palette, row = 0, mirror = false, x, y, icon, colors }) {
+  drawSpriteAt({ sprite, palette, row = 0, mirror = false, x, y, icon, colors, bitmap }) {
+    if (bitmap) {                                                     // { w, h, pixels }: palette-index digits, 0 see-through (object tiles of a screen)
+      const key = `bitmap|${bitmap.w}|${bitmap.pixels}|${colors}`;
+      let canvas = this.picImages.get(key);
+      if (!canvas) {
+        canvas = makeCanvas(bitmap.w, bitmap.h);
+        const c = canvas.getContext('2d'), image = c.createImageData(bitmap.w, bitmap.h);
+        for (let i = 0; i < bitmap.w * bitmap.h; i++) { const index = bitmap.pixels.charCodeAt(i) - 48; if (index) image.data.set([...colors[index].map(to8), 255], i * 4); }
+        c.putImageData(image, 0, 0);
+        this.picImages.set(key, canvas);
+      }
+      const c = this.ctx;
+      c.save();
+      if (mirror) { c.translate(x + bitmap.w, y); c.scale(-1, 1); c.drawImage(canvas, 0, 0); } else c.drawImage(canvas, x, y);
+      c.restore();
+      return;
+    }
     if (icon) {                                                       // a 16x16 picture of palette indices (menu icons); index 0 is see-through
       const key = `icon|${icon}|${colors}`;
       let canvas = this.picImages.get(key);

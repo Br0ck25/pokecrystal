@@ -32,7 +32,7 @@ export function loadWorld(mapId) {
   const width = map.width * 2;
   const height = map.height * 2;
   const world = {
-    id: mapId, name: map.name, group: map.group, number: map.number, tileset: map.tileset, environment: map.environment,
+    id: mapId, name: map.name, group: map.group, number: map.number, tileset: map.tileset, environment: map.environment, noPhone: map.noPhone,
     width, height, blockWidth: map.width, blockHeight: map.height, border: map.border,
     blocks: [...map.blocks],
     warps: events.warps, coordEvents: events.coordEvents, bgEvents: events.bgEvents, objects: events.objects,

@@ -71,8 +71,8 @@ function maps() {
   const borders = new Map([...text('data/maps/attributes.asm').matchAll(/^\tmap_attributes (\w+), \w+, \$([0-9a-fA-F]{2})/gm)]
     .map((m) => [m[1], parseInt(m[2], 16)]));
   const out = {};
-  for (const m of text('data/maps/maps.asm').matchAll(/^\tmap (\w+), TILESET_(\w+), (\w+), (\w+), [^,]+, \w+, PALETTE_(\w+),/gm)) {
-    const [, name, tileset, environment, landmark, palette] = m;
+  for (const m of text('data/maps/maps.asm').matchAll(/^\tmap (\w+), TILESET_(\w+), (\w+), (\w+), [^,]+, (\w+), PALETTE_(\w+),/gm)) {
+    const [, name, tileset, environment, landmark, noPhone, palette] = m;
     const size = sizes.get(norm(name));
     if (!size) throw new Error(`no map_const for ${name}`);
     const file = blockFiles.get(`${name}_Blocks`);
@@ -80,7 +80,7 @@ function maps() {
     if (!borders.has(name)) throw new Error(`no border block for ${name}`);
     const blocks = bin(file);
     if (blocks.length !== size.width * size.height) throw new Error(`${name}: ${blocks.length} bytes, expected ${size.width}x${size.height}`);
-    out[size.id] = { name, tileset, environment, landmark, palette, connections: links[name] ?? [], group: size.group, number: size.number, width: size.width, height: size.height, border: borders.get(name), source: file, blocks: [...blocks] };
+    out[size.id] = { name, tileset, environment, landmark, palette, noPhone: noPhone === 'TRUE', connections: links[name] ?? [], group: size.group, number: size.number, width: size.width, height: size.height, border: borders.get(name), source: file, blocks: [...blocks] };
   }
   return out;
 }
@@ -652,6 +652,26 @@ function battleTransitionData() {
   };
 }
 
+// gfx/pokegear/ and data/maps/landmarks.asm: the Pokégear's tiles, card tilemaps, region maps, palettes and where each landmark is on the map.
+function pokegearData() {
+  const bin = (f) => [...readFileSync(join(ROOT, f))];
+  const rle = (f) => { const b = bin(f), out = []; for (let i = 0; b[i] !== 255; i += 2) for (let n = 0; n < b[i + 1]; n++) out.push(b[i]); return out; };   // Pokegear_LoadTilemapRLE: tile id, repeat count, -1
+  const palMap = [...text('gfx/pokegear/town_map_palette_map.asm').matchAll(/townmappals ([A-Z_, ]+)/g)].flatMap((m) => {
+    const names = m[1].split(',').map((n) => n.trim());                   // pairs (tile n + 1, tile n) in a nybble: the macro lists them in tile order
+    return names.map((n) => ['BORDER', 'EARTH', 'MOUNTAIN', 'CITY', 'POI', 'POI_MTN'].indexOf(n));
+  });
+  const landmarks = [...text('data/maps/landmarks.asm').matchAll(/^\tlandmark\s+(-?\d+),\s+(-?\d+),\s+(\w+)/gm)].map((m) => ({ x: Number(m[1]) + 8, y: Number(m[2]) + 16 }));
+  return {
+    town: cut('gfx/pokegear/town_map.png', 128, 3), gear: cut('gfx/pokegear/pokegear.png', 128, 3), sprites: cut('gfx/pokegear/pokegear_sprites.png', 16, 5),
+    fastShip: cut('gfx/pokegear/fast_ship.png', 16, 4),
+    tilemaps: { clock: rle('gfx/pokegear/clock.tilemap.rle'), phone: rle('gfx/pokegear/phone.tilemap.rle'), radio: rle('gfx/pokegear/radio.tilemap.rle') },
+    regions: { johto: bin('gfx/pokegear/johto.bin').slice(0, 360), kanto: bin('gfx/pokegear/kanto.bin').slice(0, 360) },
+    paletteMap: palMap,                                                   // palette (0-5) of tile ids $00-$5f; $60 and up use 0
+    palettes: { male: palettesOf(rgbs(text('gfx/pokegear/pokegear.pal'))), female: palettesOf(rgbs(text('gfx/pokegear/pokegear_f.pal'))) },
+    landmarks,
+  };
+}
+
 function trainerCardData() {
   const all = (png, width, rows) => cut(`gfx/trainer_card/${png}.png`, width, rows);
   return {
@@ -920,7 +940,7 @@ export function generate() {
   const tileset = Object.entries(ts).map(([k, v]) =>
     `  ${k}: {\n  metatiles: [\n${rows(v.metatiles)}\n  ],\n  collision: [\n${rows(v.collision)}\n  ],\n},`).join('\n');
   const mp = Object.entries(maps()).map(([k, v]) =>
-    `  ${k}: { name: '${v.name}', tileset: '${v.tileset}', environment: '${v.environment}', landmark: '${v.landmark}', palette: '${v.palette}', connections: ${JSON.stringify(v.connections)}, group: ${v.group}, number: ${v.number}, width: ${v.width}, height: ${v.height}, border: ${v.border}, source: '${v.source}',\n    blocks: ${JSON.stringify(v.blocks)} },`).join('\n');
+    `  ${k}: { name: '${v.name}', tileset: '${v.tileset}', environment: '${v.environment}', landmark: '${v.landmark}', palette: '${v.palette}', noPhone: ${v.noPhone}, connections: ${JSON.stringify(v.connections)}, group: ${v.group}, number: ${v.number}, width: ${v.width}, height: ${v.height}, border: ${v.border}, source: '${v.source}',\n    blocks: ${JSON.stringify(v.blocks)} },`).join('\n');
   const spriteTable = Object.entries(sprites()).map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
   const eventTable = Object.entries(events()).map(([k, v]) => `  ${k}: ${JSON.stringify(v)},`).join('\n');
   return {
@@ -1028,6 +1048,8 @@ export function generate() {
       + `export const TRAINER_CLASSES = ${JSON.stringify(trainerData())};\n`,
     'battle-transition.js': `// GENERATED by tools/extract-browser-data.mjs from engine/battle/battle_transition.asm and gfx/overworld/. Do not edit.\n// BATTLE_TRANSITION: tiles [square, black] (palette-index digits), flash (BGP as color per index 0-3, one per 2 frames), ball (16 rows of 16 bits), wedges/spin (the spin outro), zoom (boxes), sine (32 samples x256), palettes {day, dark} (palette 7 while the ball shows).\n`
       + `export const BATTLE_TRANSITION = ${JSON.stringify(battleTransitionData())};\n`,
+    'pokegear.js': `// GENERATED by tools/extract-browser-data.mjs from gfx/pokegear/ and data/maps/landmarks.asm. Do not edit.\n// POKEGEAR: town/gear (48 tiles each, VRAM $00 and $30), sprites (10 object tiles), fastShip (8), tilemaps {clock, phone, radio} (360 tile ids), regions {johto, kanto}, paletteMap (palette per tile id), palettes {male, female} (6 x 4 colors, 5-bit), landmarks [{x, y}] (OAM coordinates, in landmark id order).\n`
+      + `export const POKEGEAR = ${JSON.stringify(pokegearData())};\n`,
     'trainer-card.js': `// GENERATED by tools/extract-browser-data.mjs from gfx/trainer_card/. Do not edit.\n// TRAINER_CARD: { cardPics: {CHRIS, KRIS} (35 tiles each, 5x7 row-major), corner, border (6 tiles, $23-$28), status (6), leaders (90), badges (44) }, tiles as palette-index digit strings.\n`
       + `export const TRAINER_CARD = ${JSON.stringify(trainerCardData())};\n`,
     'stats-screen.js': `// GENERATED by tools/extract-browser-data.mjs from gfx/stats/ and gfx/battle/exp_bar.pal. Do not edit.\n// STATS_SCREEN: tiles ($31-$41 of the stats screen: divider, page squares, P, bar caps), pages (pink, green, blue palettes), tints (the page color that replaces white), expBarPalette (colors 1-2).\n`
