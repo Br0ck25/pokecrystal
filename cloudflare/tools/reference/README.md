@@ -25,3 +25,5 @@ Other checks (same build; `play.sh`/`play.py` replay button scripts in `scripts/
     python3 tools/reference/title.py --build DIR --out OUT [--frames 1,2,...] [--ram save.ram]   # title frames vs the app, main menu shots
     python3 tools/reference/make_save.py --build DIR      # saves a new game in the ROM (leaves DIR/pokecrystal.gbc.ram) for --ram
     node tools/reference/title_app_menu.cjs out.png http://localhost:8765 DOWNS [save.json] [A]   # the app's main menu / CONTINUE box
+
+Regression run: `npm run regress -- --build DIR --out DIR [--only menu,mom]` replays the scripts listed in `regress.json` and fails when a checkpoint differs by more pixels than its budget. The budgets only cover settled frames (not mid-fade or moving-NPC ones). `PyBoy` ignores a button press unless the screen is read between presses; `play.py` handles that, but a `hold` of one frame can still be missed, so use 4+ frames. Useful `warp` fields: `ram` (symbol -> value), `set`/`clear` (event flags), `engine` (app-side engine flags such as `ENGINE_POKEGEAR`) and `party` (app-side party size).

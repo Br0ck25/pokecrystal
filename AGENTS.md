@@ -40,11 +40,12 @@ Do not assume that an old plan describes current implementation perfectly. If it
 
 For each feature, follow this sequence:
 
+0. **Read the source and watch the game before writing any code.** Read the assembly that implements the behaviour (`engine/`, `home/`, `data/`, the map's script) all the way through, not just the label you were pointed to, and for anything that is seen or timed run the real game (`tools/reference`, built locally, never committed) and look at it: positions, frame counts, which tile a hop starts from, what is drawn where. Behaviour written from memory of "how Pokémon works" has repeatedly been wrong here (hops that start a square early, NPCs that never move, the wrong glyphs for POKéGEAR). Say in the commit message or test comment what you read and measured.
 1. **Locate the source of truth.** Identify the exact original source file, label/table, dimensions, event, or data definition.
 2. **Record provenance.** Add a short comment or source-map entry naming the original file and, when practical, the symbol, source revision, or blob SHA.
 3. **Translate, do not approximate.** Preserve source IDs, ordering, coordinates, conditions, and semantics. Convert formats only as needed for JavaScript.
 4. **Keep unknowns explicit.** If a source format or rule is not yet understood, do not guess. Fail safely and document what remains unresolved.
-5. **Add tests.** Test exact source-derived values and behavior, plus boundary cases and malformed inputs where relevant.
+5. **Add tests.** Test exact source-derived values and behavior, plus boundary cases and malformed inputs where relevant. Anything you matched against the real game also gets a checkpoint: add a replay to `cloudflare/tools/reference/scripts/` and its pixel budget to `regress.json`, and run `npm run regress` (see `tools/reference/README.md`) after changes to drawing, menus, text, movement or timing.
 6. **Integrate in a vertical slice.** Connect the data to the browser only after the data and its helpers have tests.
 7. **Update the ledger and status.** Mark a task complete only after implementation and verification; otherwise leave it incomplete and state the limitation.
 8. **Check the result.** Run the local tests and inspect the GitHub Actions result for the pushed commit.
@@ -79,10 +80,10 @@ At the time these rules were written:
 - The player is a temporary geometric marker, not the source player sprite or full sprite animation.
 - Movement is a conservative prototype; collision classes and game-specific movement rules still need full verification.
 - A/B buttons and keyboard aliases are basic interaction controls, not a complete original input/menu system.
-- Sign and NPC interactions include source-derived text, but original scripts, autonomous scene movement, event flags, and state-dependent behavior are not fully implemented. Yes/no prompts and keyboard aliases are still being refined and must be tested against the disassembly.
+- Sign and NPC interactions run the original scripts; NPCs wander and spin by their movement functions. Not ported: trainers' line of sight, battles, wild encounters, the movement of Pokémon sprites, Strength boulders. Yes/no prompts and keyboard aliases are still being refined and must be tested against the disassembly.
 - A basic New Bark Town ↔ Elm's Lab warp transition is implemented using the imported source block grids and warp coordinates. Arrival offsets are currently preview-level behavior; the full original map loader, scene state, scripts, and general warp engine are not implemented.
 - The original opening sequence, party, starter choice, battles, inventory, save compatibility, and full world progression are not yet implemented.
-- Saving: START → SAVE and the export/import buttons use a browser-only JSON save file; it is not compatible with the original game's save format. The title screen and main menu are ported (CONTINUE, NEW GAME); the copyright/intro-movie screens, naming, OPTION, the other START-menu entries and the title's secret key combinations are not.
+- Saving: START → SAVE and the export/import buttons use a browser-only JSON save file; it is not compatible with the original game's save format. The title screen, main menu, NEW GAME introduction (gender, Oak's speech, naming; the clock is skipped) and Pokémon nicknames are ported; the copyright/intro-movie screens, audio, OPTION, the START-menu entries other than SAVE/EXIT and the title's secret key combinations are not.
 
 Update this list when implementation changes. Do not remove a limitation until it is demonstrably fixed and tested.
 

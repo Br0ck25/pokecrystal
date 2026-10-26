@@ -7,6 +7,7 @@
     "test": "node --check app.js && node --test --test-reporter=dot src/*.test.js src/*/*.test.js",
     "q": "node tools/q.mjs",
     "audit": "sh tools/reference/run.sh",
-    "play": "sh tools/reference/play.sh"
+    "play": "sh tools/reference/play.sh",
+    "regress": "python3 tools/reference/regress.py"
   }
 }

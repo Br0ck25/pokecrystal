@@ -6,6 +6,7 @@ this folder. Node 22, no packages. Status: title screen → main menu → new ga
 ## Commands (run in `cloudflare/`)
 - `npm test` — quiet (dots; failures print). `npm run extract` — regenerate `src/generated/` (a test fails if stale).
 - `npm run q -- map ELMS_LAB | script ElmsLab [Label] | text _text Label | find <regex>` — look up generated data. **Do not open `src/generated/*`** (MBs of one-line JSON).
+- **Before porting a behaviour, read its asm and watch the ROM do it; after matching it, add a checkpoint and run `npm run regress -- --build $REF/src --out $REF/out`** (replays `tools/reference/scripts/*.json` against the real game and fails over `regress.json` pixel budgets).
 - `sh tools/reference/setup.sh` once, then `npm run audit [cases.json]` — diffs the app against the real game (ROM built in `$REF_DIR`, never committed). Details: `tools/reference/README.md`.
 
 ## Layout
@@ -25,4 +26,4 @@ this folder. Node 22, no packages. Status: title screen → main menu → new ga
 - Time of day is fixed to DAY; the player is Chris; ROM-vs-app diffs also show moving NPCs and animated flowers (not bugs).
 
 ## Not ported
-Audio, copyright/Game Freak/intro-movie screens, setting the clock (NEW GAME runs Oak's speech, gender and naming but uses the device time), OPTION, START-menu entries other than SAVE/EXIT (party/pack/dex/gear/status), the title's secret key combinations, battles, encounters, trainers, item balls, tile animation, NPC wandering, specials in `Game.unported`.
+Audio, copyright/Game Freak/intro-movie screens, setting the clock (NEW GAME runs Oak's speech, gender and naming but uses the device time), OPTION, START-menu entries other than SAVE/EXIT (party/pack/dex/gear/status), the title's secret key combinations, battles, encounters, trainers, specials in `Game.unported`.

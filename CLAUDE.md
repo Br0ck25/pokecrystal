@@ -6,6 +6,6 @@ Surgical changes. Touch only what you must; match existing style; every changed 
 
 Goal-driven. Turn tasks into verifiable goals (bug -> reproduce then fix; feature -> test). Loop until verified.
 
-Build every scene from Crystal's own data, never from memory or guesses.
+Build every scene from Crystal's own data, never from memory or guesses. Before porting a behaviour read the asm that implements it and watch the real game do it (`cloudflare/tools/reference`); after matching it, add a checkpoint to `tools/reference/regress.json` and run `npm run regress`.
 
 Start with `cloudflare/README.md` (short guide); look up generated data with `npm run q`, never by reading `cloudflare/src/generated`.
