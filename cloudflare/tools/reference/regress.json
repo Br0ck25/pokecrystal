@@ -114,6 +114,14 @@
         "card2": 0,
         "card2b": 0
       }
+    },
+    {
+      "script": "stats_screen",
+      "budgets": {
+        "stats1": 840,
+        "stats2": 840,
+        "stats3": 840
+      }
     }
   ]
 }

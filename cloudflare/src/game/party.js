@@ -1,11 +1,12 @@
 // The party screen opened by START > POKéMON (engine/pokemon/party_menu.asm, mon_menu.asm, mon_submenu.asm):
 // one row per Pokémon with icon, nickname, level, HP bar and HP digits, the action submenu, and SWITCH.
-// The summary (STATS), MOVE and ITEM actions are not ported (reported through `unported`).
+// The summary (STATS) is stats-screen.js; the MOVE and ITEM actions are not ported (reported through `unported`).
 import { BATTLE_EXTRA, PARTY_MENU_BG, HELD_ITEM_ICONS } from '../generated/party-ui.js';
 import { PREDEF_PALETTES, MON_ICONS, ICON_OBJ_PALETTE } from '../generated/intro.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { MOVES } from '../generated/moves.js';
 import { directionRepeat } from './menu.js';
+import { StatsScreen } from './stats-screen.js';
 
 const HP_BAR_PIXELS = 48;
 const FIELD_MOVES = ['CUT', 'FLY', 'SURF', 'STRENGTH', 'FLASH', 'WATERFALL', 'WHIRLPOOL', 'DIG', 'TELEPORT', 'SOFTBOILED', 'HEADBUTT', 'ROCK_SMASH', 'MILK_DRINK', 'SWEET_SCENT'];
@@ -63,6 +64,7 @@ export class PartyScreen {
   update(input) {
     this.frame++;
     const rows = this.party.length + (this.phase === 'switch' || this.battle?.forced ? 0 : 1);
+    if (this.stats) { if (this.stats.update(input)) { this.cursor = this.stats.index + 1; this.state.partyCursor = this.cursor; this.stats = null; } return false; }
     if (this.message) { if (input.a || input.b) this.message = null; return false; }
     if (this.phase === 'submenu') return this.updateSubmenu(input);
     const dir = directionRepeat(this.held, input.dir === 'up' || input.dir === 'down' ? input.dir : null);
@@ -98,13 +100,14 @@ export class PartyScreen {
     if (this.battle) {
       if (id === 'SWITCH') return this.pick();
       this.sub = null; this.phase = 'select';
-      if (id === 'STATS') this.unported.add('party: STATS');
+      if (id === 'STATS') this.stats = new StatsScreen(this.state, this.cursor - 1);
       return false;
     }
     this.sub = null;
     if (id === 'SWITCH' && this.party.length >= 2) { this.switchFrom = this.cursor; this.phase = 'switch'; return false; }
     this.phase = 'select';
-    if (id !== 'CANCEL' && id !== 'SWITCH') this.unported.add(`party: ${id}`);
+    if (id === 'STATS') this.stats = new StatsScreen(this.state, this.cursor - 1);
+    else if (id !== 'CANCEL' && id !== 'SWITCH') this.unported.add(`party: ${id}`);
     return false;
   }
 
@@ -121,6 +124,7 @@ export class PartyScreen {
 
   /** Panels bottom first: tiles and texts in the party menu palette, the HP bars in their HP palette, icons, then boxes. */
   panels() {
+    if (this.stats) return this.stats.panels();
     if (this.frame <= BLANK_FRAMES) return [{ colors: PARTY_MENU_BG, fill: 0 }];
     const n = this.party.length, text = [], tiles = [], out = [];
     const icons = [], lv = [];

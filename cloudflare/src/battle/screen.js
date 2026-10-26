@@ -31,12 +31,12 @@ function barTiles(pixels, end) {
 }
 
 /** The experience bar of the player's Pokémon: 8 tiles of PlaceExpBar, 64 pixels. */
-function expBarPixels(mon) {
+export function expBarPixels(mon) {
   const base = expAtLevel(mon.species, mon.level), next = expAtLevel(mon.species, mon.level + 1);
   const range = next - base, remaining = next - mon.exp;
   return Math.max(0, Math.min(64, 64 - Math.floor((remaining * 64) / range)));
 }
-function expTiles(pixels) {
+export function expTiles(pixels) {
   const tiles = [];
   let left = pixels;
   for (let i = 0; i < 8; i++) {

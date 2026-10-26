@@ -40,6 +40,24 @@ def set_event(name, on):
     byte = (byte | (1 << (i % 8))) if on else (byte & ~(1 << (i % 8)))
     if isinstance(addr, int): ref.pb.memory[addr + i // 8] = byte
     else: ref.pb.memory[addr[0], addr[1] + i // 8] = byte
+
+def plant_party(mons):
+    """Plant Pokémon in the ROM's party: {speciesId, level, dvs, moveIds, pp, exp, stats{hp,atk,def,spd,sat,sdf}, hp, id, item, status}; nickname and OT are TEST."""
+    ref.wr('wPartyCount', len(mons))
+    sb, sa = ref.key('wPartySpecies'); mb, ma = ref.key('wPartyMon1Species'); nb, na = ref.key('wPartyMonNicknames'); ob, oa = ref.key('wPartyMonOTs')
+    name = [0x93, 0x84, 0x92, 0x93, 0x50]
+    for i, m in enumerate(mons):
+        ref.pb.memory[sb, sa + i] = m['speciesId']
+        for k, ch in enumerate(name): ref.pb.memory[nb, na + 11 * i + k] = ch; ref.pb.memory[ob, oa + 11 * i + k] = ch
+        o = ma + 48 * i; w = lambda off, v: ref.pb.memory.__setitem__((mb, o + off), v)
+        w(0, m['speciesId']); w(1, m.get('item', 0))
+        for j in range(4): w(2 + j, m['moveIds'][j] if j < len(m['moveIds']) else 0); w(23 + j, m['pp'][j] if j < len(m['pp']) else 0)
+        w(6, m['id'] >> 8); w(7, m['id'] & 255)
+        for j in range(3): w(8 + j, (m['exp'] >> (16 - 8 * j)) & 255)
+        w(21, m['dvs'][0]); w(22, m['dvs'][1]); w(27, 70); w(31, m['level']); w(32, m.get('status', 0))
+        st = m['stats']
+        for off, v in [(34, m['hp']), (36, st['hp']), (38, st['atk']), (40, st['def']), (42, st['spd']), (44, st['sat']), (46, st['sdf'])]: w(off, v >> 8); w(off + 1, v & 255)
+    ref.pb.memory[sb, sa + len(mons)] = 255
 BUTTONS = {'left', 'right', 'up', 'down', 'a', 'b', 'start', 'select'}
 for s in steps:
     if 'hold' in s:
@@ -49,11 +67,12 @@ for s in steps:
     elif 'warp' in s:                                  # {"warp": {"id": "ELMS_LAB", "warp": 1, "ram": {...}, "scene": "ElmsLab:2"}}
         c = s['warp']
         for var, value in c.get('ram', {}).items(): ref.wr(var, value)
+        if c.get('plant'): plant_party(c['plant'])
         for ev in c.get('clear', []): set_event(ev, False)      # event flags, e.g. to show the starter Poké Balls
         for ev in c.get('set', []): set_event(ev, True)
         group, num = ids[c['id']]
         ref.warp_in(group, num, c['warp'], c.get('settle', 300))
-        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'playerId': ref.rd('wPlayerID') << 8 | ref.rd('wPlayerID+1'), 'party': c.get('party', 0), 'items': c.get('items', {}), 'settle': c.get('settle', 0), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
+        s['enter'] = {'map': c['id'], 'x': ref.rd('wXCoord'), 'y': ref.rd('wYCoord'), 'scene': c.get('scene', ''), 'flags': c.get('set', []), 'clearFlags': c.get('clear', []), 'prevLandmark': c.get('prevLandmark'), 'engine': c.get('engine', []), 'playerId': ref.rd('wPlayerID') << 8 | ref.rd('wPlayerID+1'), 'party': c.get('party', 0), 'plant': c.get('plant', []), 'items': c.get('items', {}), 'settle': c.get('settle', 0), 'tileAnim': [ref.rd('hTileAnimFrame'), ref.rd('wTileAnimationTimer')]}
     elif 'wait' in s:
         ref.tick(s['wait'])
     elif 'dump' in s:                                  # {"dump": ["wPartyMon1Species", 48]}: print RAM bytes (ROM side only)

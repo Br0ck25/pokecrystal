@@ -24,6 +24,10 @@ const fs = require('fs');
           const { createMon } = await import('/src/script/mon.js');
           for (const m of e.party) g.state.party.push(createMon({ id: 0, ...m }));
         }
+        if (e.plant?.length) {                                                       // the same Pokémon planted in the ROM's party
+          const { createMon } = await import('/src/script/mon.js');
+          for (const m of e.plant) { const mon = createMon({ species: m.species, level: m.level, dvs: m.dvs, id: m.id, item: m.itemName ?? null }); Object.assign(mon, { moves: m.moves, pp: m.pp, exp: m.exp, hp: m.hp, nickname: 'TEST', status: m.status ?? 0 }); mon.stats = { ...m.stats }; g.state.party.push(mon); }
+        }
         if (e.prevLandmark) g.prevLandmark = e.prevLandmark;
         await g.enterMap(e.map, e.x, e.y, 'down');
         while (g.loading) await new Promise((r) => setTimeout(r, 2));
