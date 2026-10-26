@@ -51,7 +51,7 @@ export class BattleScreen {
    * battle: a Battle; pics: { enemy: {size, pixels, palette}, player: {size, pixels, palette} } already decoded;
    * options: { textDelay (frames per tile) }; intro: the "appeared" text commands shown first.
    */
-  constructor({ battle, pics, intro, playerName = '', state = null }) {
+  constructor({ battle, pics, intro, playerName = '', state = null, trainer = false }) {
     this.battle = battle;
     this.state = state;
     this.pics = pics;
@@ -73,6 +73,10 @@ export class BattleScreen {
     this.enemyHud = false;                                             // DrawEnemyHUD has run
     this.slide = 0;                                                    // steps of the trainer's slide out of the screen
     this.trainerGone = false;
+    this.trainerBattle = trainer;
+    this.enemyPic = pics.enemy;                                        // the trainer's picture until its first Pokémon is sent out
+    this.slideEnemy = false;                                           // which picture the slide moves
+    this.enemySlide = 0;
     this.sentOut = false;                                              // the player's Pokémon replaces the trainer picture after "Go!"
   }
 
@@ -90,8 +94,8 @@ export class BattleScreen {
         if (--this.timer <= 0) this.advance();
         break;
       case 'slide':                                                 // SlideBattlePicOut: a step every 3 frames, 22 frames in all (measured)
-        if (this.timer % 3 === 0 && this.timer / 3 < SLIDE_SHIFTS.length) this.slide = SLIDE_SHIFTS[this.timer / 3];
-        if (++this.timer >= 22) { this.trainerGone = true; this.advance(); }
+        if (this.timer % 3 === 0 && this.timer / 3 < SLIDE_SHIFTS.length) this[this.slideEnemy ? 'enemySlide' : 'slide'] = SLIDE_SHIFTS[this.timer / 3];
+        if (++this.timer >= 22) { if (this.slideEnemy) this.enemyGone = true; else this.trainerGone = true; this.advance(); }
         break;
       case 'hp': this.stepHp(); break;
       case 'menu': this.updateMenu(input); break;
@@ -114,7 +118,24 @@ export class BattleScreen {
       if (value.text) { this.wait = startTextWait(renderText(value.text, { block: (l) => TEXT[l], vars: {}, playerName: '', rivalName: '' })); this.mode = 'text'; return; }
       if (value.wait) { this.timer = value.wait; this.mode = 'wait'; return; }
       if (value.enemyHud) { this.enemyHud = true; continue; }
-      if (value.slideOut) { this.slide = 0; this.timer = 0; this.mode = 'slide'; return; }
+      if (value.slideOut) { this.slide = 0; this.slideEnemy = false; this.timer = 0; this.mode = 'slide'; return; }
+      if (value.enemyTrainerOut) { this.enemySlide = 0; this.slideEnemy = true; this.timer = 0; this.mode = 'slide'; return; }
+      if (value.enemySendOut) {                                        // the next Pokémon replaces the trainer's picture (or the one before it)
+        const side = this.battle.sides[1];
+        this.enemyPic = this.pics.enemyMons[value.species];
+        this.enemyGone = false; this.enemySlide = 0;
+        this.shown[1] = side.hp; this.px[1] = hpPixels(side.hp, side.maxHp);
+        continue;
+      }
+      if (value.enemyHudClear) { this.enemyHud = false; continue; }
+      if (value.trainerSlideIn) { this.enemyPic = this.pics.enemy; this.enemyGone = false; this.enemyHud = false; this.enemySlide = 0; continue; }
+      if (value.trainerWinText) {
+        const commands = this.battle.trainerInfo.win;
+        if (!commands) continue;
+        this.wait = startTextWait(renderText(commands, { block: (l) => TEXT[l], vars: {}, playerName: this.state?.playerName ?? '', rivalName: '' }));
+        this.mode = 'text';
+        return;
+      }
       if (value.anim !== undefined) { this.unported.add(`battle animation: ${value.anim}`); this.timer = value.frames ?? 20; this.mode = 'wait'; return; }
       if (value.hp !== undefined) { this.hpAnim = value; this.mode = 'hp'; return; }
       if (value.ask === 'action') { this.mode = 'menu'; this.wait = null; return; }
@@ -247,7 +268,7 @@ export class BattleScreen {
   panels() {
     const [player, enemy] = this.battle.sides;
     const out = [{ fill: 0 }];
-    if (!this.enemyGone) out.push({ pic: { ...this.pics.enemy, x: 12 + this.pics.enemy.offX, y: this.pics.enemy.offY } });   // PadFrontpic: smaller pictures sit at the bottom
+    if (!this.enemyGone) out.push({ pic: { ...this.enemyPic, x: 12 + this.enemyPic.offX + this.enemySlide, y: this.enemyPic.offY } });
     if (this.sentOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut ? this.pics.playerMons[this.playerSpecies] : this.pics.player), x: this.sentOut ? 2 : 2 - this.slide, y: 6 } });
     out.push(...this.hudPanels());
     out.push({ box: [0, 12, 19, 17] });

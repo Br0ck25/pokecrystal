@@ -20,7 +20,7 @@ function play(battle, limit = 600) {
 }
 
 test('trainer party: FALKNER has moves as listed, PP from the move table, and rewards 25 x the last level', () => {
-  const t = trainerParty('FALKNER', 1);
+  const t = trainerParty('FALKNER', 'FALKNER1');
   assert.deepEqual(t.party.map((m) => [m.species, m.level]), [['PIDGEY', 7], ['PIDGEOTTO', 9]]);
   assert.deepEqual(t.party[0].moves, ['TACKLE', 'MUD_SLAP']);
   assert.deepEqual(t.party[0].pp, [35, 10]);
@@ -29,7 +29,7 @@ test('trainer party: FALKNER has moves as listed, PP from the move table, and re
 });
 
 test('a trainer battle: the second Pokémon comes in after the first faints, winning pays 4 x reward', () => {
-  const t = trainerParty('YOUNGSTER', 1);
+  const t = trainerParty('YOUNGSTER', 'JOEY1');
   t.party.push(createMon({ species: 'RATTATA', level: 3, dvs: [0x88, 0x88] }));
   const player = createMon({ species: 'TYPHLOSION', level: 40, dvs: [0xff, 0xff], id: 1 });
   player.moves = ['FLAMETHROWER']; player.pp = [15];

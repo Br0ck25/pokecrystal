@@ -3,11 +3,11 @@ import { TRAINER_CLASSES } from '../generated/trainer-data.js';
 import { MOVES } from '../generated/moves.js';
 import { createMon } from '../script/mon.js';
 
-/** `index` is the 1-based trainer id within the class. Returns { name, party, reward, ai, items, classData }. */
-export function trainerParty(cls, index) {
+/** `id` is the trainer id constant of the class (FALKNER1, MIKEY). Returns { name, party, reward, ai, items, classData }. */
+export function trainerParty(cls, id) {
   const data = TRAINER_CLASSES[cls];
-  const entry = data.trainers[index - 1];
-  if (!entry) throw new Error(`no trainer ${cls} ${index}`);
+  const entry = data?.trainers[data.ids.indexOf(id)];
+  if (!entry) throw new Error(`no trainer ${cls} ${id}`);
   const party = entry.mons.map((m) => {
     const mon = createMon({ species: m.species, level: m.level, dvs: [...data.dvs], id: 0, item: m.item ?? null });
     if (m.moves) {                       // TRAINERTYPE_MOVES: the listed moves, PP only for the slots up to the first empty one

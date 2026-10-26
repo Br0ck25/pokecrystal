@@ -351,3 +351,24 @@ test('whiteout: the party is healed, half the money goes, and the player lands a
   assert.equal(mon.pp[0], 35);
   assert.equal(g.state.money, 1500);
 });
+
+test('a trainer who sees the player walks up, battles, pays out and stays beaten', async () => {
+  const g = await newGame('ROUTE_30', 1, 10, 'up');
+  const mon = createMon({ species: 'TYPHLOSION', level: 50, dvs: [255, 255], id: g.state.playerId });
+  mon.moves = ['FLAMETHROWER']; mon.pp = [15];
+  g.state.party = [mon];
+  g.state.flags.add('EVENT_INITIALIZED_EVENTS');
+  const money = g.state.money;
+  let frames = 0;
+  while (!g.battleScreen && frames++ < 1200) { g.update({ a: frames % 2 === 0 }); await waitLoaded(g); }
+  assert.ok(g.battleScreen, 'the battle starts');
+  const don = g.objectById('ROUTE30_BUG_CATCHER');
+  assert.equal(don.y, 9, 'Don stopped next to the player');
+  for (let i = 0; i < 20000 && g.battleScreen; i++) g.update({ a: i % 2 === 0 });
+  assert.equal(g.battleScreen, null);
+  assert.ok(g.state.flags.has('EVENT_BEAT_BUG_CATCHER_DON'));
+  assert.ok(g.state.money > money);
+  run(g, 60, {});
+  assert.equal(g.runner, null);
+  assert.equal(g.checkTrainerEvent(), false);
+});

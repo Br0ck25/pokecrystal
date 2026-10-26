@@ -90,6 +90,8 @@ export function installTrainer(Battle) {
     /** WinTrainerBattle: the defeat text, the trainer's own win text (the script's), then the money. */
     *winTrainer() {
       yield this.say('BattleText_EnemyWasDefeated');
+      yield { trainerSlideIn: true };
+      yield { wait: 40 };
       yield { trainerWinText: true };
       let reward = this.trainerInfo.reward;
       if (this.state?.amuletCoin) reward = Math.min(reward * 2, 0xffffff);

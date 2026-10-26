@@ -82,6 +82,9 @@ export function* runScript(ctx, startLabel) {
   };
 
   let pos = enter(startLabel);
+  let trainer = null;              // wTempTrainer / wOtherTrainerClass+ID: { cls, id, flag, seen, win, loss, after }
+  let winText = null, lossText = null;   // winlosstext (wWinTextPointer, wLossTextPointer)
+  let justBattled = false;         // wRunningTrainerBattleScript
   const keysOf = (s) => (keysOf.cache[s] ??= Object.keys(sources[s].SCRIPTS));
   keysOf.cache = [];
   // Fetch the next command, falling through into the next label in file order as the assembled ROM does.
@@ -231,6 +234,35 @@ export function* runScript(ctx, startLabel) {
         break;
       }
       case 'itemnotify': yield* itemNotify(); break;
+      case 'trainer': {
+        // home/trainers.asm LoadTrainer_continue, then TalkToTrainerScript / SeenByTrainerScript (engine/events/trainer_scripts.asm)
+        const [cls, id, flag, seen, win, loss, after] = args;
+        trainer = { cls, id, flag, seen, win, loss, after };
+        winText = win; lossText = loss;
+        justBattled = false;
+        if (ctx.trainerSeen) {
+          yield { type: 'effect', name: 'showemote', args: ['EMOTE_SHOCK', 'LAST_TALKED', 30] };
+          yield { type: 'effect', name: 'trainerwalk', args: [ctx.trainerSeen.distance] };
+          yield { type: 'effect', name: 'faceobject', args: ['PLAYER', ctx.caller.id] };
+        } else {
+          yield { type: 'effect', name: 'faceplayer', args: [] };
+          if (state.flags.has(flag)) { jump(after); break; }       // AlreadyBeatenTrainerScript: scripttalkafter
+        }
+        yield { type: 'opentext' };
+        yield showText(seen);
+        yield { type: 'waitbutton' };
+        yield { type: 'closetext' };
+        yield* startBattle();
+        state.flags.add(flag);                                     // trainerflagaction SET_FLAG
+        justBattled = true;
+        jump(after);                                               // scripttalkafter
+        break;
+      }
+      case 'winlosstext': winText = args[0]; lossText = args[1]; break;
+      case 'loadtrainer': trainer = { cls: args[0], id: args[1] }; break;
+      case 'startbattle': yield* startBattle(); break;
+      case 'endifjustbattled': if (justBattled && returnOrFinish()) return; break;
+      case 'encountermusic': break;
       case 'refreshmap': case 'reloadmap': case 'reloadmapafterbattle': case 'newloadmap': case 'dontrestartmapmusic': case 'playmapmusic': case 'warpsound': case 'faceobject':
         yield { type: 'effect', name, args: args.map(realId) }; break;
       case 'pocketisfull': yield* pocketIsFull(); break;
@@ -304,6 +336,13 @@ export function* runScript(ctx, startLabel) {
       default:
         throw new Error(`unsupported script command ${name} in ${pos.key}`);
     }
+  }
+
+  /** Script_startbattle then reloadmapafterbattle: the engine runs the battle; a lost one (without a loss text) never comes back here. */
+  function* startBattle() {
+    const text = (label) => (label && label !== '0' ? find(label, pos.key)?.commands ?? null : null);
+    yield { type: 'battle', trainer: { cls: trainer.cls, id: trainer.id }, win: text(winText), loss: text(lossText) };
+    yield { type: 'effect', name: 'reloadmapafterbattle', args: [] };
   }
 
   // Script_itemnotify / Script_pocketisfull: text with the item (buffer 1) and its pocket (buffer 3)

@@ -20,6 +20,7 @@ import { SPAWN_POINTS, HOME_SPAWN } from '../generated/spawns.js';
 import * as sharedText from '../generated/scripts/_text.js';
 import { renderText } from '../script/text.js';
 import { wildEncounter } from '../battle/wild.js';
+import { trainerParty } from '../battle/trainer-party.js';
 import { POKEMON } from '../generated/pokemon.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
 import { stepNpc, endNpcWalk, LOOP_FRAMES } from './npc-ai.js';
@@ -270,6 +271,27 @@ export class Game {
     this.idleEvents(input);
   }
 
+  /** The pictures a battle needs, decoded: the player's back, the party's backs and the fronts of the enemy species (and the trainer's own picture). */
+  async battleArt(enemySpecies, trainerClass = null) {
+    const gender = this.state.playerGender === 'FEMALE' ? 'KRIS' : 'CHRIS';
+    const partySpecies = [...new Set(this.state.party.map((m) => m.species))];
+    const fronts = [...new Set(enemySpecies)];
+    const [back, trainerArt, partyMods, frontMods] = await Promise.all([
+      import(`../generated/trainers/${gender}.js`),
+      trainerClass ? import(`../generated/trainers/${trainerClass}.js`) : null,
+      Promise.all(partySpecies.map((sp) => import(`../generated/pokemon/${sp}.js`))),
+      Promise.all(fronts.map((sp) => import(`../generated/pokemon/${sp}.js`))),
+    ]);
+    const front = (mod) => { const tiles = mod.PIC.size / 8; return { size: mod.PIC.size, pixels: mod.PIC.front, palette: mod.PIC.palette, offX: tiles < 7 ? 1 : 0, offY: 7 - tiles }; };   // PadFrontpic: smaller pictures sit at the bottom
+    const enemyMons = Object.fromEntries(fronts.map((sp, i) => [sp, front(frontMods[i])]));
+    return {
+      enemy: trainerArt ? { size: trainerArt.PIC.size, pixels: trainerArt.PIC.pixels, palette: trainerArt.PIC.palette, offX: 0, offY: 0 } : enemyMons[enemySpecies[0]],
+      enemyMons,
+      player: { size: 48, pixels: back.PIC.back, palette: back.PIC.palette },
+      playerMons: Object.fromEntries(partySpecies.map((sp, i) => [sp, { size: 48, pixels: partyMods[i].PIC.back, palette: partyMods[i].PIC.palette }])),
+    };
+  }
+
   /** BattleStart for a wild Pokémon: load the pictures, then the battle screen takes over until it reports a result. */
   async startWildBattle({ species, level }) {
     this.loading = true;
@@ -278,19 +300,23 @@ export class Game {
     const lead = this.state.party.find((m) => m.hp > 0);
     (this.state.dexSeen ??= new Set()).add(species);
     this.state.dexCaught ??= new Set();
-    const gender = this.state.playerGender === 'FEMALE' ? 'KRIS' : 'CHRIS';
-    const [front, back] = await Promise.all([import(`../generated/pokemon/${species}.js`), import(`../generated/trainers/${gender}.js`)]);
-    const partySpecies = [...new Set(this.state.party.map((m) => m.species))];
-    const mons = await Promise.all(partySpecies.map((sp) => import(`../generated/pokemon/${sp}.js`)));
-    const tiles = front.PIC.size / 8;
-    const pics = {
-      enemy: { size: front.PIC.size, pixels: front.PIC.front, palette: front.PIC.palette, offX: tiles < 7 ? 1 : 0, offY: 7 - tiles },
-      player: { size: 48, pixels: back.PIC.back, palette: back.PIC.palette },
-      playerMons: Object.fromEntries(partySpecies.map((sp, i) => [sp, { size: 48, pixels: mons[i].PIC.back, palette: mons[i].PIC.palette }])),
-    };
-    const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: 0, state: this.state });
+    const pics = await this.battleArt([species]);
+    const battle = new Battle({ player: this.state.party, enemy, wild: true, random: this.randomByte, playerId: this.state.playerId, badges: 0, state: this.state, shiftStyle: options(this.state).battleShift });
     const name = POKEMON[species].name;
     this.battleScreen = new BattleScreen({ battle, state: this.state, pics, intro: [['text', 'Wild '], ['text', name], ['line', 'appeared!'], ['prompt']], lead });
+    this.loading = false;
+  }
+
+  /** The battle of a `startbattle` script command: a trainer's party (LoadTrainer + ReadTrainerParty). */
+  async startTrainerBattle(request) {
+    this.loading = true;
+    const { cls, id } = request.trainer;
+    const trainer = trainerParty(cls, id);
+    const pics = await this.battleArt(trainer.party.map((m) => m.species), cls);
+    const info = { name: trainer.name, className: trainer.className, reward: trainer.reward, win: request.win, loss: request.loss };
+    const battle = new Battle({ player: this.state.party, enemy: trainer.party, wild: false, random: this.randomByte, playerId: this.state.playerId, badges: 0, state: this.state, trainerInfo: info, shiftStyle: options(this.state).battleShift });
+    const intro = [['text', `${trainer.className} ${trainer.name}`], ['line', 'wants to battle!'], ['prompt']];
+    this.battleScreen = new BattleScreen({ battle, state: this.state, pics, intro, trainer: true });
     this.loading = false;
   }
 
@@ -299,7 +325,10 @@ export class Game {
     if (!result) return;
     for (const u of this.battleScreen.unported) this.unported.add(u);
     this.battleScreen = null;
-    if (result.result === 'lose') this.startWhiteout();
+    const runner = this.battleRunner;
+    this.battleRunner = null;
+    if (result.result === 'lose') { this.runner = null; this.startWhiteout(); return; }   // the script that began the battle never resumes
+    if (runner) { runner.wait = null; this.advanceRunner(result); }
   }
 
   /** Script_BattleWhiteout/Script_Whiteout: the text, a fade to white, healing, half the money, then the last Pokécenter's spawn point (or home). */
@@ -350,11 +379,32 @@ export class Game {
 
   idleEvents(input) {
     // engine/overworld/events.asm PlayerEvents: tile events, then the scene script, then the joypad.
+    if (this.checkTrainerEvent()) return;
     if (this.tileEvents()) return;
     if (this.runScene()) return;
     if (input.start) { this.menu = { cursor: Math.min(this.menuCursor, startMenuItems(this.state).length - 1), lastDir: null, repeat: 0 }; return; }
     if (input.a && this.interact()) return;
     if (input.dir) this.tryMove(input.dir);
+  }
+
+  /** home/trainers.asm _CheckTrainerBattle: a trainer facing the player in a straight line, within sight, who has not been beaten, starts the encounter. */
+  checkTrainerEvent() {
+    if (!this.state.party?.length) return false;
+    const p = this.player;
+    for (const o of this.visibleObjects()) {
+      if (o === p || o.def.type !== 'OBJECTTYPE_TRAINER' || o.step) continue;
+      const dx = p.x - o.x, dy = p.y - o.y;
+      if ((dx !== 0) === (dy !== 0)) continue;                    // same row or column, not on the same square
+      const facing = dx ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      if (o.facing !== facing) continue;
+      const distance = Math.abs(dx) + Math.abs(dy);
+      if (distance > o.def.sight) continue;
+      const flag = this.ctx.sources.find((src) => src.SCRIPTS[o.def.script])?.SCRIPTS[o.def.script][0][3];
+      if (this.state.flags.has(flag)) continue;
+      this.startScript(o.def.script, { caller: o, trainerSeen: { distance } });
+      return true;
+    }
+    return false;
   }
 
   tileEvents() {
@@ -440,7 +490,7 @@ export class Game {
     }
     if (object) {
       if (object.step) return false;                              // CheckFacingObject: only someone standing still can be talked to
-      if (object.def.type !== 'OBJECTTYPE_SCRIPT' && object.def.type !== 'OBJECTTYPE_ITEMBALL') { this.unported.add(object.def.type); return false; }
+      if (!['OBJECTTYPE_SCRIPT', 'OBJECTTYPE_ITEMBALL', 'OBJECTTYPE_TRAINER'].includes(object.def.type)) { this.unported.add(object.def.type); return false; }
       this.startScript(object.def.script, { caller: object });
       return true;
     }
@@ -486,9 +536,9 @@ export class Game {
 
   // ---- scripts --------------------------------------------------------------------------------------------------
 
-  startScript(label, { caller = null, conditionalKind = null } = {}) {
+  startScript(label, { caller = null, conditionalKind = null, trainerSeen = null } = {}) {
     if (this.failedScripts.has(label)) return;                   // a scene script that needs something not ported must not restart every frame
-    const gen = runScript({ ...this.ctx, caller, conditionalKind }, label);
+    const gen = runScript({ ...this.ctx, caller, conditionalKind, trainerSeen }, label);
     this.runner = { gen, wait: null, caller, label };
     this.advanceRunner(undefined);
   }
@@ -521,6 +571,11 @@ export class Game {
           if (blocking?.wait) { runner.wait = blocking.wait; return; }
           break;
         }
+        case 'battle':
+          runner.wait = { kind: 'battle' };
+          this.battleRunner = runner;
+          this.startTrainerBattle(request).catch((e) => { throw e; });
+          return;
         case 'effect': {
           const blocking = this.applyEffect(request, { instant: false });
           if (blocking && blocking.wait) { runner.wait = blocking.wait; return; }
@@ -593,6 +648,7 @@ export class Game {
         break;
       }
       case 'naming': { const done = wait.screen.update(input); if (done) { runner.wait = null; this.advanceRunner(done.name); } break; }
+      case 'battle': break;                                        // the battle screen (or its loading) has the frame loop
       case 'frames': if (--wait.left <= 0) { runner.wait = null; if (wait.emote) this.emote = null; this.advanceRunner(undefined); } break;
       default: throw new Error(`unknown wait ${wait.kind}`);
     }
@@ -645,6 +701,12 @@ export class Game {
         if (instant) return undefined;
         this.emote = { emote: args[0], object: args[1], frames: Number(args[2]) };
         return { wait: { kind: 'frames', left: Number(args[2]), emote: true } };
+      }
+      case 'trainerwalk': {                                       // TrainerWalkToPlayer: one square short of the player, at the normal step speed
+        const steps = Array.from({ length: Number(args[0]) - 1 }, () => ['step', upper(this.runner.caller.facing)]);
+        if (!steps.length || instant) return undefined;
+        this.beginMovement({ object: this.runner.caller.id, steps });
+        return { wait: { kind: 'movement', object: this.runner.caller.id } };
       }
       case 'readvar': return this.readVar(args[0]);
       case 'sdefer': this.deferred = args[0]; return undefined;
