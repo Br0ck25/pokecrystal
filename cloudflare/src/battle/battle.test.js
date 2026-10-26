@@ -116,3 +116,12 @@ test('a ball catches by the formula: a weakened sleeping Pokémon is caught, the
   assert.ok(state.dexCaught.has('RATTATA'));
   assert.ok(texts(seen).some((t) => /Gotcha/.test(t)));
 });
+
+import { finalCatchRate } from './catching.js';
+test('catch rate: 85 for a full-HP 255-rate Pokémon with a POKé BALL (read from the real game), more when weakened, +10 asleep', () => {
+  const full = { species: 'PIDGEY', hp: 13, maxHp: 13, status: 0 };
+  assert.equal(finalCatchRate('POKE_BALL', full), 85);
+  assert.equal(finalCatchRate('POKE_BALL', { ...full, hp: 1 }), Math.floor((255 * (39 - 2)) / 39));
+  assert.equal(finalCatchRate('POKE_BALL', { ...full, status: 3 }), 95);
+  assert.equal(finalCatchRate('GREAT_BALL', { species: 'GEODUDE', hp: 20, maxHp: 20, status: 0 }), Math.floor((255 * 20) / 60));   // rate 255 anyway, capped
+});

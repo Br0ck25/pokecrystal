@@ -29,3 +29,8 @@ Done: `src/battle/damage.js` (DamageStats, DamageCalc, Critical, Stab with weath
 ## Status (UI)
 - `src/battle/screen.js` shows a wild battle (HUDs, text box, FIGHT/RUN menu, move list) driven by `Battle.run()`; `Game.startWildBattle` opens it and `wild.js` + `Game.checkWildEncounter` trigger it on grass. `?battle=SPECIES:LEVEL&mon=SPECIES:LEVEL` opens one directly (tools).
 - Not ported: transition, sliding intro, send-out/faint animations, move animations, exp bar animation, PKMN/PACK menus, blackout after losing, layout checks against the ROM (compare with `tools/reference/damage/shots_probe.py` screenshots).
+
+## Status (second pass)
+- Ported and fuzz-checked (2000 random battles with random move sets run without errors): all move effect commands except `forceswitch` against trainers, `triplekick` damage growth, Beat Up for trainers and Present's animation order; between-turn effects; fainting and forced switching; PKMN menu; balls (POKE/GREAT/ULTRA/MASTER; other balls throw `unported ball`); capture to party or box with nickname; Pokédex seen/caught sets; whiteout.
+- Verified against the ROM: damage, experience, catch rate at full HP, the menu/move list/intro frames, animation-free timings. Not verified: status effects, stat changes, switching text timing, capture animation timing.
+- Not ported: move/ball/send-out animations (their time is only waited), exp bar animation, level-up stats box, evolution after battle, trainers (sight, parties, AI, rewards, `AI` scoring), Pokédex/PC screens, items other than balls in battle, badge stat boosts, held-item effects (berries), CheckObedience, Safari/Bug Contest.
