@@ -124,6 +124,7 @@ export class BattleScreen {
         if (stepTextWait(this.wait, input)) this.advance();
         break;
       case 'wait':
+        if (this.menuIdle && (input.a || input.b || input.dir)) this.timer = 0;           // the menu is up but its cursor is not: the first button press brings the cursor (measured)
         if (--this.timer <= 0) this.advance();
         break;
       case 'slide':                                                 // SlideBattlePicOut: a step every 3 frames, 22 frames in all (measured)
@@ -192,13 +193,13 @@ export class BattleScreen {
   }
 
   /** A battle animation (the game's own engine, src/battle/anim): the pictures as they are on the screen now, or, for a send-out, as the engine will bring them in. */
-  startAnimation(id, { anim, user }) {
+  startAnimation(id, { anim, user, afterAnim }) {
     const [player, enemy] = this.battle.sides;
     const sendOut = anim === 'SEND_OUT_MON';
     const enemySide = { pic: sendOut && user === 1 ? this.pics.enemyMons[enemy.species] : this.enemyPic, shown: !this.enemyGone && !(sendOut && user === 1) };
     const playerSide = { pic: this.pics.playerMons[this.playerSpecies ?? player.species] ?? this.pics.player, shown: this.sentOut && !(sendOut && user === 0) };
     if (sendOut && user === 0) playerSide.pic = this.pics.playerMons[player.species] ?? this.pics.player;
-    this.animation = new BattleAnimation({ id, user, enemy: enemySide, player: playerSide, random: this.battle.random, sentOut: sendOut && user === 0 });
+    this.animation = new BattleAnimation({ id, user, enemy: enemySide, player: playerSide, random: this.battle.random, sentOut: sendOut && user === 0, afterAnim });
     this.mode = 'anim';
   }
 

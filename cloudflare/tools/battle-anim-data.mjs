@@ -28,7 +28,7 @@ const HOST_RAM = ['wRequested2bppSource', 'wRequested2bppDest', 'wRequested2bppS
   'wBGPals1', 'wBGPals2', 'wOBPals1', 'wOBPals2', 'wBGP', 'wOBP0', 'wOBP1', 'hSCX', 'hSCY', 'hLCDCPointer', 'hLYOverrideStart', 'hLYOverrideEnd', 'hBattleTurn',
   'wBattleAnimAddress', 'wBattleAnimParent', 'wBattleAnimEnd', 'wBattleAnimByte', 'wFXAnimID', 'wBattleAnimParam', 'wBattleAfterAnim', 'wActiveAnimObjects', 'wActiveBGEffects', 'hCGB'];
 const RST_FARCALL = 0x08;
-const KEPT_CONSTANTS = /^(ANIM_|BATTLE_ANIM_|BATTLE_BG_EFFECT_|BG_EFFECT_|PAL_BATTLE_|BATTLEANIM|NUM_BATTLE_ANIM|NUM_BG_EFFECT|BATTLE_AFTERANIMS|NUM_MOVES|FIRST_BATTLE_ANIM_CMD)/;
+const KEPT_CONSTANTS = /^(SFX_|ANIM_|BATTLE_ANIM_|BATTLE_BG_EFFECT_|BG_EFFECT_|PAL_BATTLE_|BATTLEANIM|NUM_BATTLE_ANIM|NUM_BG_EFFECT|BATTLE_AFTERANIMS|NUM_MOVES|FIRST_BATTLE_ANIM_CMD)/;
 
 /** gfx/*.png as the 2bpp bytes the build makes of it: 16 bytes a tile, tiles in reading order. */
 function bytes2bpp(grayPng, path) {

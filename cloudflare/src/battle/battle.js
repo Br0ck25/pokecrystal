@@ -168,7 +168,7 @@ export class Battle {
         const done = yield* this.tryPlayerSwitch(choice.index);
         if (!done) continue;
         this.skipPlayerTurn = true;                      // the switch is the player's action; the enemy moves
-      } else { this.fleeAttempts = 0; this.pickPlayerMove(choice.slot); }
+      } else { this.fleeAttempts = 0; this.pickPlayerMove(choice.slot); yield { wait: 7 }; }       // measured: the move list closes and the first text starts 7 frames later than the button
       if (this.isLockedIn(1) || this.sides[1].sub.bide) this.loadMove(1); else this.pickEnemyMove();
       const order = this.skipPlayerTurn ? [0, 1] : this.playerFirst() ? [0, 1] : [1, 0];
       this.enemyGoesFirst = order[0] === 1;
@@ -533,7 +533,7 @@ Battle.prototype.commands = {
   *moveanim() {
     if (this.attackMissed) { yield { wait: 40 }; return; }
     yield { wait: 21 };                                        // measured: the animation starts 21 frames after the move's name is typed
-    yield { anim: this.user.move.name, user: this.turn, frames: 110 };
+    yield { anim: this.user.move.name, user: this.turn, afterAnim: this.turn === 0 ? 'ENEMY_DAMAGE' : 'PLAYER_DAMAGE', frames: 110 };
   },
   *failuretext() {
     if (!this.attackMissed) return;

@@ -51,14 +51,15 @@ const flipY = (digits) => digits.match(/.{8}/g).reverse().join('');
 
 export class BattleAnimation {
   /**
-   * id: an animationId; user: 0 for the player's side; enemy / player: { pic, shown } where pic is a decoded picture ({ size, pixels, palette, offX, offY })
+   * id: an animationId; user: 0 for the player's side; afterAnim: the name of the animation that follows (ENEMY_DAMAGE ...); enemy / player: { pic, shown } where pic is a decoded picture ({ size, pixels, palette, offX, offY })
    * and `shown` whether it is on the screen when the animation starts.
    */
-  constructor({ id, user, param = 0, enemy, player, random, sentOut = false }) {
+  constructor({ id, user, param = 0, enemy, player, random, sentOut = false, afterAnim = null }) {
     this.sentOut = sentOut;                                 // this animation leaves the player's Pokémon on the field
     this.machine = new AnimMachine({ random });
     this.setup(enemy, player);
-    this.machine.start(id, { turn: user, param, afterAnim: 0 });
+    this.machine.restoreHuds = () => this.restoreHuds();
+    this.machine.start(id, { turn: user, param, afterAnim: afterAnim ? D.constants[`ANIM_${afterAnim}`] - D.constants.BATTLE_AFTERANIMS : 0 });
     this.frame = 0;
     this.digits = new Map();
   }
@@ -91,6 +92,12 @@ export class BattleAnimation {
     });
   }
 
+  /** UpdateBattleHuds: both HUDs are the screen's to draw again. */
+  restoreHuds() {
+    const m = this.machine, R = D.ram;
+    for (const [x0, y0, w, h] of [[1, 0, 10, 4], [9, 7, 11, 5]]) for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) m.mem[R.wTilemap + y * SCREEN_W + x] = MARKER;
+  }
+
   /** One frame; true when the animation has finished. */
   update() {
     this.frame++;
@@ -110,32 +117,33 @@ export class BattleAnimation {
     return digits;
   }
 
-  palette(base, slot) {
-    const m = this.machine, a = D.ram[base] + slot * 8;
-    return m.withBank5(() => [0, 1, 2, 3].map((i) => from555(m.read(a + i * 2) | (m.read(a + i * 2 + 1) << 8))));
+  /** A palette of the screen as shown: 'bg' or 'ob', slot 0-7, as four 5-bit [r, g, b]. */
+  palette(kind, slot) {
+    const bytes = this.machine.shown[kind];
+    return [0, 1, 2, 3].map((i) => from555(bytes[slot * 8 + i * 2] | (bytes[slot * 8 + i * 2 + 1] << 8)));
   }
 
   /** Does the battle screen still draw the HUD of this side (its cells are untouched)? */
   hud(side) {
     const [x, y] = side === 0 ? PLAYER_HUD : ENEMY_HUD;
-    return this.machine.mem[D.ram.wTilemap + y * SCREEN_W + x] === MARKER;
+    return this.machine.shown.tiles[y * SCREEN_W + x] === MARKER;
   }
 
   /** The BG palette byte as the index remap the canvas uses for the screen's own (non-machine) panels. */
   remap() {
-    const bgp = this.machine.mem[0xff47];
+    const bgp = this.machine.shown.bgp;
     return [bgp & 3, (bgp >> 2) & 3, (bgp >> 4) & 3, (bgp >> 6) & 3];
   }
 
-  /** The tilemap cells the machine owns, as tiles for the canvas: [x, y, digits, colors]. */
+  /** The BG map cells the machine owns, as tiles for the canvas: [x, y, digits, colors]. */
   cells() {
-    const m = this.machine, R = D.ram, out = [];
+    const m = this.machine, shown = m.shown, out = [];
     const palettes = [];
     for (let i = 0; i < SCREEN_W * SCREEN_H; i++) {
-      const id = m.mem[R.wTilemap + i];
+      const id = shown.tiles[i];
       if (id === MARKER) continue;
-      const slot = m.mem[R.wAttrmap + i] & 7;
-      palettes[slot] ??= this.palette('wBGPals2', slot);
+      const slot = shown.attr[i] & 7;
+      palettes[slot] ??= this.palette('bg', slot);
       const address = id < 0x80 ? VRAM_BG + id * 16 : VRAM_BG_HIGH + (id - 0x80) * 16;
       out.push([i % SCREEN_W, Math.floor(i / SCREEN_W), this.tileDigits(address), palettes[slot]]);
     }
@@ -144,17 +152,14 @@ export class BattleAnimation {
 
   /** The scroll each of the 144 lines is drawn with: { x, y } arrays, or null while nothing scrolls. */
   scroll() {
-    const m = this.machine, R = D.ram;
-    const pointer = m.mem[R.hLCDCPointer], baseX = m.mem[R.hSCX], baseY = m.mem[R.hSCY];
-    if (!pointer && !baseX && !baseY) return null;
-    const x = new Array(144).fill(baseX), y = new Array(144).fill(baseY);
-    if (pointer) {
-      m.withBank5(() => {
-        for (let line = LCD_LINE_DELAY; line < 144; line++) {
-          const v = m.read(R.wLYOverrides + line - LCD_LINE_DELAY);
-          if (pointer === 0x43) x[line] = v; else if (pointer === 0x42) y[line] = v;
-        }
-      });
+    const s = this.machine.shown;
+    if (!s.lcd && !s.scx && !s.scy) return null;
+    const x = new Array(144).fill(s.scx), y = new Array(144).fill(s.scy);
+    if (s.lcd) {
+      for (let line = LCD_LINE_DELAY; line < 144; line++) {
+        const v = s.ly[line - LCD_LINE_DELAY];
+        if (s.lcd === 0x43) x[line] = v; else if (s.lcd === 0x42) y[line] = v;
+      }
     }
     const signed = (v) => (v << 24) >> 24;
     return { x: x.map(signed), y: y.map(signed) };
@@ -166,7 +171,7 @@ export class BattleAnimation {
     const palettes = [];
     for (const s of m.sprites().reverse()) {
       const slot = s.attr & 7;
-      palettes[slot] ??= this.palette('wOBPals2', slot);
+      palettes[slot] ??= this.palette('ob', slot);
       let digits = this.tileDigits(VRAM_OBJ + s.tile * 16);
       if (s.attr & 0x20) digits = flipX(digits);
       if (s.attr & 0x40) digits = flipY(digits);

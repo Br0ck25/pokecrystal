@@ -71,12 +71,14 @@ if TRACE:
     def anim_start(ctx):
         n = trace['n']; trace['n'] += 1
         open(os.path.join(TRACE, f'anim{n}_start.bin'), 'wb').write(ram_image())
-        trace['frames'] = open(os.path.join(TRACE, f'anim{n}_frames.bin'), 'wb')
+        trace['frames'] = open(os.path.join(TRACE, f'anim{n}_frames.bin'), 'wb'); trace['times'] = []
         json.dump({'id': ref.rd('wFXAnimID') | ref.rd('wFXAnimID+1') << 8, 'turn': ref.rd('hBattleTurn'), 'param': ref.rd('wBattleAnimParam')}, open(os.path.join(TRACE, f'anim{n}.json'), 'w'))
     def anim_frame(ctx):
-        if trace['frames']: trace['frames'].write(ram_image((5,)))
+        if trace['frames']: trace['frames'].write(ram_image((5,))); trace['times'].append(ref.pb.frame_count)
     def anim_end(ctx):
-        if trace['frames']: trace['frames'].close(); trace['frames'] = None
+        if trace['frames']:
+            trace['frames'].close(); trace['frames'] = None
+            json.dump(trace['times'], open(os.path.join(TRACE, f"anim{trace['n'] - 1}_times.json"), 'w'))
     b1, a1 = ref.sym['PlayBattleAnim']; ref.pb.hook_register(b1, a1, anim_start, None)
     b2, a2 = ref.sym['BattleAnimDelayFrame']; ref.pb.hook_register(b2, a2, anim_frame, None)
     b3, a3 = ref.sym['BattleAnimRunScript.done']; ref.pb.hook_register(b3, a3, anim_end, None)

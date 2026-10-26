@@ -4,6 +4,26 @@
 
 const MASK = 0xff;
 
+// M-cycles of each opcode (taken conditional jumps, calls and returns add their extra in step()); the 0xcb table is 2, 4 for (hl), 3 for bit n,(hl).
+const CYCLES = (() => {
+  const t = new Array(256).fill(1);
+  const set = (list, n) => list.forEach((op) => { t[op] = n; });
+  for (let op = 0x40; op < 0x80; op++) t[op] = (op & 7) === 6 || ((op >> 3) & 7) === 6 ? 2 : 1;
+  for (let op = 0x80; op < 0xc0; op++) t[op] = (op & 7) === 6 ? 2 : 1;
+  set([0x01, 0x11, 0x21, 0x31], 3); t[0xc3] = 4; t[0xfa] = 4; t[0xea] = 4;
+  set([0x02, 0x12, 0x22, 0x32, 0x0a, 0x1a, 0x2a, 0x3a, 0x03, 0x13, 0x23, 0x33, 0x0b, 0x1b, 0x2b, 0x3b, 0x09, 0x19, 0x29, 0x39, 0xe2, 0xf2, 0xf9], 2);
+  set([0x06, 0x0e, 0x16, 0x1e, 0x26, 0x2e, 0x3e, 0xc6, 0xce, 0xd6, 0xde, 0xe6, 0xee, 0xf6, 0xfe], 2);
+  t[0x36] = 3; t[0x34] = 3; t[0x35] = 3; t[0x08] = 5; t[0xe0] = 3; t[0xf0] = 3; t[0xe8] = 4; t[0xf8] = 3;
+  set([0x18, 0x20, 0x28, 0x30, 0x38], 2);                       // jr: 3 when taken
+  set([0xc2, 0xca, 0xd2, 0xda], 3);                             // jp cc: 4 when taken
+  set([0xc4, 0xcc, 0xd4, 0xdc], 3); t[0xcd] = 6;                // call cc: 6 when taken
+  set([0xc0, 0xc8, 0xd0, 0xd8], 2); set([0xc9, 0xd9], 4);       // ret cc: 5 when taken
+  set([0xc5, 0xd5, 0xe5, 0xf5], 4); set([0xc1, 0xd1, 0xe1, 0xf1], 3);
+  set([0xc7, 0xcf, 0xd7, 0xdf, 0xe7, 0xef, 0xf7, 0xff], 4); t[0xe9] = 1; t[0xcb] = 0;
+  return t;
+})();
+
+
 export class Cpu {
   constructor(bus) {
     this.bus = bus;
@@ -12,6 +32,7 @@ export class Cpu {
     this.sp = 0xfffe; this.pc = 0;
     this.hooks = new Map();
     this.stopped = false;
+    this.cycles = 0;                                  // M-cycles executed (a frame is 17556)
   }
 
   get hl() { return (this.h << 8) | this.l; }
@@ -57,6 +78,7 @@ export class Cpu {
 
   cb() {
     const op = this.fetch(), r = op & 7, bit = (op >> 3) & 7;
+    this.cycles += r !== 6 ? 2 : (op >> 6) === 1 ? 3 : 4;
     const v = this.getReg(r);
     switch (op >> 6) {
       case 1: this.z = (v & (1 << bit)) === 0; this.n = false; this.hc = true; return;
@@ -84,6 +106,7 @@ export class Cpu {
     const hook = this.hooks.get(this.pc);
     if (hook) { const r = hook(this); return r === 'stop' ? 'stop' : undefined; }
     const op = this.fetch();
+    this.cycles += CYCLES[op];
     if (op === 0x00) return undefined;
     if ((op & 0xc0) === 0x40) {                                                   // ld r, r
       if (op === 0x76) throw new Error('sm83: halt');
@@ -125,8 +148,8 @@ export class Cpu {
       case 0x1f: { const c = this.cy ? 0x80 : 0; this.cy = Boolean(this.a & 1); this.a = (this.a >> 1) | c; this.z = false; this.n = false; this.hc = false; break; }
       case 0x08: { const a = this.fetch16(); this.write(a, this.sp & MASK); this.write(a + 1, this.sp >> 8); break; }
       case 0x10: this.fetch(); break;
-      case 0x18: { const e = this.fetch(); this.pc = (this.pc + (e << 24 >> 24)) & 0xffff; break; }
-      case 0x20: case 0x28: case 0x30: case 0x38: { const e = this.fetch(); if (this.cond((op >> 3) & 3)) this.pc = (this.pc + (e << 24 >> 24)) & 0xffff; break; }
+      case 0x18: { const e = this.fetch(); this.pc = (this.pc + (e << 24 >> 24)) & 0xffff; this.cycles += 1; break; }
+      case 0x20: case 0x28: case 0x30: case 0x38: { const e = this.fetch(); if (this.cond((op >> 3) & 3)) { this.pc = (this.pc + (e << 24 >> 24)) & 0xffff; this.cycles += 1; } break; }
       case 0x27: {                                                                                    // daa
         let a = this.a;
         if (!this.n) { if (this.cy || a > 0x99) { a += 0x60; this.cy = true; } if (this.hc || (a & 15) > 9) a += 6; }
@@ -137,17 +160,17 @@ export class Cpu {
       case 0x2f: this.a ^= MASK; this.n = true; this.hc = true; break;
       case 0x37: this.cy = true; this.n = false; this.hc = false; break;
       case 0x3f: this.cy = !this.cy; this.n = false; this.hc = false; break;
-      case 0xc0: case 0xc8: case 0xd0: case 0xd8: if (this.cond((op >> 3) & 3)) this.pc = this.pop(); break;
+      case 0xc0: case 0xc8: case 0xd0: case 0xd8: if (this.cond((op >> 3) & 3)) { this.pc = this.pop(); this.cycles += 3; } break;
       case 0xc9: this.pc = this.pop(); break;
       case 0xd9: this.pc = this.pop(); break;
       case 0xc1: case 0xd1: case 0xe1: this.setRR((op >> 4) & 3, this.pop()); break;
       case 0xf1: this.af = this.pop() & 0xfff0; break;
       case 0xc5: case 0xd5: case 0xe5: this.push(this.getRR((op >> 4) & 3)); break;
       case 0xf5: this.push(this.af); break;
-      case 0xc2: case 0xca: case 0xd2: case 0xda: { const a = this.fetch16(); if (this.cond((op >> 3) & 3)) this.pc = a; break; }
+      case 0xc2: case 0xca: case 0xd2: case 0xda: { const a = this.fetch16(); if (this.cond((op >> 3) & 3)) { this.pc = a; this.cycles += 1; } break; }
       case 0xc3: this.pc = this.fetch16(); break;
       case 0xe9: this.pc = this.hl; break;
-      case 0xc4: case 0xcc: case 0xd4: case 0xdc: { const a = this.fetch16(); if (this.cond((op >> 3) & 3)) { this.push(this.pc); this.pc = a; } break; }
+      case 0xc4: case 0xcc: case 0xd4: case 0xdc: { const a = this.fetch16(); if (this.cond((op >> 3) & 3)) { this.push(this.pc); this.pc = a; this.cycles += 3; } break; }
       case 0xcd: { const a = this.fetch16(); this.push(this.pc); this.pc = a; break; }
       case 0xc6: case 0xce: case 0xd6: case 0xde: case 0xe6: case 0xee: case 0xf6: case 0xfe: this.alu((op >> 3) & 7, this.fetch()); break;
       case 0xc7: case 0xcf: case 0xd7: case 0xdf: case 0xe7: case 0xef: case 0xf7: case 0xff: this.push(this.pc); this.pc = op & 0x38; break;
