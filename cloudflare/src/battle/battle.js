@@ -14,6 +14,7 @@ import { SCRIPTS as TEXT } from '../generated/scripts/_text.js';
 import { damageStats, damageCalc, criticalStage, isCritical, stab, damageVariation } from './damage.js';
 import { checkHit, rawAccuracy } from './accuracy.js';
 import { giveExperience } from './experience.js';
+import { evolveAfterBattle } from './evolve.js';
 import { installStatus } from './status.js';
 import { installEffects } from './effects.js';
 import { installBetween } from './between.js';
@@ -64,6 +65,7 @@ export class Battle {
     this.trainerItems = [...(trainerInfo?.items ?? [])].filter((i) => i && i !== 'NO_ITEM');   // wEnemyTrainerItem1/2
     this.shiftStyle = shiftStyle;                    // OPTION BATTLE SHIFT: no "Will you change POKéMON?" offer
     this.sides = [battleMon(player.find((m) => m.hp > 0)), battleMon(this.enemyParty[0])];
+    this.evolvable = new Set();                                            // wEvolvableFlags: the party indexes that gained a level
     this.participants = new Set([player.indexOf(this.sides[0].mon)]);      // wBattleParticipantsNotFainted
     this.wild = wild;
     this.random = random;
@@ -117,6 +119,12 @@ export class Battle {
 
   // ---- the whole battle ---------------------------------------------------------------------------------------
   *run() {
+    const end = yield* this.fight();
+    if (end.result === 'win' || end.result === 'caught') yield* evolveAfterBattle(this);        // ExitBattle
+    return end;
+  }
+
+  *fight() {
     // measured in the real game after the "appeared" text: the box clears, the enemy HUD follows 6 frames later, 40 frames of DelayFrames,
     // the trainer slides out (22 frames), "Go! X!", 30 frames, the send-out animation (62 frames), the HUD, 17 frames to the menu
     if (this.wild) {

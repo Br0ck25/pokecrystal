@@ -1,7 +1,9 @@
 // The battle screen: runs a Battle (battle.js) and shows what it yields, as panels for the canvas renderer.
 // Layout from engine/battle/core.asm (DrawPlayerHUD, DrawEnemyHUD, BattleMenu) and trainer_huds.asm (HUD borders).
 // Not ported yet: the battle transition, the sliding intro, move animations, the PKMN and PACK menus, exp bar animation.
-import { HUD_TILES, BALL_TILES, BALL_PALETTE } from '../generated/battle-ui.js';
+import { HUD_TILES, BALL_TILES, BALL_PALETTE, EXP_BAR_END_TILE } from '../generated/battle-ui.js';
+import { sine } from './sprite-sine.js';
+import { EvolutionScene } from './evolution-scene.js';
 import { PREDEF_PALETTES } from '../generated/intro.js';
 import { STATS_SCREEN } from '../generated/stats-screen.js';
 import { TEXT_PALETTE } from '../generated/font.js';
@@ -38,6 +40,7 @@ const FAINT_AT = 0, FAINT_ROWS = 7, FAINT_END = 2;         // MonFaintedAnimatio
 const EXP_SOUND_WAIT = 19, EXP_SOUND_FRAMES = 10;         // AnimateExpBar: the first sound waits for the one before it; then DelayFrames 10 before the bar moves
 const SPARKLE_FRAMES = 8, SPARKLE_WAIT = 13;              // AnimateEndOfExpBar's eight frames, then WaitSFX for SFX_HIT_END_OF_EXP_BAR
 const STAT_BOX_AFTER = 1, STAT_BOX_SHOWN = 7, STAT_BOX_DELAY = 30;     // UpdatePlayerHUD to the text clearing, to the box on screen; DelayFrames 30 before a button is read
+const EVOLVE_WAIT = 50, EVOLVED_FRAMES = 209;             // DelayFrames 50 after "What? ... is evolving!"; SFX_CAUGHT_MON and DelayFrames 40 after "evolved into"
 const SLIDE_FRAMES = 73, COLOR_AT = 81;
 const TRAINER_TIMING = { balls: 120, borders: 122, text: 121 };      // when the Poké Ball rows, the HUD borders and the text come, in frames from the first
 const WILD_AFTER_ANIM = { balls: 3, borders: 4, text: 4 };           // and for a wild Pokémon, in frames after its picture's animation ends
@@ -62,18 +65,6 @@ export function expTiles(pixels) {
   return tiles;
 }
 
-/** Sprites_Sine: `d` * sin(a * pi / 32) as the game's 8.8 table gives it (a is a 6-bit angle). */
-function sine(d, a) {
-  a &= 63;
-  const negative = a >= 32;
-  const v = Math.round(Math.sin(((a & 31) / 64) * 2 * Math.PI) * 256);
-  const h = ((d * v) & 0xffff) >> 8;
-  return negative ? -h : h;
-}
-// gfx/battle/expbarend.png: the one tile of the circles AnimateEndOfExpBar spreads out around the bar
-const EXP_END_TILE = [
-  '00000000', '00011000', '00122100', '01222210', '01222210', '00122100', '00011000', '00000000',
-].join('');
 const EXP_END_COLORS = [[31, 31, 31], [8, 12, 31], [1, 4, 31], [0, 0, 0]];      // PAL_BATTLE_OB_BLUE
 
 /** The 7x7 tile square of a picture moved down `rows` tile rows, the top left blank and what leaves the bottom lost (MonFaintedAnimation). */
@@ -114,6 +105,8 @@ export class BattleScreen {
     this.timer = 0;
     this.pending = null;
     this.enemyGone = false;
+    this.evo = null;                                                   // the evolution scene, while it or its texts are on the screen
+    this.cleared = false;                                              // ClearTilemap after an evolution
     this.enemyHud = false;                                             // DrawEnemyHUD has run
     this.slide = 0;                                                    // steps of the trainer's slide out of the screen
     this.trainerGone = false;
@@ -158,6 +151,8 @@ export class BattleScreen {
       case 'anim': if (this.animation.update()) { this.picOut = this.animation.sentOut; this.animation = null; this.advance(); } break;
       case 'hp': this.stepHp(); break;
       case 'expBar': this.stepExpBar(); break;
+      case 'evoWait': if (--this.timer <= 0) this.startEvolution(); break;
+      case 'evolution': if (this.evo.update(input)) { this.mode = 'running'; this.advance(this.evo.canceled); } break;
       case 'levelFx': if (++this.fxT >= SPARKLE_FRAMES + SPARKLE_WAIT) { this.mode = 'running'; this.advance(); } break;
       case 'statBox': if (++this.statBox.t > STAT_BOX_DELAY && (input.a || input.b)) { this.statBox = null; this.mode = 'running'; this.advance(); } break;
       case 'faintEnemy':                                            // MonFaintedAnimation: every 2 frames the picture sinks a tile row; then the HUD is cleared
@@ -228,6 +223,9 @@ export class BattleScreen {
         this.shown[0] = side.hp; this.px[0] = hpPixels(side.hp, side.maxHp);
         this.timer = STAT_BOX_AFTER; this.mode = 'wait'; return;
       }
+      if (value.evolve) { this.evolveRequest = value.evolve; this.timer = EVOLVE_WAIT; this.mode = 'evoWait'; return; }
+      if (value.evolved) { this.timer = EVOLVED_FRAMES; this.mode = 'wait'; return; }
+      if (value.evolutionEnd) { this.evo = null; this.cleared = true; this.boxText = false; continue; }
       if (value.statBox) { this.statBox = { mon: value.statBox, t: 0 }; this.boxText = false; this.mode = 'statBox'; return; }
       this.unported.add(`battle event: ${JSON.stringify(Object.keys(value))}`);
     }
@@ -271,6 +269,34 @@ export class BattleScreen {
     this.expPx = a.final ? null : a.to;
     this.mode = 'running';
     this.advance();
+  }
+
+  /** EvolutionAnimation: the screen's top is cleared (the HUDs and pictures go) and the scene plays; its answer is whether the player stopped it. */
+  startEvolution() {
+    const { from, to } = this.evolveRequest, pics = this.pics.evolutions ?? {};
+    if (!pics[from] || !pics[to]) { this.unported.add('evolution pictures'); this.mode = 'running'; this.advance(false); return; }
+    this.evo = new EvolutionScene({ oldPic: pics[from], newPic: pics[to], oldSlots: [this.enemyPic?.palette, this.pics.player?.palette] });
+    this.mode = 'evolution';
+  }
+
+  /** The screen of an evolution (or after it): the scene's picture over white, and the text box. */
+  evolutionPanels() {
+    const out = [{ fill: 0 }, ...(this.evo ? this.evo.panels() : []), { box: [0, 12, 19, 17] }];
+    this.textPanels(out);
+    return out;
+  }
+
+  /** The text box's text: typed (with its prompt) in a text mode, kept through a wait or an animation. */
+  textPanels(out) {
+    if ((this.mode === 'text' || this.mode === 'intro') && this.wait) {
+      const { lines, prompt, shift } = textLines(this.shownText());
+      if (prompt) this.readyAt ??= this.frame; else this.readyAt = undefined;
+      out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]], promptNow: prompt && (this.frame - this.readyAt) % (2 * ARROW_FRAMES) < ARROW_FRAMES });
+    }
+    if (this.boxText && this.wait && (this.mode === 'wait' || this.mode === 'hp' || this.mode === 'slide' || this.mode === 'faintEnemy' || this.mode === 'expBar' || this.mode === 'levelFx' || this.mode === 'evoWait' || this.mode === 'evolution')) {
+      const { lines, shift } = textLines(this.shownText());
+      out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]] });
+    }
   }
 
   /** AnimateHPBar: the bar moves one pixel every 2 frames; the digits follow. */
@@ -434,6 +460,7 @@ export class BattleScreen {
 
   panels() {
     if (this.animation) return this.animationPanels();
+    if (this.evo || this.cleared) return this.evolutionPanels();
     const [player, enemy] = this.battle.sides;
     const out = [{ fill: 0 }];
     const entering = this.t < this.timing.borders && (this.mode === 'enter' || this.mode === 'intro');
@@ -446,18 +473,10 @@ export class BattleScreen {
     if (this.sentOut || this.picOut || !this.trainerGone) out.push({ pic: { ...(this.sentOut || this.picOut ? this.pics.playerMons[this.playerSpecies ?? player.species] : this.pics.player), ...gray, x: playerX, y: 6 } });
     if (!entering || this.t >= this.timing.balls) out.push(...this.hudPanels());
     out.push({ box: [0, 12, 19, 17] });
-    if ((this.mode === 'text' || this.mode === 'intro') && this.wait) {
-      const { lines, prompt, shift } = textLines(this.shownText());
-      if (prompt) this.readyAt ??= this.frame; else this.readyAt = undefined;
-      out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]], promptNow: prompt && (this.frame - this.readyAt) % (2 * ARROW_FRAMES) < ARROW_FRAMES });
-    }
-    if (this.boxText && this.wait && (this.mode === 'wait' || this.mode === 'hp' || this.mode === 'slide' || this.mode === 'faintEnemy' || this.mode === 'expBar' || this.mode === 'levelFx')) {
-      const { lines, shift } = textLines(this.shownText());
-      out.push({ texts: [[1, 14 + shift, lines[0]], [1, 16 + shift, lines[1]]] });
-    }
+    this.textPanels(out);
     if (this.mode === 'levelFx' && this.fxT < SPARKLE_FRAMES) {
       const d = 2 * this.fxT;
-      out.push({ sprites: Array.from({ length: 8 }, (_, c) => ({ bitmap: { w: 8, h: 8, pixels: EXP_END_TILE }, colors: EXP_END_COLORS, x: sine(d, c * 8 + 16) + 84 - 8, y: sine(d, c * 8) + 104 - 16 })) });
+      out.push({ sprites: Array.from({ length: 8 }, (_, c) => ({ bitmap: { w: 8, h: 8, pixels: EXP_BAR_END_TILE }, colors: EXP_END_COLORS, x: sine(d, c * 8 + 16) + 84 - 8, y: sine(d, c * 8) + 104 - 16 })) });
     }
     if (this.mode === 'statBox' && this.statBox.t >= STAT_BOX_SHOWN) {
       const m = this.statBox.mon.stats, num = (v) => String(v).padStart(3, ' ');

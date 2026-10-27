@@ -26,6 +26,7 @@ import { renderText } from '../script/text.js';
 import { wildEncounter } from '../battle/wild.js';
 import { trainerParty } from '../battle/trainer-party.js';
 import { POKEMON } from '../generated/pokemon.js';
+import { EVOS_ATTACKS } from '../generated/learnsets.js';
 import { landmarkSign, SIGN_FRAMES } from './landmark.js';
 import { stepNpc, endNpcWalk, LOOP_FRAMES } from './npc-ai.js';
 import { TileAnimator } from '../maps/tile-anim.js';
@@ -300,7 +301,10 @@ export class Game {
     ]);
     const front = (mod) => { const tiles = mod.PIC.size / 8; return { size: mod.PIC.size, pixels: mod.PIC.front, front: mod.PIC.front, frames: mod.PIC.frames, anim: mod.PIC.anim, idle: mod.PIC.idle, palette: mod.PIC.palette, offX: tiles < 7 ? 1 : 0, offY: 7 - tiles }; };   // PadFrontpic: smaller pictures sit at the bottom
     const enemyMons = Object.fromEntries(fronts.map((sp, i) => [sp, front(frontMods[i])]));
+    const evolving = [...new Set(partySpecies.flatMap((sp) => { const to = EVOS_ATTACKS[sp].evolutions.filter(([kind]) => kind !== 'EVOLVE_ITEM' && kind !== 'EVOLVE_TRADE').map((e) => e[e.length - 1]); return to.length ? [sp, ...to] : []; }))];
+    const evolutions = Object.fromEntries(await Promise.all(evolving.map(async (sp) => [sp, front(await import(`../generated/pokemon/${sp}.js`))])));      // the pictures of a level-up evolution
     return {
+      evolutions,
       enemy: trainerArt ? { size: trainerArt.PIC.size, pixels: trainerArt.PIC.pixels, palette: trainerArt.PIC.palette, offX: 0, offY: 0 } : enemyMons[enemySpecies[0]],
       enemyMons,
       player: { size: 48, pixels: back.PIC.back, palette: back.PIC.palette },

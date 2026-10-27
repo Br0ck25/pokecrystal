@@ -59,6 +59,7 @@ export function* giveExperience(battle, { participants, playerId, trainer = fals
     if (newLevel === oldLevel) continue;
     mon.level = newLevel;
     recalcStats(mon);
+    battle.evolvable.add(index);
     if (active) { yield { wait: BAR_TO_HUD_FRAMES }; battle.refreshPlayerStats(); yield { hudRefresh: true }; }
     else {
       yield battle.say('BattleText_StringBuffer1GrewToLevel', { wStringBuffer1: name, wCurPartyLevel: newLevel });
@@ -70,7 +71,7 @@ export function* giveExperience(battle, { participants, playerId, trainer = fals
 }
 
 /** LearnLevelMoves: the moves the species learns exactly at `level`. */
-function* learnLevelMoves(battle, mon, name, level) {
+export function* learnLevelMoves(battle, mon, name, level) {
   for (const [at, move] of EVOS_ATTACKS[mon.species].learnset) {
     if (at !== level || mon.moves.includes(move)) continue;
     yield* learnMove(battle, mon, name, move);
